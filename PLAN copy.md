@@ -43,11 +43,10 @@ CREATE TABLE IF NOT EXISTS players (
 );
 
 CREATE TABLE IF NOT EXISTS games (
-  id                SERIAL PRIMARY KEY,
-  played_at         TIMESTAMPTZ NOT NULL,
-  notes             TEXT NOT NULL DEFAULT '',
-  submitted_from_ip INET,
-  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  id          SERIAL PRIMARY KEY,
+  played_at   TIMESTAMPTZ NOT NULL,
+  notes       TEXT NOT NULL DEFAULT '',
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS game_players (
@@ -85,8 +84,8 @@ ON CONFLICT (name) DO NOTHING;
 - `scripts/migrate.ts` — reads `DATABASE_URL`, runs `db/schema.sql`
 - `lib/db.ts` — `postgres` client singleton
 - `lib/players.ts` — `getPlayers()` queries DB; returns `{ id, name, tier }[]` sorted tier then alpha
-- `lib/games.ts` — `createGame({ playedAt, notes, submittedFromIp, players: { playerId, score, isWinner }[] })` and `listRecentGames(limit)`
-- `app/actions.ts` — `'use server'`; `createGameAction(formData)`; reads client IP from `x-forwarded-for` → `x-real-ip` → `null` using `headers()` from `next/headers`
+- `lib/games.ts` — `createGame({ playedAt, notes, players: { playerId, score, isWinner }[] })` and `listRecentGames(limit)`
+- `app/actions.ts` — `'use server'`; `createGameAction(formData)`
 - `app/new/page.tsx` — server component; fetches `getPlayers()`, renders `<NewGameForm players={...} />`
 - `app/new/NewGameForm.tsx` — `'use client'`; 8 rows + datetime-local + notes + submit
 - `components/Stepper.tsx` — `'use client'`; − / number-input / + with hold-to-accelerate
@@ -124,16 +123,14 @@ Phase 0 is sequential. Phase 1 dispatches three agents in parallel. Phase 2 is s
 ### Phase 1 — three subagents in parallel
 
 **Agent A — Infra & persistence**
-
 - Creates: `docker-compose.yml`, `.env.example`, `db/schema.sql`, `scripts/migrate.ts`, `lib/db.ts`, `lib/players.ts`, `lib/games.ts`
 - Modifies: `package.json` (add `postgres` + `tsx` dep, add `db:up` + `db:migrate` scripts), `.gitignore`
-- `createGame` accepts `{ playedAt, notes, submittedFromIp: string | null, players: { playerId, score, isWinner }[] }` and inserts into `games` + `game_players` in a single transaction
+- `createGame` accepts `{ playedAt, notes, players: { playerId, score, isWinner }[] }` and inserts into `games` + `game_players` in a single transaction
 - `listRecentGames(limit = 20)` JOINs `game_players` → `players` so returned records include `playerName`
 - `getPlayers()` returns `{ id, name, tier }[]` ordered by tier (`premium` first), then name
 - **Done when:** `pnpm db:up && pnpm db:migrate` applies schema + seeds players; `createGame` / `listRecentGames` / `getPlayers` are callable and typed
 
 **Agent B — Theme foundation**
-
 - Modifies: `app/globals.css`, `app/layout.tsx`
 - Adds CSS custom props: `--navy-900: #0a2130`, `--navy-800: #0e3a4a`, `--gold: #e8b23a`, `--cream: #f4ecd4`
 - Loads Cinzel via `next/font/google` (verify API in the Next.js 16 docs) and applies to headings
@@ -141,7 +138,6 @@ Phase 0 is sequential. Phase 1 dispatches three agents in parallel. Phase 2 is s
 - **Done when:** an empty page shows navy background, crisp tessellating gold honeycomb, and Cinzel renders for `h1`/`h2`
 
 **Agent C — UI primitives**
-
 - Creates: `components/Stepper.tsx`, `components/PlayerRow.tsx`
 - `Stepper` props: `value: number`, `onChange(v: number)`, `min?: number = 0` (no max); press-and-hold: 350 ms delay → 90 ms repeat; spin buttons hidden; clamps on blur
 - `PlayerRow` props: `value: { playerId: number | null; score: number | null; isWinner: boolean }`, `onChange`, `players: { id: number; name: string; tier: string }[]`; renders player `<select>` with `<optgroup>` Premium/Standard (value = player id), Stepper, and star toggle
