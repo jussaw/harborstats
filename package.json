@@ -7,6 +7,8 @@
     "start": "pnpm -F web start",
     "lint": "pnpm -F web lint",
     "format": "pnpm -F web format",
-    "format:check": "pnpm -F web format:check"
+    "format:check": "pnpm -F web format:check",
+    "db:up": "docker compose up -d",
+    "db:migrate": "pnpm -F web db:migrate"
   }
 }

@@ -1,104 +1,74 @@
-import Image from "next/image";
+import Link from 'next/link'
+import { listRecentGames } from '@/lib/games'
 
-export default function Home() {
+export const dynamic = 'force-dynamic'
+
+function formatDate(d: Date) {
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(d))
+}
+
+export default async function HomePage() {
+  const games = await listRecentGames(20)
+
   return (
-    <div className="
-      flex flex-1 flex-col items-center justify-center bg-zinc-50 font-sans
-      dark:bg-black
-    ">
-      <main className="
-        flex w-full max-w-3xl flex-1 flex-col items-center justify-between
-        bg-white px-16 py-32
-        sm:items-start
-        dark:bg-black
-      ">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="
-          flex flex-col items-center gap-6 text-center
-          sm:items-start sm:text-left
-        ">
-          <h1 className="
-            max-w-xs text-3xl/10 font-semibold tracking-tight text-black
-            dark:text-zinc-50
-          ">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="
-            max-w-md text-lg/8 text-zinc-600
-            dark:text-zinc-400
-          ">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="
-                font-medium text-zinc-950
-                dark:text-zinc-50
-              "
+    <main className="mx-auto max-w-2xl px-4 py-12">
+      <div className="mb-8 flex items-center justify-between">
+        <h1 className="font-cinzel text-3xl text-[var(--gold)] tracking-wide">HarborStats</h1>
+        <Link
+          href="/new"
+          className="font-cinzel rounded border border-[var(--gold)] bg-[var(--gold)] px-4 py-2 text-sm font-semibold text-[var(--navy-900)] hover:bg-[var(--cream)] transition-colors"
+        >
+          + New Game
+        </Link>
+      </div>
+
+      {games.length === 0 ? (
+        <p className="text-[var(--cream)] opacity-60 text-center py-16">
+          No games yet — record your first one!
+        </p>
+      ) : (
+        <div className="space-y-4">
+          {games.map((game) => (
+            <article
+              key={game.id}
+              className="rounded-lg border border-[var(--gold)]/30 bg-[var(--navy-900)]/60 p-4"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="
-                font-medium text-zinc-950
-                dark:text-zinc-50
-              "
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+              <div className="mb-3 flex items-start justify-between gap-2">
+                <time className="text-xs text-[var(--cream)] opacity-60">
+                  {formatDate(game.played_at)}
+                </time>
+                {game.notes && (
+                  <p className="text-xs text-[var(--cream)] opacity-50 italic max-w-xs text-right">
+                    {game.notes}
+                  </p>
+                )}
+              </div>
+
+              <ul className="space-y-1">
+                {game.players.map((p) => (
+                  <li key={p.playerName} className="flex items-center gap-2 text-sm">
+                    <span className="w-4 text-center">
+                      {p.isWinner ? '⭐' : ''}
+                    </span>
+                    <span className={p.isWinner ? 'text-[var(--gold)] font-semibold font-cinzel' : 'text-[var(--cream)]'}>
+                      {p.playerName}
+                    </span>
+                    <span className="ml-auto text-[var(--cream)] opacity-70 tabular-nums">
+                      {p.score}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </article>
+          ))}
         </div>
-        <div className="
-          flex flex-col gap-4 text-base font-medium
-          sm:flex-row
-        ">
-          <a
-            className="
-              flex h-12 w-full items-center justify-center gap-2 rounded-full
-              bg-foreground px-5 text-background transition-colors
-              hover:bg-[#383838]
-              md:w-[158px]
-              dark:hover:bg-[#ccc]
-            "
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="
-              flex h-12 w-full items-center justify-center rounded-full border
-              border-solid border-black/8 px-5 transition-colors
-              hover:border-transparent hover:bg-black/4
-              md:w-[158px]
-              dark:border-white/[.145]
-              dark:hover:bg-[#1a1a1a]
-            "
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+      )}
+    </main>
+  )
 }
