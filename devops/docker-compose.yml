@@ -27,6 +27,8 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: postgres://postgres:postgres@db:5432/harborstats
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      ADMIN_SESSION_SECRET: ${ADMIN_SESSION_SECRET}
     ports:
       - "23413:3000"
     restart: always

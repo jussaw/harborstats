@@ -37,6 +37,8 @@ yarn-error.log*
 # claude code
 .claude
 .superpowers
+.playwright
+.playwright-mcp
 
 # typescript
 *.tsbuildinfo

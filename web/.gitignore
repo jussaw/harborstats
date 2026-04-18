@@ -8,3 +8,7 @@ node_modules
 # typescript
 next-env.d.ts
 *.tsbuildinfo
+
+# environment — never commit real secrets
+.env
+.env.local
