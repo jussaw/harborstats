@@ -34,6 +34,7 @@ interface Props {
   initial?: GameFormInitial
   submitLabel?: string
   hiddenFields?: Record<string, string>
+  onSuccess?: () => void
 }
 
 export function GameForm({
@@ -42,6 +43,7 @@ export function GameForm({
   initial,
   submitLabel = 'Save Game',
   hiddenFields,
+  onSuccess,
 }: Props) {
   const [rows, setRows] = useState<RowState[]>(() => {
     if (initial) {
@@ -79,6 +81,7 @@ export function GameForm({
     })
 
     await action(formData)
+    onSuccess?.()
   }
 
   return (
@@ -145,4 +148,5 @@ GameForm.defaultProps = {
   initial: undefined,
   submitLabel: 'Save Game',
   hiddenFields: undefined,
+  onSuccess: undefined,
 }

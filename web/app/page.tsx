@@ -1,5 +1,6 @@
-import Link from 'next/link'
 import { listRecentGames } from '@/lib/games'
+import { getPlayers } from '@/lib/players'
+import { NewGameButton } from '@/components/NewGameButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,18 +15,16 @@ function formatDate(d: Date) {
 }
 
 export default async function HomePage() {
-  const games = await listRecentGames(20)
+  const [games, players] = await Promise.all([listRecentGames(20), getPlayers()])
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-12">
       <div className="mb-8 flex items-center justify-between">
         <h1 className="font-cinzel text-3xl text-[var(--gold)] tracking-wide">HarborStats</h1>
-        <Link
-          href="/new"
+        <NewGameButton
+          players={players}
           className="font-cinzel rounded border border-[var(--gold)] bg-[var(--gold)] px-4 py-2 text-sm font-semibold text-[var(--navy-900)] hover:bg-[var(--cream)] transition-colors"
-        >
-          + New Game
-        </Link>
+        />
       </div>
 
       {games.length === 0 ? (

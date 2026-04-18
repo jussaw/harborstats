@@ -1,7 +1,6 @@
 'use server'
 
 import { headers } from 'next/headers'
-import { redirect } from 'next/navigation'
 import { createGame, parseGameFormData } from '@/lib/games'
 
 export async function createGameAction(formData: FormData) {
@@ -13,5 +12,4 @@ export async function createGameAction(formData: FormData) {
 
   const { playedAt, notes, players } = parseGameFormData(formData)
   await createGame({ playedAt, notes, submittedFromIp: ip, players })
-  redirect('/')
 }

@@ -3,6 +3,8 @@ import { listAllGames } from '@/lib/games'
 import { deleteGameAction } from './actions'
 import { AdminShell } from '@/app/admin/AdminShell'
 import { ConfirmDeleteButton } from '@/app/admin/ConfirmDeleteButton'
+import { getPlayers } from '@/lib/players'
+import { NewGameButton } from '@/components/NewGameButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,7 +19,7 @@ function formatDate(d: Date) {
 }
 
 export default async function AdminGamesPage() {
-  const games = await listAllGames()
+  const [games, players] = await Promise.all([listAllGames(), getPlayers()])
 
   return (
     <AdminShell>
@@ -27,12 +29,10 @@ export default async function AdminGamesPage() {
             <h1 className="font-cinzel text-xl tracking-wide text-[var(--gold)]">Games</h1>
             <p className="mt-0.5 text-xs text-[var(--cream)]/50">{games.length} recorded</p>
           </div>
-          <Link
-            href="/new"
+          <NewGameButton
+            players={players}
             className="font-cinzel rounded border border-[var(--gold)] bg-[var(--gold)] px-4 py-2 text-xs font-semibold tracking-widest text-[var(--navy-900)] uppercase hover:bg-[var(--cream)] transition-colors"
-          >
-            + New Game
-          </Link>
+          />
         </div>
 
         {games.length === 0 ? (
