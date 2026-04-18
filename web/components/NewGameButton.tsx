@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { GameForm } from '@/components/GameForm'
 import { createGameAction } from '@/app/actions'
@@ -14,10 +14,11 @@ interface Props {
 export function NewGameButton({ players, className }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const router = useRouter()
+  const [openKey, setOpenKey] = useState(0)
 
   return (
     <>
-      <button type="button" className={className} onClick={() => dialogRef.current?.showModal()}>
+      <button type="button" className={className} onClick={() => { setOpenKey((k) => k + 1); dialogRef.current?.showModal() }}>
         + New Game
       </button>
       <dialog
@@ -39,6 +40,7 @@ export function NewGameButton({ players, className }: Props) {
           </button>
         </div>
         <GameForm
+          key={openKey}
           action={createGameAction}
           players={players}
           onSuccess={() => {
