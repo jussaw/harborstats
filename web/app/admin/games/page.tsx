@@ -45,7 +45,7 @@ export default async function AdminGamesPage() {
             {games.map((game, idx) => (
               <div
                 key={game.id}
-                className="flex items-start gap-4 px-5 py-4"
+                className="flex items-center gap-4 px-5 py-4"
                 style={{
                   borderBottom:
                     idx < games.length - 1
@@ -59,7 +59,6 @@ export default async function AdminGamesPage() {
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-3 flex-wrap">
-                    <span className="font-cinzel text-xs text-[var(--gold)]/60">#{game.id}</span>
                     <time className="text-xs text-[var(--cream)]/60">{formatDate(game.played_at)}</time>
                     {game.notes && (
                       <span className="text-xs text-[var(--cream)]/40 italic truncate">

@@ -21,6 +21,7 @@ export function ConfirmDeleteButton({
       onSubmit={(e) => {
         if (!confirm(confirmMessage)) e.preventDefault()
       }}
+      className="flex items-center"
     >
       {Object.entries(hiddenFields).map(([k, v]) => (
         <input key={k} type="hidden" name={k} value={v} />
