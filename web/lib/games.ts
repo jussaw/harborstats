@@ -64,6 +64,15 @@ export function parseGameFormData(formData: FormData): {
     }
     row += 1
   }
+  const hasExplicitWinner = players.some((p) => p.isWinner)
+  if (!hasExplicitWinner && players.length > 0) {
+    const maxScore = Math.max(...players.map((p) => p.score))
+    const topPlayers = players.filter((p) => p.score === maxScore)
+    if (topPlayers.length === 1) {
+      topPlayers[0].isWinner = true
+    }
+  }
+
   return { playedAt, notes, players }
 }
 
