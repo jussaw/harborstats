@@ -1,0 +1,51 @@
+name: harborstats
+
+services:
+  db:
+    image: postgres:18
+    container_name: harborstats-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: harborstats
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d harborstats"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: always
+
+  web:
+    container_name: harborstats-web
+    build:
+      context: ../web
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://postgres:postgres@db:5432/harborstats
+    ports:
+      - "23413:3000"
+    restart: always
+
+  migrate:
+    image: postgres:18
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ../web/db/schema.sql:/schema.sql:ro
+    environment:
+      PGHOST: db
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: harborstats
+    command: ["psql", "-v", "ON_ERROR_STOP=1", "-f", "/schema.sql"]
+    profiles: ["migrate"]
+    restart: "no"
+
+volumes:
+  pgdata:
