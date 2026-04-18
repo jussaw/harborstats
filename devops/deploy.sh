@@ -14,6 +14,6 @@ echo "==> Running migrations..."
 docker compose -f "$COMPOSE_FILE" run --rm migrate
 
 echo "==> Building and starting web..."
-docker compose -f "$COMPOSE_FILE" up --build -d web
+docker compose -f "$COMPOSE_FILE" up --build -d web pgadmin
 
 echo "==> Done."
