@@ -1,6 +1,6 @@
 # HarborStats — Game Insights Brainstorm
 
-A menu of stat / graph / table / leaderboard ideas to surface insights from game history. Organized by category. No implementation decisions yet — pick from this list later.
+A menu of stat / graph / table / leaderboard ideas to surface insights from game history. Organized by category in implementation priority order. Each feature is scoped for a single agent session.
 
 ## Legend
 
@@ -9,80 +9,209 @@ Placement tags: `[H]` home page · `[S]` new `/stats` landing · `[P]` per-playe
 
 ## 1. Performance (win rates, rankings)
 
-- [ ] Total wins leaderboard — ties broken by win rate `[S]`
-- [ ] Win rate leaderboard — with minimum-games threshold `[S]`
-- [ ] Average score per player `[S][P]`
-- [ ] Median score per player `[S][P]`
-- [ ] Finish-position breakdown — % 1st / 2nd / 3rd / last (ranked within each game; needs a tie rule) `[S][P]`
-- [ ] Podium rate — % finishing 1st or 2nd `[S][P]`
-- [ ] Avg margin of victory `[P]`
-- [ ] Avg margin of defeat `[P]`
-- [ ] Win rate by opponent count (3p / 4p / 5p / 6p) `[P]`
-- [ ] Tier showdown — premium vs standard aggregate `[S]`
-- [ ] Expected-vs-actual wins — baseline 1/N vs. real; rough over/underperformance signal `[S][P]`
+### 1.1 Total wins leaderboard `[S]`
+- [ ] Rank every player by all-time win count; break ties by win rate.
+
+### 1.2 Win rate leaderboard `[S]`
+- [ ] Rank players by win percentage, filtered by a configurable minimum-games threshold.
+- **Needs:** game count per player (share query from 1.1)
+
+### 1.3 Average score per player `[S]` `[P]`
+- [ ] Show each player's mean score across all their games.
+
+### 1.4 Median score per player `[S]` `[P]`
+- [ ] Show each player's median score; more robust than mean for skewed distributions.
+- **Needs:** per-player score list (share query from 1.3)
+
+### 1.5 Podium rate `[S]` `[P]`
+- [ ] Show each player's percentage of games finishing 1st or 2nd.
+
+### 1.6 Finish-position breakdown `[S]` `[P]`
+- [ ] Show % of games each player finished 1st / 2nd / 3rd / last; needs a defined tie-breaking rule.
+- **Needs:** finish position per game (extend query from 1.5)
+
+### 1.7 Average margin of victory `[P]`
+- [ ] For games a player won, show their mean score gap over the runner-up.
+
+### 1.8 Average margin of defeat `[P]`
+- [ ] For games a player lost, show their mean gap behind the winner.
+- **Needs:** winner score per game (share query from 1.7)
+
+### 1.9 Win rate by opponent count `[P]`
+- [ ] Break out each player's win rate by game size (3p / 4p / 5p / 6p).
+
+### 1.10 Tier showdown `[S]`
+- [ ] Aggregate and compare win rates across premium vs. standard tier players.
+
+### 1.11 Expected-vs-actual wins `[S]` `[P]`
+- [ ] Compare each player's actual win count against the baseline 1/N expectation as an over/underperformance signal.
+- **Needs:** game-size data (share query from 1.9)
 
 ## 2. Activity (over time)
 
-- [ ] Games per week / month line chart `[S]`
-- [ ] Cumulative games area chart `[S]`
-- [ ] Calendar heatmap — GitHub-contribution-style grid `[S]`
-- [ ] Player attendance over time — stacked chart `[S]`
-- [ ] Participation rate per player `[S][P]`
-- [ ] Days since last game tile `[H][S]`
-- [ ] Longest gap between games record `[S]`
-- [ ] Busiest day / week / month records `[S]`
-- [ ] Avg games per session (session = same day) `[S]`
-- [ ] Day-of-week pattern `[S]`
-- [ ] Time-of-day pattern (feasible today from `played_at` timestamp) `[S]`
+### 2.1 Days since last game tile `[H]` `[S]`
+- [ ] Show how many days have passed since the most recent recorded game.
 
-## 3. Head-to-Head (rivalries)
+### 2.2 Games per week / month line chart `[S]`
+- [ ] Plot game frequency over time as a line chart bucketed by week or month.
 
-- [ ] H2H matrix — grid of players × players `[HH][S]`
-- [ ] Nemesis (opponent who beats you most) `[P]`
-- [ ] Favorite opponent (opponent you beat most) `[P]`
-- [ ] Closest rivalry — tightest record `[S]`
-- [ ] Most lopsided rivalry — biggest gap `[S]`
-- [ ] Most-played-with partner `[P]`
-- [ ] "Beat X specifically" tally — out-scored opponent head-to-head even in games neither won overall `[HH]`
+### 2.3 Participation rate per player `[S]` `[P]`
+- [ ] Show what percentage of all games each player has appeared in.
+- **Needs:** total game count (extend query from 2.2)
 
-## 4. Streaks & Records
+### 2.4 Player attendance over time `[S]`
+- [ ] Stacked chart showing which players participated in each time bucket.
+- **Needs:** per-player game dates (extend query from 2.3)
 
-- [ ] Current win streak per player + current leader `[H][S][P]`
-- [ ] Longest win streak ever (all-time record) `[S][P]`
-- [ ] Current / longest loss streak `[P]`
-- [ ] Attendance streak — most consecutive games without missing `[P]`
-- [ ] Highest-scoring game ever — record with date and player `[S]`
-- [ ] Lowest winning score — squeakiest win `[S]`
-- [ ] Biggest blowout — largest winning margin `[S]`
-- [ ] Closest game — smallest winning margin `[S]`
-- [ ] Most wins in a single week / month `[S][P]`
-- [ ] Reigning champion — whoever won the most recent game `[H]`
+### 2.5 Cumulative games area chart `[S]`
+- [ ] Area chart of total games played over time.
+- **Needs:** game date list (share query from 2.2)
 
-## 5. Score Patterns
+### 2.6 Calendar heatmap `[S]`
+- [ ] GitHub-contribution-style grid showing game frequency by calendar day.
+- **Needs:** game date list (share query from 2.2)
 
-- [ ] Score histogram across all `game_players` rows `[S]`
-- [ ] Per-player score distribution — side-by-side box/violin plots `[S][P]`
-- [ ] Avg winning score vs. avg losing score `[S]`
-- [ ] Does winning score scale with player count? `[S]`
-- [ ] Total VP scored ever — cumulative leaderboard `[S][P]`
-- [ ] Points-per-game leaderboard (normalized) `[S]`
-- [ ] % of games with a tied top score (ties currently leave `is_winner=false`) `[A][S]`
+### 2.7 Day-of-week pattern `[S]`
+- [ ] Bar chart of how many games have been played on each day of the week.
+
+### 2.8 Time-of-day pattern `[S]`
+- [ ] Distribution of game start times bucketed by hour, using `played_at` timestamp.
+
+### 2.9 Average games per session `[S]`
+- [ ] Compute mean number of games played per session, where a session is games on the same calendar day.
+
+### 2.10 Busiest day / week / month records `[S]`
+- [ ] Surface the single most active day, week, and month by game count.
+- **Needs:** bucketed game counts (share query from 2.2)
+
+### 2.11 Longest gap between games `[S]`
+- [ ] Find the longest stretch of days between two consecutive games.
+- **Needs:** sorted game date list (share query from 2.2)
+
+## 3. Streaks & Records
+
+### 3.1 Reigning champion `[H]`
+- [ ] Show whoever won the most recent game as a home-page highlight tile.
+
+### 3.2 Current win streak per player + current leader `[H]` `[S]` `[P]`
+- [ ] Calculate each player's active win streak and surface the player with the longest current streak.
+
+### 3.3 Most wins in a single week / month `[S]` `[P]`
+- [ ] Find each player's personal best for wins in a calendar week and month.
+
+### 3.4 Highest-scoring game ever `[S]`
+- [ ] Record of the single highest individual score, with date and player name.
+
+### 3.5 Lowest winning score `[S]`
+- [ ] The squeakiest win: lowest score that was still good enough to win a game.
+- **Needs:** winner score per game (share query from 3.4)
+
+### 3.6 Biggest blowout `[S]`
+- [ ] Game with the largest gap between winner and runner-up score.
+- **Needs:** margin per game (extend query from 3.4)
+
+### 3.7 Closest game `[S]`
+- [ ] Game with the smallest gap between winner and runner-up score.
+- **Needs:** margin per game (share query from 3.6)
+
+### 3.8 Longest win streak ever `[S]` `[P]`
+- [ ] Each player's all-time record win streak and the period it occurred.
+- **Needs:** streak logic (extend query from 3.2)
+
+### 3.9 Current / longest loss streak `[P]`
+- [ ] Each player's active and all-time worst losing run.
+- **Needs:** streak logic (extend query from 3.8)
+
+### 3.10 Attendance streak `[P]`
+- [ ] Most consecutive games played without missing one.
+- **Needs:** game dates per player (extend approach from 3.9)
+
+## 4. Score Patterns
+
+### 4.1 Average winning score vs. average losing score `[S]`
+- [ ] Side-by-side comparison of mean winner score vs. mean non-winner score across all games.
+
+### 4.2 Total VP scored ever — cumulative leaderboard `[S]` `[P]`
+- [ ] Rank players by the total points they have scored across all games.
+
+### 4.3 Points-per-game leaderboard `[S]`
+- [ ] Normalize total VP by games played to rank players by scoring efficiency.
+- **Needs:** total VP and game count (share queries from 4.2 and 1.1)
+
+### 4.4 Score histogram `[S]`
+- [ ] Histogram of all individual scores across every `game_players` row.
+
+### 4.5 Per-player score distribution `[S]` `[P]`
+- [ ] Side-by-side box or violin plots showing each player's score spread.
+- **Needs:** per-player score list (share query from 4.4)
+
+### 4.6 Does winning score scale with player count? `[S]`
+- [ ] Scatter or grouped bar chart of average winning score by game size.
+- **Needs:** winner score + game size (share queries from 4.1 and 1.9)
+
+### 4.7 % of games with a tied top score `[A]` `[S]`
+- [ ] Count games where two or more players share the highest score (currently `is_winner=false` for tied players).
+
+## 5. Head-to-Head (rivalries)
+
+### 5.1 Most-played-with partner `[P]`
+- [ ] For each player, show who they have shared the most games with.
+
+### 5.2 Nemesis `[P]`
+- [ ] The opponent who beats a given player most often in head-to-head matchups.
+- **Needs:** H2H win/loss records (extend query from 5.1)
+
+### 5.3 Favorite opponent `[P]`
+- [ ] The opponent a given player beats most often in head-to-head matchups.
+- **Needs:** H2H win/loss records (share query from 5.2)
+
+### 5.4 Closest rivalry `[S]`
+- [ ] The player pair with the most even head-to-head win/loss record.
+- **Needs:** H2H records (share query from 5.2)
+
+### 5.5 Most lopsided rivalry `[S]`
+- [ ] The player pair with the most one-sided head-to-head record.
+- **Needs:** H2H records (share query from 5.4)
+
+### 5.6 H2H matrix `[HH]` `[S]`
+- [ ] Full grid of players × players showing win counts and win rates.
+- **Needs:** full H2H records (share query from 5.2)
+
+### 5.7 "Beat X specifically" tally `[HH]`
+- [ ] Count how often one player out-scored a specific opponent head-to-head, even in games neither won overall.
+- **Needs:** per-game score comparison (extend query from 5.6)
 
 ## 6. Fun Curiosities
 
-- [ ] First ever recorded game — dated reference `[S]`
-- [ ] "Bridesmaid" stat — most 2nd-place finishes `[S]`
-- [ ] Hot-hand indicator — players on 3+ wins in last 5 games `[H]`
-- [ ] Player of the month — most wins in current calendar month `[H][S]`
-- [ ] Auto-generated badges / epithets — "The Bridesmaid", "The Closer", "The Road Warrior", etc. `[P]`
-- [ ] Notes word cloud / frequent phrases `[S]` (low value, high novelty)
-- [ ] Anomaly list — games with no winner despite no score tie, duplicate player rows, etc. `[A]`
+### 6.1 First ever recorded game `[S]`
+- [ ] Display a dated reference to the very first game in the database.
+
+### 6.2 Player of the month `[H]` `[S]`
+- [ ] Highlight the player with the most wins in the current calendar month.
+
+### 6.3 Hot-hand indicator `[H]`
+- [ ] Flag players on 3 or more wins in their last 5 games.
+- **Needs:** recent win history (share query from 3.2)
+
+### 6.4 "Bridesmaid" stat `[S]`
+- [ ] Rank players by total number of 2nd-place finishes.
+- **Needs:** finish-position data (share query from 1.6)
+
+### 6.5 Auto-generated badges / epithets `[P]`
+- [ ] Assign flavour titles based on stats ("The Bridesmaid", "The Closer", "The Road Warrior", etc.).
+- **Needs:** data from multiple prior features (1.6, 3.2, 3.8, 5.2, 5.3)
+
+### 6.6 Notes word cloud `[S]`
+- [ ] Visualise frequent words and phrases from game notes. Low value, high novelty.
+
+### 6.7 Anomaly list `[A]`
+- [ ] Surface games with no winner despite no score tie, duplicate player rows, or other data inconsistencies.
 
 ## Appendix: Schema-dependent ideas (not possible today)
 
 - [ ] Game duration → longest / shortest sessions, marathon record `*`
 - [ ] Expansion / variant tag → performance by Base / C&K / Seafarers `*`
-- [ ] Map name or seed → which maps favor whom `*`
+- [ ] Map name or seed → which maps favour whom `*`
 - [ ] Turn / seating order → "does going first matter?" `*`
 - [ ] Final VP components (longest road, largest army, dev cards, settlements) → "won via X" stats `*`
 - [ ] Colonist.io replay link per game → per-game "review" button `*`
