@@ -15,6 +15,14 @@ A menu of stat / graph / table / leaderboard ideas to surface insights from game
 - [ ] Replace any top-bar or inline nav on the **main (home) page** and the **admin page** with a collapsible sidebar navigation.
 - [ ] Sidebar should link to: Home, Stats, Admin (if applicable), and individual player profiles.
 
+## Leaderboard ranking convention
+
+All leaderboard-style tables (any ranked list on `[S]`, `[P]`, `[H]`, or `[HH]` pages) must use **standard competition ranking ("1224")**:
+- Players tied on the primary metric share the top rank they're tied for.
+- The next distinct value skips forward by the number of tied rows (e.g. three-way tie for 1st → next rank is 4th).
+- Rank 1 displays the 👑 emoji; all other ranks display the numeric position.
+- Use the `rankWithTies` helper in `web/app/stats/page.tsx` (or extract to `web/lib/rank.ts` if it becomes widely imported) to compute ranks from any pre-sorted array.
+
 ## Legend
 
 Placement tags: `[H]` home page · `[S]` new `/stats` landing · `[P]` per-player profile · `[HH]` head-to-head view · `[A]` admin

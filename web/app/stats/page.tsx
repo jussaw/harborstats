@@ -7,6 +7,16 @@ export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = { title: 'Stats — HarborStats' }
 
+function rankWithTies<T>(items: T[], value: (item: T) => number): number[] {
+  const ranks: number[] = []
+  items.forEach((item, i) => {
+    if (i === 0) ranks.push(1)
+    else if (value(items[i - 1]) === value(item)) ranks.push(ranks[i - 1])
+    else ranks.push(i + 1)
+  })
+  return ranks
+}
+
 export default async function StatsPage() {
   const [winRates, settings, scoreStats, podiumRates] = await Promise.all([
     getPlayerWinRates(),
@@ -18,6 +28,14 @@ export default async function StatsPage() {
   const winRateQualified = winRates
     .filter((p) => p.games >= settings.winRateMinGames)
     .sort((a, b) => b.winRate - a.winRate || b.wins - a.wins)
+
+  const medianSorted = [...scoreStats].sort((a, b) => b.medianScore - a.medianScore)
+
+  const totalWinsRanks = rankWithTies(winRates, (p) => p.wins)
+  const winRateRanks = rankWithTies(winRateQualified, (p) => p.winRate)
+  const avgScoreRanks = rankWithTies(scoreStats, (p) => p.avgScore)
+  const medianScoreRanks = rankWithTies(medianSorted, (p) => p.medianScore)
+  const podiumRateRanks = rankWithTies(podiumRates, (p) => p.podiumRate)
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-10 space-y-8">
@@ -50,7 +68,7 @@ export default async function StatsPage() {
                   className="border-b border-[var(--gold)]/10 last:border-0 bg-[var(--navy-900)]/40 hover:bg-[var(--navy-900)]/70 transition-colors"
                 >
                   <td className="px-3 py-2 tabular-nums text-[var(--cream)]/50 text-center">
-                    {idx === 0 ? '👑' : idx + 1}
+                    {totalWinsRanks[idx] === 1 ? '👑' : totalWinsRanks[idx]}
                   </td>
                   <td className="px-3 py-2 text-[var(--cream)]">
                     <span className={player.tier === 'premium' ? 'text-[var(--gold)] font-semibold' : ''}>
@@ -58,7 +76,7 @@ export default async function StatsPage() {
                     </span>
                     {player.tier === 'premium' && (
                       <span className="ml-2 rounded px-1 py-0.5 text-xs font-cinzel tracking-widest bg-[var(--gold)]/15 text-[var(--gold)] uppercase">
-                        Pro
+                        Premium
                       </span>
                     )}
                   </td>
@@ -117,7 +135,7 @@ export default async function StatsPage() {
                     className="border-b border-[var(--gold)]/10 last:border-0 bg-[var(--navy-900)]/40 hover:bg-[var(--navy-900)]/70 transition-colors"
                   >
                     <td className="px-3 py-2 tabular-nums text-[var(--cream)]/50 text-center">
-                      {idx === 0 ? '👑' : idx + 1}
+                      {winRateRanks[idx] === 1 ? '👑' : winRateRanks[idx]}
                     </td>
                     <td className="px-3 py-2 text-[var(--cream)]">
                       <span className={player.tier === 'premium' ? 'text-[var(--gold)] font-semibold' : ''}>
@@ -125,7 +143,7 @@ export default async function StatsPage() {
                       </span>
                       {player.tier === 'premium' && (
                         <span className="ml-2 rounded px-1 py-0.5 text-xs font-cinzel tracking-widest bg-[var(--gold)]/15 text-[var(--gold)] uppercase">
-                          Pro
+                          Premium
                         </span>
                       )}
                     </td>
@@ -176,7 +194,7 @@ export default async function StatsPage() {
                     className="border-b border-[var(--gold)]/10 last:border-0 bg-[var(--navy-900)]/40 hover:bg-[var(--navy-900)]/70 transition-colors"
                   >
                     <td className="px-3 py-2 tabular-nums text-[var(--cream)]/50 text-center">
-                      {idx === 0 ? '👑' : idx + 1}
+                      {avgScoreRanks[idx] === 1 ? '👑' : avgScoreRanks[idx]}
                     </td>
                     <td className="px-3 py-2 text-[var(--cream)]">
                       <span
@@ -186,7 +204,7 @@ export default async function StatsPage() {
                       </span>
                       {player.tier === 'premium' && (
                         <span className="ml-2 rounded px-1 py-0.5 text-xs font-cinzel tracking-widest bg-[var(--gold)]/15 text-[var(--gold)] uppercase">
-                          Pro
+                          Premium
                         </span>
                       )}
                     </td>
@@ -228,15 +246,13 @@ export default async function StatsPage() {
                 </tr>
               </thead>
               <tbody>
-                {[...scoreStats]
-                  .sort((a, b) => b.medianScore - a.medianScore)
-                  .map((player, idx) => (
+                {medianSorted.map((player, idx) => (
                     <tr
                       key={player.playerId}
                       className="border-b border-[var(--gold)]/10 last:border-0 bg-[var(--navy-900)]/40 hover:bg-[var(--navy-900)]/70 transition-colors"
                     >
                       <td className="px-3 py-2 tabular-nums text-[var(--cream)]/50 text-center">
-                        {idx === 0 ? '👑' : idx + 1}
+                        {medianScoreRanks[idx] === 1 ? '👑' : medianScoreRanks[idx]}
                       </td>
                       <td className="px-3 py-2 text-[var(--cream)]">
                         <span
@@ -248,7 +264,7 @@ export default async function StatsPage() {
                         </span>
                         {player.tier === 'premium' && (
                           <span className="ml-2 rounded px-1 py-0.5 text-xs font-cinzel tracking-widest bg-[var(--gold)]/15 text-[var(--gold)] uppercase">
-                            Pro
+                            Premium
                           </span>
                         )}
                       </td>
@@ -299,7 +315,7 @@ export default async function StatsPage() {
                     className="border-b border-[var(--gold)]/10 last:border-0 bg-[var(--navy-900)]/40 hover:bg-[var(--navy-900)]/70 transition-colors"
                   >
                     <td className="px-3 py-2 tabular-nums text-[var(--cream)]/50 text-center">
-                      {idx === 0 ? '👑' : idx + 1}
+                      {podiumRateRanks[idx] === 1 ? '👑' : podiumRateRanks[idx]}
                     </td>
                     <td className="px-3 py-2 text-[var(--cream)]">
                       <span
@@ -309,7 +325,7 @@ export default async function StatsPage() {
                       </span>
                       {player.tier === 'premium' && (
                         <span className="ml-2 rounded px-1 py-0.5 text-xs font-cinzel tracking-widest bg-[var(--gold)]/15 text-[var(--gold)] uppercase">
-                          Pro
+                          Premium
                         </span>
                       )}
                     </td>
