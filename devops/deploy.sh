@@ -11,10 +11,10 @@ echo "==> Starting database..."
 docker compose -f "$COMPOSE_FILE" up -d db
 
 echo "==> Running baseline marker (safe to re-run)..."
-docker compose -f "$COMPOSE_FILE" run --rm baseline
+docker compose -f "$COMPOSE_FILE" run --build --rm baseline
 
 echo "==> Running migrations..."
-docker compose -f "$COMPOSE_FILE" run --rm migrate
+docker compose -f "$COMPOSE_FILE" run --build --rm migrate
 
 echo "==> Building and starting web..."
 docker compose -f "$COMPOSE_FILE" up --build -d web pgadmin
