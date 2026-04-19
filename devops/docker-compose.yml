@@ -42,7 +42,7 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgres://postgres:postgres@db:5432/harborstats
-    command: ["pnpm", "exec", "tsx", "scripts/migrate.ts"]
+    command: ["./node_modules/.bin/tsx", "scripts/migrate.ts"]
     profiles: ["migrate"]
     restart: "no"
 
@@ -55,7 +55,7 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgres://postgres:postgres@db:5432/harborstats
-    command: ["pnpm", "exec", "tsx", "scripts/baseline.ts"]
+    command: ["./node_modules/.bin/tsx", "scripts/baseline.ts"]
     profiles: ["migrate"]
     restart: "no"
 

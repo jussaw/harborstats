@@ -33,4 +33,4 @@ COPY package.json ./
 COPY db/migrations ./db/migrations
 COPY scripts/migrate.ts scripts/baseline.ts ./scripts/
 COPY tsconfig.json ./
-CMD ["pnpm", "exec", "tsx", "scripts/migrate.ts"]
+CMD ["./node_modules/.bin/tsx", "scripts/migrate.ts"]
