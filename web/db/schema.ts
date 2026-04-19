@@ -29,3 +29,9 @@ export const gamePlayers = pgTable('game_players', {
   index('idx_game_players_game').on(t.gameId),
   index('idx_game_players_player').on(t.playerId),
 ])
+
+export const appSettings = pgTable('app_settings', {
+  id: integer('id').primaryKey().default(1),
+  winRateMinGames: integer('win_rate_min_games').notNull().default(0),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})

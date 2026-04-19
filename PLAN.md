@@ -2,6 +2,19 @@
 
 A menu of stat / graph / table / leaderboard ideas to surface insights from game history. Organized by category in implementation priority order. Each feature is scoped for a single agent session.
 
+## Layout & Navigation
+
+### Stats page
+- Reorganize as a responsive grid of self-contained stat cards/components; each item in the plan below maps to one card.
+
+### Player profile page
+- Banner at the top of the page for the profile header (avatar placeholder, name, key summary numbers).
+- Below the banner: responsive grid of stat cards for all per-player stats.
+
+### Global navigation
+- Replace any top-bar or inline nav on the **main (home) page** and the **admin page** with a collapsible sidebar navigation.
+- Sidebar should link to: Home, Stats, Admin (if applicable), and individual player profiles.
+
 ## Legend
 
 Placement tags: `[H]` home page · `[S]` new `/stats` landing · `[P]` per-player profile · `[HH]` head-to-head view · `[A]` admin
@@ -10,21 +23,24 @@ Placement tags: `[H]` home page · `[S]` new `/stats` landing · `[P]` per-playe
 ## 1. Performance (win rates, rankings)
 
 ### 1.1 Total wins leaderboard `[S]`
-- [ ] Rank every player by all-time win count; break ties by win rate.
+- [x] Rank every player by all-time win count; break ties by win rate.
 
 ### 1.2 Win rate leaderboard `[S]`
-- [ ] Rank players by win percentage, filtered by a configurable minimum-games threshold.
+- [x] Rank players by win percentage, filtered by a configurable minimum-games threshold.
 - **Needs:** game count per player (share query from 1.1)
 
 ### 1.3 Average score per player `[S]` `[P]`
-- [ ] Show each player's mean score across all their games.
+- [x] `[S]` Show each player's mean score across all their games.
+- [ ] `[P]` Show player's mean score on their profile page.
 
 ### 1.4 Median score per player `[S]` `[P]`
-- [ ] Show each player's median score; more robust than mean for skewed distributions.
+- [x] `[S]` Show each player's median score; more robust than mean for skewed distributions.
+- [ ] `[P]` Show player's median score on their profile page.
 - **Needs:** per-player score list (share query from 1.3)
 
 ### 1.5 Podium rate `[S]` `[P]`
-- [ ] Show each player's percentage of games finishing 1st or 2nd.
+- [x] `[S]` Show each player's percentage of games finishing 1st or 2nd.
+- [ ] `[P]` Show player's podium rate on their profile page.
 
 ### 1.6 Finish-position breakdown `[S]` `[P]`
 - [ ] Show % of games each player finished 1st / 2nd / 3rd / last; needs a defined tie-breaking rule.

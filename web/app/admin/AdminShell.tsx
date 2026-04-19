@@ -30,6 +30,12 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 Players
               </Link>
               <Link
+                href="/admin/settings"
+                className="font-cinzel text-xs tracking-widest text-[var(--cream)]/60 uppercase hover:text-[var(--gold)] transition-colors"
+              >
+                Settings
+              </Link>
+              <Link
                 href="/"
                 className="font-cinzel text-xs tracking-widest text-[var(--cream)]/40 uppercase hover:text-[var(--cream)]/60 transition-colors"
               >
