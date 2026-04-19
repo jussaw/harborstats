@@ -50,7 +50,7 @@ export default async function HomePage() {
               </div>
 
               <ul className="space-y-1">
-                {game.players.map((p) => (
+                {[...game.players].sort((a, b) => b.score - a.score).map((p) => (
                   <li key={p.playerName} className="flex items-center gap-2 text-sm">
                     <span className="w-4 text-center">
                       {p.isWinner ? '⭐' : ''}
