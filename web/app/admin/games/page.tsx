@@ -5,18 +5,9 @@ import { AdminShell } from '@/app/admin/AdminShell'
 import { ConfirmDeleteButton } from '@/app/admin/ConfirmDeleteButton'
 import { getPlayers } from '@/lib/players'
 import { NewGameButton } from '@/components/NewGameButton'
+import { FormattedDate } from '@/components/FormattedDate'
 
 export const dynamic = 'force-dynamic'
-
-function formatDate(d: Date) {
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(new Date(d))
-}
 
 export default async function AdminGamesPage() {
   const [games, players] = await Promise.all([listAllGames(), getPlayers()])
@@ -59,7 +50,7 @@ export default async function AdminGamesPage() {
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-3 flex-wrap">
-                    <time className="text-xs text-[var(--cream)]/60">{formatDate(game.played_at)}</time>
+                    <FormattedDate iso={game.played_at.toISOString()} className="text-xs text-[var(--cream)]/60" />
                     {game.notes && (
                       <span className="text-xs text-[var(--cream)]/40 italic truncate">
                         {game.notes}

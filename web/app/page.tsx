@@ -1,18 +1,9 @@
 import { listRecentGames } from '@/lib/games'
 import { getPlayers } from '@/lib/players'
 import { NewGameButton } from '@/components/NewGameButton'
+import { FormattedDate } from '@/components/FormattedDate'
 
 export const dynamic = 'force-dynamic'
-
-function formatDate(d: Date) {
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(new Date(d))
-}
 
 export default async function HomePage() {
   const [games, players] = await Promise.all([listRecentGames(20), getPlayers()])
@@ -39,9 +30,7 @@ export default async function HomePage() {
               className="rounded-lg border border-[var(--gold)]/30 bg-[var(--navy-900)]/60 p-4"
             >
               <div className="mb-3 flex items-start justify-between gap-2">
-                <time className="text-xs text-[var(--cream)] opacity-60">
-                  {formatDate(game.played_at)}
-                </time>
+                <FormattedDate iso={game.played_at.toISOString()} className="text-xs text-[var(--cream)] opacity-60" />
                 {game.notes && (
                   <p className="text-xs text-[var(--cream)] opacity-50 italic max-w-xs text-right">
                     {game.notes}

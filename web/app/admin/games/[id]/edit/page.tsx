@@ -10,11 +10,6 @@ interface Props {
   params: Promise<{ id: string }>
 }
 
-function toDatetimeLocal(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
-
 export default async function EditGamePage({ params }: Props) {
   const { id } = await params
   const gameId = Number(id)
@@ -23,7 +18,7 @@ export default async function EditGamePage({ params }: Props) {
   if (!game) notFound()
 
   const initial: GameFormInitial = {
-    played_at: toDatetimeLocal(new Date(game.played_at)),
+    played_at: new Date(game.played_at).toISOString(),
     notes: game.notes,
     rows: game.players.map((p) => ({
       playerId: p.playerId,

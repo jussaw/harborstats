@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { Player } from '@/lib/players'
 import { PlayerRow } from './PlayerRow'
+import { datetimeLocalToIso, isoToDatetimeLocal, nowDatetimeLocal } from '@/lib/dates'
 
 const NUM_ROWS = 8
 
@@ -22,11 +23,6 @@ function emptyRow(): RowState {
   return { playerId: null, score: null, isWinner: false }
 }
 
-function nowLocal(): string {
-  const d = new Date()
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
 
 interface Props {
   action: (formData: FormData) => Promise<void>
@@ -45,6 +41,10 @@ export function GameForm({
   hiddenFields,
   onSuccess,
 }: Props) {
+  const [playedAtLocal, setPlayedAtLocal] = useState<string>(() =>
+    initial?.played_at ? isoToDatetimeLocal(initial.played_at) : nowDatetimeLocal(),
+  )
+
   const [rows, setRows] = useState<RowState[]>(() => {
     if (initial) {
       const filled = initial.rows.slice(0, NUM_ROWS)
@@ -73,6 +73,8 @@ export function GameForm({
       setError('Add at least one player before submitting.')
       return
     }
+
+    formData.set('played_at', datetimeLocalToIso(formData.get('played_at') as string))
 
     rows.forEach((r, i) => {
       formData.set(`player_id_${i}`, r.playerId?.toString() ?? '')
@@ -114,7 +116,8 @@ export function GameForm({
             id="played_at"
             name="played_at"
             type="datetime-local"
-            defaultValue={initial?.played_at ?? nowLocal()}
+            value={playedAtLocal}
+            onChange={(e) => setPlayedAtLocal(e.target.value)}
             required
             className="rounded border border-[var(--gold)] bg-[var(--navy-900)] px-3 py-1.5 text-sm text-[var(--cream)] [color-scheme:dark]"
           />
