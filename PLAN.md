@@ -5,15 +5,15 @@ A menu of stat / graph / table / leaderboard ideas to surface insights from game
 ## Layout & Navigation
 
 ### Stats page
-- Reorganize as a responsive grid of self-contained stat cards/components; each item in the plan below maps to one card.
+- [ ] Reorganize as a responsive grid of self-contained stat cards/components; each item in the plan below maps to one card.
 
 ### Player profile page
-- Banner at the top of the page for the profile header (avatar placeholder, name, key summary numbers).
-- Below the banner: responsive grid of stat cards for all per-player stats.
+- [ ] Banner at the top of the page for the profile header (avatar placeholder, name, key summary numbers).
+- [ ] Below the banner: responsive grid of stat cards for all per-player stats.
 
 ### Global navigation
-- Replace any top-bar or inline nav on the **main (home) page** and the **admin page** with a collapsible sidebar navigation.
-- Sidebar should link to: Home, Stats, Admin (if applicable), and individual player profiles.
+- [ ] Replace any top-bar or inline nav on the **main (home) page** and the **admin page** with a collapsible sidebar navigation.
+- [ ] Sidebar should link to: Home, Stats, Admin (if applicable), and individual player profiles.
 
 ## Legend
 
