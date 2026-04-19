@@ -14,7 +14,8 @@ A mobile-friendly Catan game recorder for tracking [colonist.io](https://colonis
 cp .env.example .env
 pnpm install
 pnpm db:up       # start Postgres in Docker
-pnpm db:migrate  # create schema and seed players
+pnpm db:migrate  # create schema (Drizzle migrations)
+pnpm db:seed     # seed player roster
 pnpm dev         # http://localhost:3000
 ```
 
@@ -37,7 +38,18 @@ pnpm dev         # http://localhost:3000
 | `pnpm format` | Format with Prettier |
 | `pnpm format:check` | Check formatting without writing |
 | `pnpm db:up` | Start the Postgres Docker container |
-| `pnpm db:migrate` | Run `db/schema.sql` against `DATABASE_URL` |
+| `pnpm db:generate` | Generate a new SQL migration from schema changes in `db/schema.ts` |
+| `pnpm db:migrate` | Apply pending migrations to `DATABASE_URL` |
+| `pnpm db:seed` | Seed the player roster (idempotent, safe to re-run) |
+| `pnpm db:baseline` | **One-time** — marks the initial migration as applied on an existing DB that already has the schema (run before first `db:migrate` on a pre-existing database) |
+| `pnpm db:studio` | Open Drizzle Studio (visual DB browser) |
+
+## Adding a schema change
+
+1. Edit `db/schema.ts`
+2. `pnpm db:generate` — produces a new SQL migration in `db/migrations/`
+3. Review the generated SQL
+4. `pnpm db:migrate` — applies it
 
 ## Tech stack
 
@@ -45,7 +57,9 @@ pnpm dev         # http://localhost:3000
 - **TypeScript** (strict)
 - **Tailwind CSS v4**
 - **PostgreSQL 18** via Docker
-- `postgres` npm package — tagged-template SQL, no ORM
+- **Drizzle ORM** — type-safe query builder
+- **Drizzle Kit** — schema migrations
+- `postgres` npm package — underlying PostgreSQL driver
 - Next.js server actions for form handling
 
 ## Project structure
@@ -63,13 +77,16 @@ components/
   PlayerRow.tsx       player select + score stepper + winner toggle
   Stepper.tsx         +/- score input with press-and-hold acceleration
 lib/
-  db.ts               Postgres client singleton
-  players.ts          getPlayers()
-  games.ts            createGame(), listRecentGames()
+  db.ts               Drizzle client (wraps postgres.js singleton)
+  players.ts          getPlayers(), listPlayersWithUsage(), etc.
+  games.ts            createGame(), listRecentGames(), etc.
 db/
-  schema.sql          DDL (players, games, game_players) + seed inserts
+  schema.ts           Drizzle schema (players, games, game_players)
+  migrations/         SQL migration files managed by Drizzle Kit
 scripts/
-  migrate.ts          runs schema.sql against DATABASE_URL
+  migrate.ts          applies pending migrations via Drizzle migrator
+  seed.ts             seeds the player roster
+  baseline.ts         one-time: marks initial migration applied on existing DBs
 ```
 
 ## Database schema
@@ -80,4 +97,4 @@ Three tables with cascading deletes:
 - **`games`** — id, played_at, notes, submitted_from_ip, created_at
 - **`game_players`** — game_id FK, player_id FK, score (≥ 0), is_winner
 
-Players are seeded once during migration. Renaming a player updates all historical records automatically via JOIN.
+Players are seeded once via `pnpm db:seed`. Renaming a player updates all historical records automatically via JOIN.

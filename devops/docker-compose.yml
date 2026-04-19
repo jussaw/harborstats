@@ -34,18 +34,14 @@ services:
     restart: always
 
   migrate:
-    image: postgres:18
+    build:
+      context: ../web
+      target: migrator
     depends_on:
       db:
         condition: service_healthy
-    volumes:
-      - ../web/db/schema.sql:/schema.sql:ro
     environment:
-      PGHOST: db
-      PGUSER: postgres
-      PGPASSWORD: postgres
-      PGDATABASE: harborstats
-    command: ["psql", "-v", "ON_ERROR_STOP=1", "-f", "/schema.sql"]
+      DATABASE_URL: postgres://postgres:postgres@db:5432/harborstats
     profiles: ["migrate"]
     restart: "no"
 

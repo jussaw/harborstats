@@ -50,7 +50,7 @@ export default async function AdminGamesPage() {
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-3 flex-wrap">
-                    <FormattedDate iso={game.played_at.toISOString()} className="text-xs text-[var(--cream)]/60" />
+                    <FormattedDate iso={game.playedAt.toISOString()} className="text-xs text-[var(--cream)]/60" />
                     {game.notes && (
                       <span className="text-xs text-[var(--cream)]/40 italic truncate">
                         {game.notes}

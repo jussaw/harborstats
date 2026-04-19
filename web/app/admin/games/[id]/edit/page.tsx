@@ -18,7 +18,7 @@ export default async function EditGamePage({ params }: Props) {
   if (!game) notFound()
 
   const initial: GameFormInitial = {
-    played_at: new Date(game.played_at).toISOString(),
+    played_at: game.playedAt.toISOString(),
     notes: game.notes,
     rows: game.players.map((p) => ({
       playerId: p.playerId,

@@ -120,7 +120,7 @@ export default async function AdminPlayersPage({ searchParams }: Props) {
                     <option value="standard">Standard</option>
                   </select>
                   <span className="text-xs text-[var(--cream)]/30 tabular-nums shrink-0">
-                    {player.game_count} {player.game_count === 1 ? 'game' : 'games'}
+                    {player.gameCount} {player.gameCount === 1 ? 'game' : 'games'}
                   </span>
                   <button
                     type="submit"

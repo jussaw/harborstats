@@ -25,3 +25,11 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 CMD ["node", "server.js"]
+
+FROM base AS migrator
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY db/migrations ./db/migrations
+COPY scripts/migrate.ts ./scripts/
+COPY tsconfig.json ./
+CMD ["pnpm", "exec", "tsx", "scripts/migrate.ts"]

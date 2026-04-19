@@ -30,7 +30,7 @@ export default async function HomePage() {
               className="rounded-lg border border-[var(--gold)]/30 bg-[var(--navy-900)]/60 p-4"
             >
               <div className="mb-3 flex items-start justify-between gap-2">
-                <FormattedDate iso={game.played_at.toISOString()} className="text-xs text-[var(--cream)] opacity-60" />
+                <FormattedDate iso={game.playedAt.toISOString()} className="text-xs text-[var(--cream)] opacity-60" />
                 {game.notes && (
                   <p className="text-xs text-[var(--cream)] opacity-50 italic max-w-xs text-right">
                     {game.notes}
