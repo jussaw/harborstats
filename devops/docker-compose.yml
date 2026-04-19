@@ -21,6 +21,7 @@ services:
     container_name: harborstats-web
     build:
       context: ../web
+      target: runner
     depends_on:
       db:
         condition: service_healthy
