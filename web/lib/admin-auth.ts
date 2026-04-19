@@ -54,3 +54,9 @@ export function verifyPassword(input: string): boolean {
   const correct = process.env.ADMIN_PASSWORD ?? ''
   return correct.length > 0 && input === correct
 }
+
+export async function isAdminSession(): Promise<boolean> {
+  const { cookies } = await import('next/headers')
+  const cookieStore = await cookies()
+  return verifySession(cookieStore.get(COOKIE_NAME)?.value)
+}

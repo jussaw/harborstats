@@ -1,6 +1,5 @@
 import { listPlayersWithUsage } from '@/lib/players'
 import { createPlayerAction, updatePlayerAction, deletePlayerAction } from './actions'
-import { AdminShell } from '@/app/admin/AdminShell'
 import { ConfirmDeleteButton } from '@/app/admin/ConfirmDeleteButton'
 
 export const dynamic = 'force-dynamic'
@@ -15,7 +14,7 @@ export default async function AdminPlayersPage({ searchParams }: Props) {
   const inUseCount = params.count
 
   return (
-    <AdminShell>
+    <main className="mx-auto max-w-5xl px-6 py-8">
       <div className="space-y-8 max-w-3xl">
         <div>
           <h1 className="font-cinzel text-xl tracking-wide text-[var(--gold)]">Players</h1>
@@ -141,6 +140,6 @@ export default async function AdminPlayersPage({ searchParams }: Props) {
           </div>
         )}
       </div>
-    </AdminShell>
+    </main>
   )
 }

@@ -1,4 +1,3 @@
-import { AdminShell } from '@/app/admin/AdminShell'
 import { getSettings } from '@/lib/settings'
 import { saveSettings } from './actions'
 
@@ -8,7 +7,7 @@ export default async function AdminSettingsPage() {
   const settings = await getSettings()
 
   return (
-    <AdminShell>
+    <main className="mx-auto max-w-5xl px-6 py-8">
       <div className="space-y-8 max-w-3xl">
         <div>
           <h1 className="font-cinzel text-xl tracking-wide text-[var(--gold)]">Settings</h1>
@@ -51,6 +50,6 @@ export default async function AdminSettingsPage() {
           </form>
         </div>
       </div>
-    </AdminShell>
+    </main>
   )
 }

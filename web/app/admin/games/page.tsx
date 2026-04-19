@@ -1,11 +1,10 @@
 import Link from 'next/link'
 import { listAllGames } from '@/lib/games'
-import { deleteGameAction } from './actions'
-import { AdminShell } from '@/app/admin/AdminShell'
-import { ConfirmDeleteButton } from '@/app/admin/ConfirmDeleteButton'
 import { getPlayers } from '@/lib/players'
+import { ConfirmDeleteButton } from '@/app/admin/ConfirmDeleteButton'
 import { NewGameButton } from '@/components/NewGameButton'
 import { FormattedDate } from '@/components/FormattedDate'
+import { deleteGameAction } from './actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,7 +12,7 @@ export default async function AdminGamesPage() {
   const [games, players] = await Promise.all([listAllGames(), getPlayers()])
 
   return (
-    <AdminShell>
+    <main className="mx-auto max-w-5xl px-6 py-8">
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -94,6 +93,6 @@ export default async function AdminGamesPage() {
           </div>
         )}
       </div>
-    </AdminShell>
+    </main>
   )
 }

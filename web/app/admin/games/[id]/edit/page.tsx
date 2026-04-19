@@ -2,9 +2,8 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getGameForEdit } from '@/lib/games'
 import { getPlayers } from '@/lib/players'
-import { EditGameForm } from './EditGameForm'
-import { AdminShell } from '@/app/admin/AdminShell'
 import type { GameFormInitial } from '@/components/GameForm'
+import { EditGameForm } from './EditGameForm'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -28,7 +27,7 @@ export default async function EditGamePage({ params }: Props) {
   }
 
   return (
-    <AdminShell>
+    <main className="mx-auto max-w-5xl px-6 py-8">
       <div className="space-y-6 max-w-2xl">
         <div className="flex items-center gap-3">
           <Link
@@ -44,6 +43,6 @@ export default async function EditGamePage({ params }: Props) {
         </div>
         <EditGameForm gameId={game.id} players={players} initial={initial} />
       </div>
-    </AdminShell>
+    </main>
   )
 }

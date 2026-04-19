@@ -12,6 +12,11 @@ export async function getPlayers(): Promise<Player[]> {
     .orderBy(sql`CASE ${players.tier} WHEN 'premium' THEN 0 ELSE 1 END`, players.name)
 }
 
+export async function getPlayerById(id: number): Promise<Player | null> {
+  const result = await db.select().from(players).where(eq(players.id, id)).limit(1)
+  return result[0] ?? null
+}
+
 export type PlayerWithUsage = Player & { gameCount: number }
 
 export async function listPlayersWithUsage(): Promise<PlayerWithUsage[]> {

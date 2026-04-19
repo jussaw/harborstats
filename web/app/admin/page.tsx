@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { listAllGames } from '@/lib/games'
 import { listPlayersWithUsage } from '@/lib/players'
-import { AdminShell } from './AdminShell'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,7 +8,7 @@ export default async function AdminHomePage() {
   const [games, players] = await Promise.all([listAllGames(), listPlayersWithUsage()])
 
   return (
-    <AdminShell>
+    <main className="mx-auto max-w-5xl px-6 py-8">
       <div className="space-y-8">
         <div>
           <h1 className="font-cinzel text-2xl tracking-wide text-[var(--gold)]">Command Deck</h1>
@@ -46,6 +45,6 @@ export default async function AdminHomePage() {
           </Link>
         </div>
       </div>
-    </AdminShell>
+    </main>
   )
 }

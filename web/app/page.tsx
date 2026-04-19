@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { listRecentGames } from '@/lib/games'
 import { getPlayers } from '@/lib/players'
 import { NewGameButton } from '@/components/NewGameButton'
@@ -12,15 +11,7 @@ export default async function HomePage() {
   return (
     <main className="mx-auto max-w-2xl px-4 py-12">
       <div className="mb-8 flex items-center justify-between">
-        <div className="flex items-baseline gap-4">
-          <h1 className="font-cinzel text-3xl text-[var(--gold)] tracking-wide">HarborStats</h1>
-          <Link
-            href="/stats"
-            className="text-sm text-[var(--gold)] hover:underline transition-colors opacity-70 hover:opacity-100"
-          >
-            Stats
-          </Link>
-        </div>
+        <h1 className="font-cinzel text-xl text-[var(--gold)] tracking-wide">Recent Games</h1>
         <NewGameButton
           players={players}
           className="font-cinzel rounded border border-[var(--gold)] bg-[var(--gold)] px-4 py-2 text-sm font-semibold text-[var(--navy-900)] hover:bg-[var(--cream)] transition-colors"
