@@ -29,6 +29,7 @@ CMD ["node", "server.js"]
 FROM base AS migrator
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
+COPY package.json ./
 COPY db/migrations ./db/migrations
 COPY scripts/migrate.ts scripts/baseline.ts ./scripts/
 COPY tsconfig.json ./

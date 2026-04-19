@@ -42,6 +42,7 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgres://postgres:postgres@db:5432/harborstats
+    command: ["pnpm", "exec", "tsx", "scripts/migrate.ts"]
     profiles: ["migrate"]
     restart: "no"
 
