@@ -56,6 +56,9 @@ export function GameForm({
 
   const updateRow = (i: number, val: RowState) =>
     setRows((prev) => prev.map((r, idx) => (idx === i ? val : r)))
+  const selectedPlayerIds = rows
+    .map((r) => r.playerId)
+    .filter((id): id is number => id !== null)
 
   async function handleSubmit(formData: FormData) {
     setError(null)
@@ -72,6 +75,16 @@ export function GameForm({
     if (filledRows.length === 0) {
       setError('Add at least one player before submitting.')
       return
+    }
+
+    const seen = new Set<number>()
+    for (const row of filledRows) {
+      if (row.playerId === null) continue
+      if (seen.has(row.playerId)) {
+        setError('Each player can only be selected once per game.')
+        return
+      }
+      seen.add(row.playerId)
     }
 
     formData.set('played_at', datetimeLocalToIso(formData.get('played_at') as string))
@@ -99,10 +112,20 @@ export function GameForm({
       )}
 
       <div className="space-y-1">
+        {/*
+          We pass the selected player ids so each row can disable players already
+          chosen on other rows while keeping the current row selection enabled.
+        */}
         {/* eslint-disable-next-line react/no-array-index-key */}
         {rows.map((row, i) => (
           // eslint-disable-next-line react/no-array-index-key
-          <PlayerRow key={i} value={row} onChange={(v) => updateRow(i, v)} players={players} />
+          <PlayerRow
+            key={i}
+            value={row}
+            onChange={(v) => updateRow(i, v)}
+            players={players}
+            selectedPlayerIds={selectedPlayerIds}
+          />
         ))}
       </div>
 

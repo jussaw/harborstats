@@ -12,16 +12,21 @@ interface PlayerRowProps {
   value: PlayerRowValue
   onChange: (v: PlayerRowValue) => void
   players: { id: number; name: string; tier: string }[]
+  selectedPlayerIds: number[]
 }
 
-export function PlayerRow({ value, onChange, players }: PlayerRowProps) {
+export function PlayerRow({ value, onChange, players, selectedPlayerIds }: PlayerRowProps) {
   const premium = players.filter((p) => p.tier === 'premium')
   const standard = players.filter((p) => p.tier === 'standard')
+  const selectedIds = new Set(selectedPlayerIds)
 
   const handlePlayerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const id = e.target.value ? Number(e.target.value) : null
     onChange({ ...value, playerId: id, score: id === null ? null : (value.score ?? 0) })
   }
+
+  const isDisabledElsewhere = (playerId: number) =>
+    selectedIds.has(playerId) && value.playerId !== playerId
 
   return (
     <div className="flex items-center gap-3 py-2">
@@ -34,14 +39,28 @@ export function PlayerRow({ value, onChange, players }: PlayerRowProps) {
         {premium.length > 0 && (
           <optgroup label="Premium">
             {premium.map((p) => (
-              <option key={p.id} value={p.id.toString()}>{p.name}</option>
+              <option
+                key={p.id}
+                value={p.id.toString()}
+                disabled={isDisabledElsewhere(p.id)}
+                className={isDisabledElsewhere(p.id) ? 'text-[var(--cream)]/40' : undefined}
+              >
+                {p.name}
+              </option>
             ))}
           </optgroup>
         )}
         {standard.length > 0 && (
           <optgroup label="Standard">
             {standard.map((p) => (
-              <option key={p.id} value={p.id.toString()}>{p.name}</option>
+              <option
+                key={p.id}
+                value={p.id.toString()}
+                disabled={isDisabledElsewhere(p.id)}
+                className={isDisabledElsewhere(p.id) ? 'text-[var(--cream)]/40' : undefined}
+              >
+                {p.name}
+              </option>
             ))}
           </optgroup>
         )}
