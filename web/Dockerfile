@@ -30,6 +30,6 @@ FROM base AS migrator
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY db/migrations ./db/migrations
-COPY scripts/migrate.ts ./scripts/
+COPY scripts/migrate.ts scripts/baseline.ts ./scripts/
 COPY tsconfig.json ./
 CMD ["pnpm", "exec", "tsx", "scripts/migrate.ts"]

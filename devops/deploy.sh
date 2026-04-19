@@ -10,6 +10,9 @@ git -C "$REPO_DIR" pull
 echo "==> Starting database..."
 docker compose -f "$COMPOSE_FILE" up -d db
 
+echo "==> Running baseline marker (safe to re-run)..."
+docker compose -f "$COMPOSE_FILE" run --rm baseline
+
 echo "==> Running migrations..."
 docker compose -f "$COMPOSE_FILE" run --rm migrate
 

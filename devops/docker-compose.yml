@@ -45,6 +45,19 @@ services:
     profiles: ["migrate"]
     restart: "no"
 
+  baseline:
+    build:
+      context: ../web
+      target: migrator
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/harborstats
+    command: ["pnpm", "exec", "tsx", "scripts/baseline.ts"]
+    profiles: ["migrate"]
+    restart: "no"
+
   pgadmin:
     image: dpage/pgadmin4
     container_name: harborstats-pgadmin
