@@ -82,6 +82,11 @@ describe('StatsPage', () => {
     expect(markup).not.toContain('href="#total-wins"')
     expect(markup).not.toContain('href="#win-rate"')
     expect(markup).toContain('Min 3 games')
+    expect(markup).toContain('class="text-[var(--gold)] font-semibold"')
+    expect(markup).toContain(
+      'class="ml-2 hidden rounded px-1 py-0.5 text-xs tracking-widest bg-[var(--gold)]/15 text-[var(--gold)] uppercase sm:inline-block"',
+    )
+    expect(markup).toContain('>Premium</span>')
 
     const totalWinsIndex = markup.indexOf('id="total-wins"')
     const winRateIndex = markup.indexOf('id="win-rate"')
