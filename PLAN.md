@@ -5,7 +5,7 @@ A menu of stat / graph / table / leaderboard ideas to surface insights from game
 ## Layout & Navigation
 
 ### Stats page
-- [ ] Reorganize as a responsive grid of self-contained stat cards/components; each item in the plan below maps to one card.
+- [x] Reorganize as a responsive grid of self-contained stat cards/components; each item in the plan below maps to one card.
 
 ### Player profile page
 - [ ] Banner at the top of the page for the profile header (avatar placeholder, name, key summary numbers).

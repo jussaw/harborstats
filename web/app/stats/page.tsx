@@ -1,21 +1,58 @@
+import type { ReactNode } from 'react'
 import type { Metadata } from 'next'
+import { StatsCard } from '@/components/StatsCard'
+import { StatsLeaderboardTable } from '@/components/StatsLeaderboardTable'
+import { formatAverage, formatPercent } from '@/lib/format'
 import { PlayerTier } from '@/lib/player-tier'
-import { getPlayerWinRates, getPlayerScoreStats, getPlayerPodiumRates } from '@/lib/stats'
+import { rankWithTies } from '@/lib/rank'
 import { getSettings } from '@/lib/settings'
-import { formatPercent, formatAverage } from '@/lib/format'
+import { getPlayerPodiumRates, getPlayerScoreStats, getPlayerWinRates } from '@/lib/stats'
 
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = { title: 'Stats — HarborStats' }
 
-function rankWithTies<T>(items: T[], value: (item: T) => number): number[] {
-  const ranks: number[] = []
-  items.forEach((item, i) => {
-    if (i === 0) ranks.push(1)
-    else if (value(items[i - 1]) === value(item)) ranks.push(ranks[i - 1])
-    else ranks.push(i + 1)
-  })
-  return ranks
+interface StatsCardMeta {
+  id: string
+  title: string
+  description: string
+  badge: string | undefined
+  span: 'single' | 'full'
+}
+
+function PlayerName({ name, tier }: { name: string; tier: PlayerTier }) {
+  return (
+    <div className="min-w-0">
+      <span className={tier === PlayerTier.Premium ? 'text-[var(--gold)] font-semibold' : ''}>
+        {name}
+      </span>
+      {tier === PlayerTier.Premium && (
+        <span className="ml-2 rounded px-1 py-0.5 text-xs tracking-widest bg-[var(--gold)]/15 text-[var(--gold)] uppercase">
+          Premium
+        </span>
+      )}
+    </div>
+  )
+}
+
+function RankCell({ rank }: { rank: number }) {
+  return (
+    <td className="px-3 py-2 text-center tabular-nums text-[var(--cream)]/50">
+      {rank === 1 ? '👑' : rank}
+    </td>
+  )
+}
+
+function DataRow({ children }: { children: ReactNode }) {
+  return (
+    <tr className="border-b border-[var(--gold)]/10 bg-[var(--navy-900)]/35 transition-colors hover:bg-[var(--navy-900)]/70 last:border-0">
+      {children}
+    </tr>
+  )
+}
+
+function EmptyState({ children }: { children: ReactNode }) {
+  return <p className="py-8 text-center text-sm text-[var(--cream)]/50">{children}</p>
 }
 
 export default async function StatsPage() {
@@ -27,329 +64,227 @@ export default async function StatsPage() {
   ])
 
   const winRateQualified = winRates
-    .filter((p) => p.games >= settings.winRateMinGames)
+    .filter((player) => player.games >= settings.winRateMinGames)
     .sort((a, b) => b.winRate - a.winRate || b.wins - a.wins)
 
   const medianSorted = [...scoreStats].sort((a, b) => b.medianScore - a.medianScore)
 
-  const totalWinsRanks = rankWithTies(winRates, (p) => p.wins)
-  const winRateRanks = rankWithTies(winRateQualified, (p) => p.winRate)
-  const avgScoreRanks = rankWithTies(scoreStats, (p) => p.avgScore)
-  const medianScoreRanks = rankWithTies(medianSorted, (p) => p.medianScore)
-  const podiumRateRanks = rankWithTies(podiumRates, (p) => p.podiumRate)
+  const totalWinsRanks = rankWithTies(winRates, (player) => player.wins)
+  const winRateRanks = rankWithTies(winRateQualified, (player) => player.winRate)
+  const avgScoreRanks = rankWithTies(scoreStats, (player) => player.avgScore)
+  const medianScoreRanks = rankWithTies(medianSorted, (player) => player.medianScore)
+  const podiumRateRanks = rankWithTies(podiumRates, (player) => player.podiumRate)
+
+  const statsCards: StatsCardMeta[] = [
+    {
+      id: 'total-wins',
+      title: 'Total Wins',
+      description: 'All-time victory leaderboard with win rate alongside total finishes.',
+      badge: undefined,
+      span: 'full',
+    },
+    {
+      id: 'win-rate',
+      title: 'Win Rate',
+      description: 'Qualified players ranked by share of games won.',
+      badge:
+        settings.winRateMinGames > 0
+          ? `Min ${settings.winRateMinGames} game${settings.winRateMinGames === 1 ? '' : 's'}`
+          : undefined,
+      span: 'full',
+    },
+    {
+      id: 'avg-score',
+      title: 'Average Score',
+      description: 'Scoring leaderboard ranked by each player’s all-time average.',
+      badge: undefined,
+      span: 'single',
+    },
+    {
+      id: 'median-score',
+      title: 'Median Score',
+      description: 'Typical scoring performance with median values to smooth out spikes.',
+      badge: undefined,
+      span: 'single',
+    },
+    {
+      id: 'podium-rate',
+      title: 'Podium Rate',
+      description: 'How often each player finishes first or second.',
+      badge: undefined,
+      span: 'single',
+    },
+  ]
+
+  const cardById = Object.fromEntries(statsCards.map((card) => [card.id, card])) as Record<
+    string,
+    StatsCardMeta
+  >
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-10 space-y-8">
-      <h1 className="font-cinzel text-3xl font-bold text-[var(--gold)] tracking-wide">Stats</h1>
-
-      <section id="total-wins">
-        <h2 className="font-cinzel text-xl text-[var(--cream)] mb-3">Total Wins</h2>
-        <div className="rounded-lg border border-[var(--gold)]/20 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[var(--gold)]/20 bg-[var(--navy-900)]/80">
-                <th className="px-3 py-2 text-left font-cinzel text-xs tracking-widest text-[var(--cream)]/50 uppercase w-10">
-                  #
-                </th>
-                <th className="px-3 py-2 text-left font-cinzel text-xs tracking-widest text-[var(--cream)]/50 uppercase">
-                  Player
-                </th>
-                <th className="px-3 py-2 text-right font-cinzel text-xs tracking-widest text-[var(--cream)]/50 uppercase">
-                  Wins
-                </th>
-                <th className="px-3 py-2 text-right font-cinzel text-xs tracking-widest text-[var(--cream)]/50 uppercase">
-                  Win Rate
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {winRates.map((player, idx) => (
-                <tr
-                  key={player.playerId}
-                  className="border-b border-[var(--gold)]/10 last:border-0 bg-[var(--navy-900)]/40 hover:bg-[var(--navy-900)]/70 transition-colors"
-                >
-                  <td className="px-3 py-2 tabular-nums text-[var(--cream)]/50 text-center">
-                    {totalWinsRanks[idx] === 1 ? '👑' : totalWinsRanks[idx]}
-                  </td>
-                  <td className="px-3 py-2 text-[var(--cream)]">
-                    <span className={player.tier === PlayerTier.Premium ? 'text-[var(--gold)] font-semibold' : ''}>
-                      {player.name}
-                    </span>
-                    {player.tier === PlayerTier.Premium && (
-                      <span className="ml-2 rounded px-1 py-0.5 text-xs font-cinzel tracking-widest bg-[var(--gold)]/15 text-[var(--gold)] uppercase">
-                        Premium
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2 tabular-nums text-right text-[var(--cream)]">
-                    {player.wins}
-                  </td>
-                  <td className="px-3 py-2 tabular-nums text-right text-[var(--cream)]/70">
-                    {formatPercent(player.winRate, 1)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section id="win-rate">
-        <h2 className="font-cinzel text-xl text-[var(--cream)] mb-1">Win Rate</h2>
-        {settings.winRateMinGames > 0 && (
-          <p className="text-xs text-[var(--cream)]/50 mb-3">
-            Min {settings.winRateMinGames} game{settings.winRateMinGames === 1 ? '' : 's'}
-          </p>
-        )}
-        {!settings.winRateMinGames && <div className="mb-3" />}
-        {winRateQualified.length === 0 ? (
-          <p className="text-sm text-[var(--cream)]/50 py-6 text-center">
-            No players have played {settings.winRateMinGames}+ game
-            {settings.winRateMinGames === 1 ? '' : 's'} yet.
-          </p>
-        ) : (
-          <div className="rounded-lg border border-[var(--gold)]/20 overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[var(--gold)]/20 bg-[var(--navy-900)]/80">
-                  <th className="px-3 py-2 text-left font-cinzel text-xs tracking-widest text-[var(--cream)]/50 uppercase w-10">
-                    #
-                  </th>
-                  <th className="px-3 py-2 text-left font-cinzel text-xs tracking-widest text-[var(--cream)]/50 uppercase">
-                    Player
-                  </th>
-                  <th className="px-3 py-2 text-right font-cinzel text-xs tracking-widest text-[var(--cream)]/50 uppercase">
-                    Win Rate
-                  </th>
-                  <th className="px-3 py-2 text-right font-cinzel text-xs tracking-widest text-[var(--cream)]/50 uppercase">
-                    Wins
-                  </th>
-                  <th className="px-3 py-2 text-right font-cinzel text-xs tracking-widest text-[var(--cream)]/50 uppercase">
-                    Games
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {winRateQualified.map((player, idx) => (
-                  <tr
-                    key={player.playerId}
-                    className="border-b border-[var(--gold)]/10 last:border-0 bg-[var(--navy-900)]/40 hover:bg-[var(--navy-900)]/70 transition-colors"
-                  >
-                    <td className="px-3 py-2 tabular-nums text-[var(--cream)]/50 text-center">
-                      {winRateRanks[idx] === 1 ? '👑' : winRateRanks[idx]}
-                    </td>
+    <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <StatsCard {...cardById['total-wins']}>
+            {winRates.length === 0 ? (
+              <EmptyState>No wins recorded yet.</EmptyState>
+            ) : (
+              <StatsLeaderboardTable
+                columns={[
+                  { label: '#', align: 'center', widthClass: 'w-10' },
+                  { label: 'Player' },
+                  { label: 'Wins', align: 'right' },
+                  { label: 'Win Rate', align: 'right' },
+                ]}
+              >
+                {winRates.map((player, index) => (
+                  <DataRow key={player.playerId}>
+                    <RankCell rank={totalWinsRanks[index]} />
                     <td className="px-3 py-2 text-[var(--cream)]">
-                      <span className={player.tier === PlayerTier.Premium ? 'text-[var(--gold)] font-semibold' : ''}>
-                        {player.name}
-                      </span>
-                      {player.tier === PlayerTier.Premium && (
-                        <span className="ml-2 rounded px-1 py-0.5 text-xs font-cinzel tracking-widest bg-[var(--gold)]/15 text-[var(--gold)] uppercase">
-                          Premium
-                        </span>
-                      )}
+                      <PlayerName name={player.name} tier={player.tier} />
                     </td>
-                    <td className="px-3 py-2 tabular-nums text-right text-[var(--gold)] font-semibold">
-                      {formatPercent(player.winRate, 1)}
-                    </td>
-                    <td className="px-3 py-2 tabular-nums text-right text-[var(--cream)]">
+                    <td className="px-3 py-2 text-right tabular-nums text-[var(--cream)]">
                       {player.wins}
                     </td>
-                    <td className="px-3 py-2 tabular-nums text-right text-[var(--cream)]/70">
+                    <td className="px-3 py-2 text-right tabular-nums text-[var(--cream)]/70">
+                      {formatPercent(player.winRate, 1)}
+                    </td>
+                  </DataRow>
+                ))}
+              </StatsLeaderboardTable>
+            )}
+        </StatsCard>
+
+        <StatsCard {...cardById['win-rate']}>
+            {winRateQualified.length === 0 ? (
+              <EmptyState>
+                No players have played {settings.winRateMinGames}+ game
+                {settings.winRateMinGames === 1 ? '' : 's'} yet.
+              </EmptyState>
+            ) : (
+              <StatsLeaderboardTable
+                columns={[
+                  { label: '#', align: 'center', widthClass: 'w-10' },
+                  { label: 'Player' },
+                  { label: 'Win Rate', align: 'right' },
+                  { label: 'Wins', align: 'right' },
+                  { label: 'Games', align: 'right' },
+                ]}
+              >
+                {winRateQualified.map((player, index) => (
+                  <DataRow key={player.playerId}>
+                    <RankCell rank={winRateRanks[index]} />
+                    <td className="px-3 py-2 text-[var(--cream)]">
+                      <PlayerName name={player.name} tier={player.tier} />
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums font-semibold text-[var(--gold)]">
+                      {formatPercent(player.winRate, 1)}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums text-[var(--cream)]">
+                      {player.wins}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums text-[var(--cream)]/70">
                       {player.games}
                     </td>
-                  </tr>
+                  </DataRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+              </StatsLeaderboardTable>
+            )}
+        </StatsCard>
 
-      <section id="avg-score">
-        <h2 className="font-cinzel text-xl text-[var(--cream)] mb-3">Average Score</h2>
-        {scoreStats.length === 0 ? (
-          <p className="text-sm text-[var(--cream)]/50 py-6 text-center">No games recorded yet.</p>
-        ) : (
-          <div className="rounded-lg border border-[var(--gold)]/20 overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[var(--gold)]/20 bg-[var(--navy-900)]/80">
-                  <th className="px-3 py-2 text-left font-cinzel text-xs tracking-widest text-[var(--cream)]/50 uppercase w-10">
-                    #
-                  </th>
-                  <th className="px-3 py-2 text-left font-cinzel text-xs tracking-widest text-[var(--cream)]/50 uppercase">
-                    Player
-                  </th>
-                  <th className="px-3 py-2 text-right font-cinzel text-xs tracking-widest text-[var(--cream)]/50 uppercase">
-                    Avg Score
-                  </th>
-                  <th className="px-3 py-2 text-right font-cinzel text-xs tracking-widest text-[var(--cream)]/50 uppercase">
-                    Games
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {scoreStats.map((player, idx) => (
-                  <tr
-                    key={player.playerId}
-                    className="border-b border-[var(--gold)]/10 last:border-0 bg-[var(--navy-900)]/40 hover:bg-[var(--navy-900)]/70 transition-colors"
-                  >
-                    <td className="px-3 py-2 tabular-nums text-[var(--cream)]/50 text-center">
-                      {avgScoreRanks[idx] === 1 ? '👑' : avgScoreRanks[idx]}
-                    </td>
+        <StatsCard {...cardById['avg-score']}>
+            {scoreStats.length === 0 ? (
+              <EmptyState>No games recorded yet.</EmptyState>
+            ) : (
+              <StatsLeaderboardTable
+                columns={[
+                  { label: '#', align: 'center', widthClass: 'w-10' },
+                  { label: 'Player' },
+                  { label: 'Avg Score', align: 'right' },
+                  { label: 'Games', align: 'right' },
+                ]}
+              >
+                {scoreStats.map((player, index) => (
+                  <DataRow key={player.playerId}>
+                    <RankCell rank={avgScoreRanks[index]} />
                     <td className="px-3 py-2 text-[var(--cream)]">
-                      <span
-                        className={player.tier === PlayerTier.Premium ? 'text-[var(--gold)] font-semibold' : ''}
-                      >
-                        {player.name}
-                      </span>
-                      {player.tier === PlayerTier.Premium && (
-                        <span className="ml-2 rounded px-1 py-0.5 text-xs font-cinzel tracking-widest bg-[var(--gold)]/15 text-[var(--gold)] uppercase">
-                          Premium
-                        </span>
-                      )}
+                      <PlayerName name={player.name} tier={player.tier} />
                     </td>
-                    <td className="px-3 py-2 tabular-nums text-right text-[var(--gold)] font-semibold">
+                    <td className="px-3 py-2 text-right tabular-nums font-semibold text-[var(--gold)]">
                       {formatAverage(player.avgScore)}
                     </td>
-                    <td className="px-3 py-2 tabular-nums text-right text-[var(--cream)]/70">
+                    <td className="px-3 py-2 text-right tabular-nums text-[var(--cream)]/70">
                       {player.games}
                     </td>
-                  </tr>
+                  </DataRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+              </StatsLeaderboardTable>
+            )}
+        </StatsCard>
 
-      <section id="median-score">
-        <h2 className="font-cinzel text-xl text-[var(--cream)] mb-3">Median Score</h2>
-        {scoreStats.length === 0 ? (
-          <p className="text-sm text-[var(--cream)]/50 py-6 text-center">No games recorded yet.</p>
-        ) : (
-          <div className="rounded-lg border border-[var(--gold)]/20 overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[var(--gold)]/20 bg-[var(--navy-900)]/80">
-                  <th className="px-3 py-2 text-left font-cinzel text-xs tracking-widest text-[var(--cream)]/50 uppercase w-10">
-                    #
-                  </th>
-                  <th className="px-3 py-2 text-left font-cinzel text-xs tracking-widest text-[var(--cream)]/50 uppercase">
-                    Player
-                  </th>
-                  <th className="px-3 py-2 text-right font-cinzel text-xs tracking-widest text-[var(--cream)]/50 uppercase">
-                    Median Score
-                  </th>
-                  <th className="px-3 py-2 text-right font-cinzel text-xs tracking-widest text-[var(--cream)]/50 uppercase">
-                    Games
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {medianSorted.map((player, idx) => (
-                    <tr
-                      key={player.playerId}
-                      className="border-b border-[var(--gold)]/10 last:border-0 bg-[var(--navy-900)]/40 hover:bg-[var(--navy-900)]/70 transition-colors"
-                    >
-                      <td className="px-3 py-2 tabular-nums text-[var(--cream)]/50 text-center">
-                        {medianScoreRanks[idx] === 1 ? '👑' : medianScoreRanks[idx]}
-                      </td>
-                      <td className="px-3 py-2 text-[var(--cream)]">
-                        <span
-                          className={
-                            player.tier === PlayerTier.Premium
-                              ? 'text-[var(--gold)] font-semibold'
-                              : ''
-                          }
-                        >
-                          {player.name}
-                        </span>
-                        {player.tier === PlayerTier.Premium && (
-                          <span className="ml-2 rounded px-1 py-0.5 text-xs font-cinzel tracking-widest bg-[var(--gold)]/15 text-[var(--gold)] uppercase">
-                            Premium
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2 tabular-nums text-right text-[var(--gold)] font-semibold">
-                        {formatAverage(player.medianScore)}
-                      </td>
-                      <td className="px-3 py-2 tabular-nums text-right text-[var(--cream)]/70">
-                        {player.games}
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      <section id="podium-rate">
-        <h2 className="font-cinzel text-xl text-[var(--cream)] mb-3">Podium Rate</h2>
-        {podiumRates.length === 0 ? (
-          <p className="text-sm text-[var(--cream)]/50 py-6 text-center">No games recorded yet.</p>
-        ) : (
-          <div className="rounded-lg border border-[var(--gold)]/20 overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[var(--gold)]/20 bg-[var(--navy-900)]/80">
-                  <th className="px-3 py-2 text-left font-cinzel text-xs tracking-widest text-[var(--cream)]/50 uppercase w-10">
-                    #
-                  </th>
-                  <th className="px-3 py-2 text-left font-cinzel text-xs tracking-widest text-[var(--cream)]/50 uppercase">
-                    Player
-                  </th>
-                  <th className="px-3 py-2 text-right font-cinzel text-xs tracking-widest text-[var(--cream)]/50 uppercase">
-                    Podium Rate
-                  </th>
-                  <th className="px-3 py-2 text-right font-cinzel text-xs tracking-widest text-[var(--cream)]/50 uppercase">
-                    Podiums
-                  </th>
-                  <th className="px-3 py-2 text-right font-cinzel text-xs tracking-widest text-[var(--cream)]/50 uppercase">
-                    Games
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {podiumRates.map((player, idx) => (
-                  <tr
-                    key={player.playerId}
-                    className="border-b border-[var(--gold)]/10 last:border-0 bg-[var(--navy-900)]/40 hover:bg-[var(--navy-900)]/70 transition-colors"
-                  >
-                    <td className="px-3 py-2 tabular-nums text-[var(--cream)]/50 text-center">
-                      {podiumRateRanks[idx] === 1 ? '👑' : podiumRateRanks[idx]}
-                    </td>
+        <StatsCard {...cardById['median-score']}>
+            {medianSorted.length === 0 ? (
+              <EmptyState>No games recorded yet.</EmptyState>
+            ) : (
+              <StatsLeaderboardTable
+                columns={[
+                  { label: '#', align: 'center', widthClass: 'w-10' },
+                  { label: 'Player' },
+                  { label: 'Median Score', align: 'right' },
+                  { label: 'Games', align: 'right' },
+                ]}
+              >
+                {medianSorted.map((player, index) => (
+                  <DataRow key={player.playerId}>
+                    <RankCell rank={medianScoreRanks[index]} />
                     <td className="px-3 py-2 text-[var(--cream)]">
-                      <span
-                        className={
-                          player.tier === PlayerTier.Premium ? 'text-[var(--gold)] font-semibold' : ''
-                        }
-                      >
-                        {player.name}
-                      </span>
-                      {player.tier === PlayerTier.Premium && (
-                        <span className="ml-2 rounded px-1 py-0.5 text-xs font-cinzel tracking-widest bg-[var(--gold)]/15 text-[var(--gold)] uppercase">
-                          Premium
-                        </span>
-                      )}
+                      <PlayerName name={player.name} tier={player.tier} />
                     </td>
-                    <td className="px-3 py-2 tabular-nums text-right text-[var(--gold)] font-semibold">
+                    <td className="px-3 py-2 text-right tabular-nums font-semibold text-[var(--gold)]">
+                      {formatAverage(player.medianScore)}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums text-[var(--cream)]/70">
+                      {player.games}
+                    </td>
+                  </DataRow>
+                ))}
+              </StatsLeaderboardTable>
+            )}
+        </StatsCard>
+
+        <StatsCard {...cardById['podium-rate']}>
+            {podiumRates.length === 0 ? (
+              <EmptyState>No games recorded yet.</EmptyState>
+            ) : (
+              <StatsLeaderboardTable
+                columns={[
+                  { label: '#', align: 'center', widthClass: 'w-10' },
+                  { label: 'Player' },
+                  { label: 'Podium Rate', align: 'right' },
+                  { label: 'Podiums', align: 'right' },
+                  { label: 'Games', align: 'right' },
+                ]}
+              >
+                {podiumRates.map((player, index) => (
+                  <DataRow key={player.playerId}>
+                    <RankCell rank={podiumRateRanks[index]} />
+                    <td className="px-3 py-2 text-[var(--cream)]">
+                      <PlayerName name={player.name} tier={player.tier} />
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums font-semibold text-[var(--gold)]">
                       {formatPercent(player.podiumRate, 1)}
                     </td>
-                    <td className="px-3 py-2 tabular-nums text-right text-[var(--cream)]">
+                    <td className="px-3 py-2 text-right tabular-nums text-[var(--cream)]">
                       {player.podiums}
                     </td>
-                    <td className="px-3 py-2 tabular-nums text-right text-[var(--cream)]/70">
+                    <td className="px-3 py-2 text-right tabular-nums text-[var(--cream)]/70">
                       {player.games}
                     </td>
-                  </tr>
+                  </DataRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+              </StatsLeaderboardTable>
+            )}
+        </StatsCard>
+      </div>
     </main>
   )
 }
