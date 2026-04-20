@@ -16,6 +16,20 @@ async function acceptNextDialog(page: Page): Promise<void> {
   })
 }
 
+async function openGamesFilters(page: Page): Promise<void> {
+  const toggle = page.getByRole('button', { name: /filters/i })
+  if ((await toggle.getAttribute('aria-expanded')) !== 'true') {
+    await toggle.click()
+  }
+}
+
+async function openPlayersFilter(page: Page): Promise<void> {
+  const trigger = page.getByLabel('Players')
+  if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
+    await trigger.click()
+  }
+}
+
 function playerDeleteButton(page: Page, name: string) {
   return page
     .locator(`input[value="${name}"]`)
@@ -88,6 +102,78 @@ test('public games page paginates and supports page-size changes', async ({ page
   await page.getByRole('link', { name: '50', exact: true }).click()
   await expect(page).toHaveURL(/\/games\?page=1&pageSize=50/)
   await expect(page.locator('article')).toHaveCount(21)
+})
+
+test('public games page filters by players and date range while preserving pagination state', async ({ page }) => {
+  const ada = await createE2ePlayer({ name: 'Ada' })
+  const bea = await createE2ePlayer({ name: 'Bea' })
+  const cara = await createE2ePlayer({ name: 'Cara' })
+
+  await Promise.all(Array.from({ length: 12 }, async (_unused, index) => {
+    const gameNumber = index + 1
+    return createE2eGame({
+      playedAt: new Date(`2026-04-${String(gameNumber).padStart(2, '0')}T12:00:00.000Z`),
+      notes: `Ada game ${gameNumber}`,
+      players: [{ playerId: ada.id, score: 10 + gameNumber, isWinner: true }],
+    })
+  }))
+
+  await Promise.all(Array.from({ length: 10 }, async (_unused, index) => {
+    const day = index + 13
+    return createE2eGame({
+      playedAt: new Date(`2026-04-${String(day).padStart(2, '0')}T12:00:00.000Z`),
+      notes: `Bea game ${day}`,
+      players: [{ playerId: bea.id, score: 20 + day, isWinner: true }],
+    })
+  }))
+
+  await Promise.all(Array.from({ length: 3 }, async (_unused, index) => {
+    const day = index + 23
+    return createE2eGame({
+      playedAt: new Date(`2026-04-${String(day).padStart(2, '0')}T12:00:00.000Z`),
+      notes: `Cara game ${day}`,
+      players: [{ playerId: cara.id, score: 30 + day, isWinner: true }],
+    })
+  }))
+
+  await page.goto('/games')
+  await expect(page.getByRole('heading', { name: 'Games' })).toBeVisible()
+
+  await openGamesFilters(page)
+  await openPlayersFilter(page)
+  await page.getByLabel('Ada').check()
+
+  await expect(page).toHaveURL(/\/games\?page=1&pageSize=20&player=1$/)
+  await expect(page.locator('article')).toHaveCount(12)
+
+  await openGamesFilters(page)
+  await openPlayersFilter(page)
+  await page.getByLabel('Bea').check()
+
+  await expect(page).toHaveURL(/\/games\?page=1&pageSize=20&player=1&player=2$/)
+  await expect(page.locator('article')).toHaveCount(20)
+
+  await page.getByRole('link', { name: '2', exact: true }).click()
+  await expect(page).toHaveURL(/\/games\?page=2&pageSize=20&player=1&player=2$/)
+  await expect(page.locator('article')).toHaveCount(2)
+
+  await openGamesFilters(page)
+  await page.locator('#games-filter-from').fill('2026-04-10T00:00')
+  await page.locator('#games-filter-to').click()
+
+  await expect(page).toHaveURL(/from=2026-04-10T00%3A00%3A00.000Z/)
+  await expect(page).toHaveURL(/\/games\?page=1&pageSize=20&player=1&player=2&from=2026-04-10T00%3A00%3A00.000Z$/)
+  await expect(page.locator('article')).toHaveCount(13)
+
+  await openGamesFilters(page)
+  await page.locator('#games-filter-to').fill('2026-04-24T23:59')
+  await page.getByRole('button', { name: /clear players/i }).click()
+
+  await expect(page).toHaveURL(
+    /\/games\?page=1&pageSize=20&from=2026-04-10T00%3A00%3A00.000Z&to=2026-04-24T23%3A59%3A00.000Z$/,
+  )
+  await expect(page.locator('article')).toHaveCount(15)
+  await expect(page.getByText('Cara game 24')).toBeVisible()
 })
 
 test('admin login, edit game, and logout work', async ({ page }) => {

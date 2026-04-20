@@ -1,32 +1,30 @@
 import type { Metadata } from 'next'
 import { FormattedDate } from '@/components/FormattedDate'
+import { GamesFilters } from '@/components/GamesFilters'
 import { GamesPagination } from '@/components/GamesPagination'
-import { GAMES_PAGE_SIZES, listGamesPage, type GamesPageSize } from '@/lib/games'
+import { hasActiveGamesPageFilters, parseGamesPageState } from '@/lib/games-page-filters'
+import { listGamesPage } from '@/lib/games'
+import { getPlayers } from '@/lib/players'
 
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = { title: 'Games — HarborStats' }
 
 interface Props {
-  searchParams: Promise<{ page?: string; pageSize?: string }>
-}
-
-function parsePositiveInt(value: string | undefined) {
-  if (!value) return null
-  const parsed = Number.parseInt(value, 10)
-  return Number.isNaN(parsed) ? null : parsed
-}
-
-function parsePageSize(value: string | undefined): GamesPageSize {
-  const parsed = parsePositiveInt(value)
-  return GAMES_PAGE_SIZES.includes(parsed as GamesPageSize) ? (parsed as GamesPageSize) : 20
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }
 
 export default async function GamesPage({ searchParams }: Props) {
-  const params = await searchParams
-  const requestedPage = parsePositiveInt(params.page) ?? 1
-  const pageSize = parsePageSize(params.pageSize)
-  const { games, totalGames, page, totalPages } = await listGamesPage(requestedPage, pageSize)
+  const [params, players] = await Promise.all([searchParams, getPlayers()])
+  const { page: requestedPage, pageSize, filters } = parseGamesPageState(params)
+  const { games, totalGames, page, totalPages } = await listGamesPage(requestedPage, pageSize, filters)
+  const hasActiveFilters = hasActiveGamesPageFilters(filters)
+  const filtersKey = [
+    pageSize,
+    filters.playerIds.join(','),
+    filters.from?.toISOString() ?? '',
+    filters.to?.toISOString() ?? '',
+  ].join('|')
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-12">
@@ -35,12 +33,13 @@ export default async function GamesPage({ searchParams }: Props) {
           <h1 className="text-xl text-[var(--gold)] tracking-wide">Games</h1>
           <p className="mt-1 text-xs text-[var(--cream)]/50">{totalGames} recorded</p>
         </div>
-        <GamesPagination page={page} pageSize={pageSize} totalPages={totalPages} />
+        <GamesFilters key={filtersKey} players={players} pageSize={pageSize} filters={filters} />
+        <GamesPagination page={page} pageSize={pageSize} totalPages={totalPages} filters={filters} />
       </div>
 
       {games.length === 0 ? (
         <p className="text-[var(--cream)] opacity-60 text-center py-16">
-          No games yet — record your first one!
+          {hasActiveFilters ? 'No games match those filters.' : 'No games yet — record your first one!'}
         </p>
       ) : (
         <div className="space-y-4">

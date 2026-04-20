@@ -310,6 +310,116 @@ describe('games lib', () => {
     await expect(listGamesPage(1, 100)).resolves.toMatchObject({ pageSize: 100, totalPages: 1 });
   });
 
+  it('filters paginated games by any selected player', async () => {
+    const ada = await createTestPlayer({ name: 'Ada' });
+    const bea = await createTestPlayer({ name: 'Bea' });
+    const cara = await createTestPlayer({ name: 'Cara' });
+
+    const adaGame = await createTestGame({
+      playedAt: new Date('2026-04-17T10:00:00.000Z'),
+      notes: 'Ada game',
+      players: [{ playerId: ada.id, score: 8, isWinner: true }],
+    });
+
+    const beaGame = await createTestGame({
+      playedAt: new Date('2026-04-18T10:00:00.000Z'),
+      notes: 'Bea game',
+      players: [{ playerId: bea.id, score: 9, isWinner: true }],
+    });
+
+    await createTestGame({
+      playedAt: new Date('2026-04-19T10:00:00.000Z'),
+      notes: 'Cara game',
+      players: [{ playerId: cara.id, score: 10, isWinner: true }],
+    });
+
+    const page = await listGamesPage(1, 20, { playerIds: [ada.id, bea.id], from: null, to: null });
+
+    expect(page.totalGames).toBe(2);
+    expect(page.totalPages).toBe(1);
+    expect(page.games.map((game) => game.id)).toEqual([beaGame.id, adaGame.id]);
+  });
+
+  it('supports open-ended played-at filters on paginated games', async () => {
+    const ada = await createTestPlayer({ name: 'Ada' });
+
+    const olderGame = await createTestGame({
+      playedAt: new Date('2026-04-17T10:00:00.000Z'),
+      notes: 'Older game',
+      players: [{ playerId: ada.id, score: 7, isWinner: true }],
+    });
+
+    const middleGame = await createTestGame({
+      playedAt: new Date('2026-04-18T10:00:00.000Z'),
+      notes: 'Middle game',
+      players: [{ playerId: ada.id, score: 8, isWinner: true }],
+    });
+
+    const newerGame = await createTestGame({
+      playedAt: new Date('2026-04-19T10:00:00.000Z'),
+      notes: 'Newer game',
+      players: [{ playerId: ada.id, score: 9, isWinner: true }],
+    });
+
+    await expect(
+      listGamesPage(1, 20, { playerIds: [], from: new Date('2026-04-18T00:00:00.000Z'), to: null }),
+    ).resolves.toMatchObject({
+      totalGames: 2,
+      games: [{ id: newerGame.id }, { id: middleGame.id }],
+    });
+
+    await expect(
+      listGamesPage(1, 20, { playerIds: [], from: null, to: new Date('2026-04-18T23:59:59.999Z') }),
+    ).resolves.toMatchObject({
+      totalGames: 2,
+      games: [{ id: middleGame.id }, { id: olderGame.id }],
+    });
+  });
+
+  it('keeps filtered totals and page clamping correct when filters narrow the result set', async () => {
+    const ada = await createTestPlayer({ name: 'Ada' });
+    const bea = await createTestPlayer({ name: 'Bea' });
+
+    await createTestGame({
+      playedAt: new Date('2026-04-17T10:00:00.000Z'),
+      notes: 'Older Ada game',
+      players: [{ playerId: ada.id, score: 7, isWinner: true }],
+    });
+
+    const middleBeaGame = await createTestGame({
+      playedAt: new Date('2026-04-18T10:00:00.000Z'),
+      notes: 'Middle Bea game',
+      players: [{ playerId: bea.id, score: 8, isWinner: true }],
+    });
+
+    const newerBeaGame = await createTestGame({
+      playedAt: new Date('2026-04-19T10:00:00.000Z'),
+      notes: 'Newer Bea game',
+      players: [{ playerId: bea.id, score: 9, isWinner: true }],
+    });
+
+    const page = await listGamesPage(9, 1, {
+      playerIds: [bea.id],
+      from: new Date('2026-04-18T00:00:00.000Z'),
+      to: new Date('2026-04-19T23:59:59.999Z'),
+    });
+
+    expect(page.totalGames).toBe(2);
+    expect(page.totalPages).toBe(2);
+    expect(page.page).toBe(2);
+    expect(page.games.map((game) => game.id)).toEqual([middleBeaGame.id]);
+
+    await expect(
+      listGamesPage(1, 1, {
+        playerIds: [bea.id],
+        from: new Date('2026-04-18T00:00:00.000Z'),
+        to: new Date('2026-04-19T23:59:59.999Z'),
+      }),
+    ).resolves.toMatchObject({
+      games: [{ id: newerBeaGame.id }],
+    });
+  });
+
   it('returns a game ready for editing with players ordered by name', async () => {
     const cara = await createTestPlayer({ name: 'Cara' });
     const ada = await createTestPlayer({ name: 'Ada' });

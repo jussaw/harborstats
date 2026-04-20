@@ -1,5 +1,6 @@
-import { eq, desc, asc, count, inArray } from 'drizzle-orm'
+import { and, asc, count, desc, eq, gte, inArray, lte } from 'drizzle-orm'
 import { games, gamePlayers, players } from '@/db/schema'
+import type { GamesPageFilters } from '@/lib/games-page-shared'
 import { db } from './db'
 
 export interface GamePlayer { playerId: number; score: number; isWinner: boolean }
@@ -79,9 +80,6 @@ export interface RecentGame {
 }
 
 export const DEFAULT_RECENT_GAMES_LIMIT = 10
-export const GAMES_PAGE_SIZES = [20, 50, 100] as const
-
-export type GamesPageSize = (typeof GAMES_PAGE_SIZES)[number]
 
 export interface GamesPage {
   games: RecentGame[]
@@ -116,6 +114,36 @@ function groupGameRows(rows: GameRow[]): RecentGame[] {
   return uniqueGameIds.map((id) => gamesMap.get(id)!)
 }
 
+function getGamesPageWhere(filters: GamesPageFilters) {
+  const conditions = []
+
+  if (filters.playerIds.length > 0) {
+    conditions.push(
+      inArray(
+        games.id,
+        db
+          .select({ id: gamePlayers.gameId })
+          .from(gamePlayers)
+          .where(inArray(gamePlayers.playerId, filters.playerIds)),
+      ),
+    )
+  }
+
+  if (filters.from) {
+    conditions.push(gte(games.playedAt, filters.from))
+  }
+
+  if (filters.to) {
+    conditions.push(lte(games.playedAt, filters.to))
+  }
+
+  if (conditions.length === 0) {
+    return undefined
+  }
+
+  return and(...conditions)
+}
+
 export async function listRecentGames(limit = DEFAULT_RECENT_GAMES_LIMIT): Promise<RecentGame[]> {
   const rows = await db
     .select({
@@ -134,11 +162,16 @@ export async function listRecentGames(limit = DEFAULT_RECENT_GAMES_LIMIT): Promi
   return groupGameRows(rows).slice(0, limit)
 }
 
-export async function listGamesPage(page = 1, pageSize = 20): Promise<GamesPage> {
+export async function listGamesPage(
+  page = 1,
+  pageSize = 20,
+  filters: GamesPageFilters = { playerIds: [], from: null, to: null },
+): Promise<GamesPage> {
   const safePageSize = Number.isInteger(pageSize) && pageSize > 0 ? pageSize : 20
   const safePage = Number.isInteger(page) && page > 0 ? page : 1
+  const where = getGamesPageWhere(filters)
 
-  const [{ totalGames }] = await db.select({ totalGames: count() }).from(games)
+  const [{ totalGames }] = await db.select({ totalGames: count() }).from(games).where(where)
   const totalPages = totalGames === 0 ? 0 : Math.ceil(totalGames / safePageSize)
   const currentPage = totalPages === 0 ? 1 : Math.min(safePage, totalPages)
 
@@ -153,6 +186,7 @@ export async function listGamesPage(page = 1, pageSize = 20): Promise<GamesPage>
       notes: games.notes,
     })
     .from(games)
+    .where(where)
     .orderBy(desc(games.playedAt), desc(games.id))
     .limit(safePageSize)
     .offset((currentPage - 1) * safePageSize)

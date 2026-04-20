@@ -1,14 +1,16 @@
 import Link from 'next/link'
-import { GAMES_PAGE_SIZES, type GamesPageSize } from '@/lib/games'
+import { createGamesSearchParams } from '@/lib/games-page-filters'
+import { GAMES_PAGE_SIZES, type GamesPageFilters, type GamesPageSize } from '@/lib/games-page-shared'
 
 interface Props {
   page: number
   pageSize: GamesPageSize
   totalPages: number
+  filters: GamesPageFilters
 }
 
-function buildGamesHref(page: number, pageSize: GamesPageSize) {
-  return `/games?page=${page}&pageSize=${pageSize}`
+function buildGamesHref(page: number, pageSize: GamesPageSize, filters: GamesPageFilters) {
+  return `/games?${createGamesSearchParams({ page, pageSize, filters }).toString()}`
 }
 
 function getVisiblePages(page: number, totalPages: number) {
@@ -34,7 +36,7 @@ function PageLink({
   )
 }
 
-export function GamesPagination({ page, pageSize, totalPages }: Props) {
+export function GamesPagination({ page, pageSize, totalPages, filters }: Props) {
   const visiblePages = getVisiblePages(page, totalPages)
   const showPager = totalPages > 0
 
@@ -45,7 +47,7 @@ export function GamesPagination({ page, pageSize, totalPages }: Props) {
         {GAMES_PAGE_SIZES.map((size) => (
           <Link
             key={size}
-            href={buildGamesHref(1, size)}
+            href={buildGamesHref(1, size, filters)}
             className={`rounded border px-3 py-1.5 transition-colors ${
               size === pageSize
                 ? 'border-[var(--gold)] bg-[var(--gold)]/10 text-[var(--gold)]'
@@ -60,7 +62,7 @@ export function GamesPagination({ page, pageSize, totalPages }: Props) {
       {showPager && (
         <div className="flex flex-wrap items-center gap-2">
           {page > 1 ? (
-            <PageLink href={buildGamesHref(page - 1, pageSize)} label="Previous" />
+            <PageLink href={buildGamesHref(page - 1, pageSize, filters)} label="Previous" />
           ) : (
             <span
               aria-disabled="true"
@@ -85,14 +87,17 @@ export function GamesPagination({ page, pageSize, totalPages }: Props) {
                     {visiblePage}
                   </span>
                 ) : (
-                  <PageLink href={buildGamesHref(visiblePage, pageSize)} label={String(visiblePage)} />
+                  <PageLink
+                    href={buildGamesHref(visiblePage, pageSize, filters)}
+                    label={String(visiblePage)}
+                  />
                 )}
               </div>
             )
           })}
 
           {page < totalPages ? (
-            <PageLink href={buildGamesHref(page + 1, pageSize)} label="Next" />
+            <PageLink href={buildGamesHref(page + 1, pageSize, filters)} label="Next" />
           ) : (
             <span
               aria-disabled="true"
