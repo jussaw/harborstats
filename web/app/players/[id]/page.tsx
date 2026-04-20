@@ -35,7 +35,7 @@ export default async function PlayerProfilePage({ params }: Props) {
             <h1 className="font-cinzel text-2xl tracking-wide text-[var(--gold)]">{player.name}</h1>
             {player.tier === 'premium' && (
               <span className="mt-1 inline-block rounded px-1.5 py-0.5 text-xs font-cinzel tracking-widest bg-[var(--gold)]/15 text-[var(--gold)] uppercase">
-                Pro
+                PREMIUM
               </span>
             )}
           </div>
