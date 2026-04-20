@@ -158,7 +158,7 @@ test('public games page filters by players and date range while preserving pagin
   await expect(page.locator('article')).toHaveCount(2)
 
   await openGamesFilters(page)
-  await page.locator('#games-filter-from').fill('2026-04-10T00:00')
+  await page.locator('#games-filter-from').fill('2026-04-10')
   await page.locator('#games-filter-to').click()
 
   await expect(page).toHaveURL(/from=2026-04-10T00%3A00%3A00.000Z/)
@@ -166,11 +166,11 @@ test('public games page filters by players and date range while preserving pagin
   await expect(page.locator('article')).toHaveCount(13)
 
   await openGamesFilters(page)
-  await page.locator('#games-filter-to').fill('2026-04-24T23:59')
+  await page.locator('#games-filter-to').fill('2026-04-24')
   await page.getByRole('button', { name: /clear players/i }).click()
 
   await expect(page).toHaveURL(
-    /\/games\?page=1&pageSize=20&from=2026-04-10T00%3A00%3A00.000Z&to=2026-04-24T23%3A59%3A00.000Z$/,
+    /\/games\?page=1&pageSize=20&from=2026-04-10T00%3A00%3A00.000Z&to=2026-04-24T23%3A59%3A59.999Z$/,
   )
   await expect(page.locator('article')).toHaveCount(15)
   await expect(page.getByText('Cara game 24')).toBeVisible()

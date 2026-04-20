@@ -4,7 +4,7 @@ import { useId, useState, useTransition } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { createGamesSearchParams } from '@/lib/games-page-filters'
 import type { GamesPageFilters, GamesPageSize } from '@/lib/games-page-shared'
-import { datetimeLocalToIso, isoToDatetimeLocal } from '@/lib/dates'
+import { dateInputToEndOfDay, dateInputToStartOfDay, dateToDateInputValue } from '@/lib/dates'
 import type { Player } from '@/lib/players'
 
 interface Props {
@@ -15,8 +15,8 @@ interface Props {
 
 interface FiltersFormState {
   playerIds: number[]
-  fromLocal: string
-  toLocal: string
+  fromDate: string
+  toDate: string
 }
 
 function countActiveFilters(filters: GamesPageFilters) {
@@ -33,20 +33,14 @@ function getPlayersSummary(selectedPlayerIds: number[]) {
   return `${selectedPlayerIds.length} players selected`
 }
 
-function parseLocalDateValue(value: string) {
-  if (!value) return null
-  const parsed = new Date(datetimeLocalToIso(value))
-  return Number.isNaN(parsed.valueOf()) ? null : parsed
-}
-
 function samePlayerIds(current: number[], next: number[]) {
   return current.length === next.length && current.every((playerId, index) => playerId === next[index])
 }
 
 function sameFiltersState(current: FiltersFormState, next: FiltersFormState) {
   return samePlayerIds(current.playerIds, next.playerIds)
-    && current.fromLocal === next.fromLocal
-    && current.toLocal === next.toLocal
+    && current.fromDate === next.fromDate
+    && current.toDate === next.toDate
 }
 
 export function GamesFilters({ players, pageSize, filters }: Props) {
@@ -59,8 +53,8 @@ export function GamesFilters({ players, pageSize, filters }: Props) {
   const drawerId = useId()
   const baseFiltersState: FiltersFormState = {
     playerIds: filters.playerIds,
-    fromLocal: filters.from ? isoToDatetimeLocal(filters.from.toISOString()) : '',
-    toLocal: filters.to ? isoToDatetimeLocal(filters.to.toISOString()) : '',
+    fromDate: filters.from ? dateToDateInputValue(filters.from) : '',
+    toDate: filters.to ? dateToDateInputValue(filters.to) : '',
   }
   const activeFiltersState = draftFilters && !sameFiltersState(draftFilters, baseFiltersState)
     ? draftFilters
@@ -80,8 +74,8 @@ export function GamesFilters({ players, pageSize, filters }: Props) {
 
   function getCurrentDateFilters(nextState: FiltersFormState = activeFiltersState) {
     return {
-      from: parseLocalDateValue(nextState.fromLocal),
-      to: parseLocalDateValue(nextState.toLocal),
+      from: nextState.fromDate ? dateInputToStartOfDay(nextState.fromDate) : null,
+      to: nextState.toDate ? dateInputToEndOfDay(nextState.toDate) : null,
     }
   }
 
@@ -196,9 +190,9 @@ export function GamesFilters({ players, pageSize, filters }: Props) {
             <input
               id="games-filter-from"
               aria-label="From"
-              type="datetime-local"
-              value={activeFiltersState.fromLocal}
-              onChange={(event) => setDraftFilters({ ...activeFiltersState, fromLocal: event.target.value })}
+              type="date"
+              value={activeFiltersState.fromDate}
+              onChange={(event) => setDraftFilters({ ...activeFiltersState, fromDate: event.target.value })}
               onBlur={commitDateFilters}
               className="w-full rounded border border-[var(--gold)]/30 bg-[var(--navy-900)] px-3 py-2 text-sm text-[var(--cream)] [color-scheme:dark]"
             />
@@ -209,9 +203,9 @@ export function GamesFilters({ players, pageSize, filters }: Props) {
             <input
               id="games-filter-to"
               aria-label="To"
-              type="datetime-local"
-              value={activeFiltersState.toLocal}
-              onChange={(event) => setDraftFilters({ ...activeFiltersState, toLocal: event.target.value })}
+              type="date"
+              value={activeFiltersState.toDate}
+              onChange={(event) => setDraftFilters({ ...activeFiltersState, toDate: event.target.value })}
               onBlur={commitDateFilters}
               className="w-full rounded border border-[var(--gold)]/30 bg-[var(--navy-900)] px-3 py-2 text-sm text-[var(--cream)] [color-scheme:dark]"
             />

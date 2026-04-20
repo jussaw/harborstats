@@ -46,6 +46,8 @@ describe('GamesFilters', () => {
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByText('All players')).toBeInTheDocument();
     expect(screen.getByLabelText('Players')).toBeInTheDocument();
+    expect(screen.getByLabelText('From')).toHaveAttribute('type', 'date');
+    expect(screen.getByLabelText('To')).toHaveAttribute('type', 'date');
   });
 
   it('auto-applies player changes and resets to page 1', async () => {
@@ -75,8 +77,8 @@ describe('GamesFilters', () => {
         pageSize={20}
         filters={{
           playerIds: [1, 2],
-          from: new Date('2026-04-01T10:00:00.000Z'),
-          to: new Date('2026-04-20T15:16:00.000Z'),
+          from: new Date('2026-04-01T00:00:00.000Z'),
+          to: new Date('2026-04-20T23:59:59.999Z'),
         }}
       />,
     );
@@ -85,7 +87,7 @@ describe('GamesFilters', () => {
     await user.click(screen.getByRole('button', { name: /clear players/i }));
 
     expect(replaceMock).toHaveBeenCalledWith(
-      '/games?page=1&pageSize=20&from=2026-04-01T10%3A00%3A00.000Z&to=2026-04-20T15%3A16%3A00.000Z',
+      '/games?page=1&pageSize=20&from=2026-04-01T00%3A00%3A00.000Z&to=2026-04-20T23%3A59%3A59.999Z',
     );
   });
 
@@ -96,22 +98,26 @@ describe('GamesFilters', () => {
       <GamesFilters
         players={players}
         pageSize={50}
-        filters={{ playerIds: [2], from: null, to: new Date('2026-04-20T15:16:00.000Z') }}
+        filters={{ playerIds: [2], from: null, to: new Date('2026-04-20T23:59:59.999Z') }}
       />,
     );
 
     await user.click(screen.getByRole('button', { name: /filters/i }));
 
     const fromInput = screen.getByLabelText('From');
+    const toInput = screen.getByLabelText('To');
 
-    fireEvent.change(fromInput, { target: { value: '2026-04-01T10:00' } });
+    expect(fromInput).toHaveAttribute('type', 'date');
+    expect(toInput).toHaveValue('2026-04-20');
+
+    fireEvent.change(fromInput, { target: { value: '2026-04-01' } });
 
     expect(replaceMock).not.toHaveBeenCalled();
 
     fireEvent.blur(fromInput);
 
     expect(replaceMock).toHaveBeenCalledWith(
-      '/games?page=1&pageSize=50&player=2&from=2026-04-01T10%3A00%3A00.000Z&to=2026-04-20T15%3A16%3A00.000Z',
+      '/games?page=1&pageSize=50&player=2&from=2026-04-01T00%3A00%3A00.000Z&to=2026-04-20T23%3A59%3A59.999Z',
     );
   });
 });
