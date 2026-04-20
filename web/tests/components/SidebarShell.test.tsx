@@ -2,15 +2,12 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { SidebarShell } from '@/components/SidebarShell'
-import { PlayerTier } from '@/lib/player-tier'
 
 let mockPathname = '/admin/games'
 
 vi.mock('next/navigation', () => ({
   usePathname: () => mockPathname,
 }))
-
-const players = [{ id: 1, name: 'Alice', tier: PlayerTier.Premium }]
 
 describe('SidebarShell', () => {
   function getMobileBackdrop() {
@@ -26,7 +23,7 @@ describe('SidebarShell', () => {
     const user = userEvent.setup()
 
     render(
-      <SidebarShell players={players} isAdmin logoutAction={vi.fn().mockResolvedValue(undefined)}>
+      <SidebarShell isAdmin logoutAction={vi.fn().mockResolvedValue(undefined)}>
         <main>Dashboard</main>
       </SidebarShell>,
     )
@@ -47,7 +44,7 @@ describe('SidebarShell', () => {
     const user = userEvent.setup()
 
     const { unmount } = render(
-      <SidebarShell players={players} isAdmin logoutAction={vi.fn().mockResolvedValue(undefined)}>
+      <SidebarShell isAdmin logoutAction={vi.fn().mockResolvedValue(undefined)}>
         <main>Dashboard</main>
       </SidebarShell>,
     )
@@ -58,7 +55,7 @@ describe('SidebarShell', () => {
     unmount()
 
     render(
-      <SidebarShell players={players} isAdmin logoutAction={vi.fn().mockResolvedValue(undefined)}>
+      <SidebarShell isAdmin logoutAction={vi.fn().mockResolvedValue(undefined)}>
         <main>Dashboard</main>
       </SidebarShell>,
     )
@@ -70,7 +67,7 @@ describe('SidebarShell', () => {
     mockPathname = '/games'
 
     render(
-      <SidebarShell players={players} isAdmin={false} logoutAction={vi.fn().mockResolvedValue(undefined)}>
+      <SidebarShell isAdmin={false} logoutAction={vi.fn().mockResolvedValue(undefined)}>
         <main>Dashboard</main>
       </SidebarShell>,
     )
@@ -81,19 +78,30 @@ describe('SidebarShell', () => {
     expect(gamesLink).toHaveClass('bg-[var(--gold)]/10')
   })
 
-  it('renders player links before admin links for admins', () => {
-    mockPathname = '/admin/games'
+  it('shows the public Players link and marks it active on /players', () => {
+    mockPathname = '/players'
 
     render(
-      <SidebarShell players={players} isAdmin logoutAction={vi.fn().mockResolvedValue(undefined)}>
+      <SidebarShell isAdmin={false} logoutAction={vi.fn().mockResolvedValue(undefined)}>
         <main>Dashboard</main>
       </SidebarShell>,
     )
 
-    const playerLink = screen.getByRole('link', { name: 'Alice' })
-    const adminGamesLink = screen.getAllByRole('link', { name: 'Games' }).find((link) => link.getAttribute('href') === '/admin/games')
+    const playersLink = screen.getByRole('link', { name: 'Players' })
 
-    expect(adminGamesLink).toBeDefined()
-    expect(playerLink.compareDocumentPosition(adminGamesLink as Element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(playersLink).toHaveAttribute('href', '/players')
+    expect(playersLink).toHaveClass('bg-[var(--gold)]/10')
+  })
+
+  it('marks the Players link active on /players/[id]', () => {
+    mockPathname = '/players/42'
+
+    render(
+      <SidebarShell isAdmin={false} logoutAction={vi.fn().mockResolvedValue(undefined)}>
+        <main>Dashboard</main>
+      </SidebarShell>,
+    )
+
+    expect(screen.getByRole('link', { name: 'Players' })).toHaveClass('bg-[var(--gold)]/10')
   })
 })

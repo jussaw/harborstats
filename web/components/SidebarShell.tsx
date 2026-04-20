@@ -4,17 +4,19 @@ import { useState, useEffect, useCallback } from 'react'
 import { usePathname } from 'next/navigation'
 import { Menu } from 'lucide-react'
 import Link from 'next/link'
-import type { Player } from '@/lib/players'
 import { Sidebar } from './Sidebar'
 
+const cinzelStyle = {
+  fontFamily: 'var(--font-cinzel), Georgia, serif',
+}
+
 interface Props {
-  players: Player[]
   isAdmin: boolean
   logoutAction: () => Promise<void>
   children: React.ReactNode
 }
 
-export function SidebarShell({ players, isAdmin, logoutAction, children }: Props) {
+export function SidebarShell({ isAdmin, logoutAction, children }: Props) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -59,7 +61,6 @@ export function SidebarShell({ players, isAdmin, logoutAction, children }: Props
         ].join(' ')}
       >
         <Sidebar
-          players={players}
           isAdmin={isAdmin}
           pathname={pathname}
           collapsed={collapsed}
@@ -74,6 +75,7 @@ export function SidebarShell({ players, isAdmin, logoutAction, children }: Props
         {/* Mobile header */}
         <div className="flex h-12 items-center border-b border-[var(--gold)]/15 bg-[var(--navy-900)] px-4 sm:hidden">
           <button
+            type="button"
             onClick={() => setMobileOpen(true)}
             className="text-[var(--cream)]/60 hover:text-[var(--gold)] transition-colors"
             aria-label="Open navigation"
@@ -82,7 +84,8 @@ export function SidebarShell({ players, isAdmin, logoutAction, children }: Props
           </button>
           <Link
             href="/"
-            className="ml-3 font-cinzel text-sm tracking-[0.2em] text-[var(--gold)] uppercase"
+            style={cinzelStyle}
+            className="ml-3 text-sm tracking-[0.2em] text-[var(--gold)] uppercase"
           >
             HarborStats
           </Link>
