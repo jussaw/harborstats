@@ -19,13 +19,21 @@ async function hmacHex(secret: string, message: string): Promise<string> {
     .join('')
 }
 
+function getSessionSecret(): string {
+  const secret = process.env.ADMIN_SESSION_SECRET
+  if (!secret) {
+    throw new Error('ADMIN_SESSION_SECRET is required')
+  }
+  return secret
+}
+
 function hexToBytes(hex: string): ArrayBuffer {
   const bytes = new Uint8Array((hex.match(/.{2}/g) ?? []).map((b) => parseInt(b, 16)))
   return bytes.buffer as ArrayBuffer
 }
 
 export async function signSession(): Promise<string> {
-  const secret = process.env.ADMIN_SESSION_SECRET!
+  const secret = getSessionSecret()
   const iat = Math.floor(Date.now() / 1000).toString()
   const sig = await hmacHex(secret, iat)
   return `${iat}.${sig}`

@@ -7,6 +7,16 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "pnpm test:fast",
+    "test:fast": "pnpm test:unit && pnpm test:components",
+    "test:unit": "vitest run --config vitest.unit.config.ts",
+    "test:components": "vitest run --config vitest.components.config.ts",
+    "test:integration:prepare": "tsx tests/helpers/prepare-test-db.ts",
+    "test:integration": "pnpm test:integration:prepare && vitest run --config vitest.integration.config.ts",
+    "test:e2e:install": "playwright install chromium",
+    "test:e2e": "pnpm test:integration:prepare && playwright test",
+    "test:all": "pnpm test:fast && pnpm test:integration && pnpm test:e2e",
+    "test:ci": "pnpm build && pnpm test:fast && pnpm test:integration && pnpm test:e2e",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:up": "docker compose up -d",
@@ -31,7 +41,11 @@
     ]
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -42,9 +56,11 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-better-tailwindcss": "^4.4.1",
     "eslint-plugin-react-hooks": "^7.1.0",
+    "jsdom": "^29.0.2",
     "prettier": "^3.8.3",
     "tailwindcss": "^4",
     "tsx": "^4.19.3",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.4"
   }
 }
