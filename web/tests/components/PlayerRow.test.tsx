@@ -19,7 +19,7 @@ describe('PlayerRow', () => {
       />,
     )
 
-    const select = screen.getByRole('combobox')
+    const select = screen.getByRole('combobox', { name: 'Player' })
 
     expect(select.querySelector('optgroup[label="Premium"]')).not.toBeNull()
     expect(select.querySelector('optgroup[label="Standard"]')).not.toBeNull()
@@ -37,6 +37,39 @@ describe('PlayerRow', () => {
 
     expect(screen.getByRole('option', { name: 'Alice' })).not.toBeDisabled()
     expect(screen.getByRole('option', { name: 'Bob' })).toBeDisabled()
+  })
+
+  it('renders a score dropdown with 0 through 20 options', () => {
+    render(
+      <PlayerRow
+        value={{ playerId: 1, score: 10, isWinner: false }}
+        onChange={vi.fn()}
+        players={players}
+        selectedPlayerIds={[1]}
+      />,
+    )
+
+    const scoreSelect = screen.getByRole('combobox', { name: 'Score' })
+
+    expect(screen.getByRole('option', { name: '0' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: '20' })).toBeInTheDocument()
+    expect(scoreSelect).toHaveValue('10')
+  })
+
+  it('keeps an out-of-range saved score selectable while editing', () => {
+    render(
+      <PlayerRow
+        value={{ playerId: 1, score: 21, isWinner: false }}
+        onChange={vi.fn()}
+        players={players}
+        selectedPlayerIds={[1]}
+      />,
+    )
+
+    const scoreSelect = screen.getByRole('combobox', { name: 'Score' })
+
+    expect(screen.getByRole('option', { name: '21' })).toBeInTheDocument()
+    expect(scoreSelect).toHaveValue('21')
   })
 
   it('disables the winner toggle until a player is selected', () => {

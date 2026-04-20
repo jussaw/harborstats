@@ -56,10 +56,10 @@ test('home page loads and creates a game from the modal', async ({ page }) => {
   const dialog = page.locator('dialog')
   await expect(dialog.getByRole('heading', { name: 'New Game' })).toBeVisible()
 
-  await dialog.locator('select').nth(0).selectOption(String(ada.id))
-  await dialog.locator('input[type="number"]').nth(0).fill('10')
-  await dialog.locator('select').nth(1).selectOption(String(bea.id))
-  await dialog.locator('input[type="number"]').nth(1).fill('8')
+  await dialog.getByLabel('Player').nth(0).selectOption(String(ada.id))
+  await dialog.getByLabel('Score').nth(0).selectOption('10')
+  await dialog.getByLabel('Player').nth(1).selectOption(String(bea.id))
+  await dialog.getByLabel('Score').nth(1).selectOption('8')
   await dialog.getByLabel('Notes').fill('Smoke game')
   await dialog.getByRole('button', { name: 'Save Game' }).click()
 
@@ -201,9 +201,9 @@ test('admin login, edit game, and logout work', async ({ page }) => {
   await page.waitForLoadState('networkidle')
   await page.waitForTimeout(1_000)
 
-  await page.locator('input[type="number"]').nth(0).fill('5')
-  await page.locator('select').nth(1).selectOption(String(cara.id))
-  await page.locator('input[type="number"]').nth(1).fill('11')
+  await page.getByLabel('Score').nth(0).selectOption('5')
+  await page.getByLabel('Player').nth(1).selectOption(String(cara.id))
+  await page.getByLabel('Score').nth(1).selectOption('11')
   await page.getByLabel('Notes').fill('Updated harbor game')
   await Promise.all([
     page.waitForURL(/\/admin\/games$/, { timeout: 15_000 }),
