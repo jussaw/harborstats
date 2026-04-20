@@ -89,6 +89,30 @@ export function Sidebar({
           onClick={onNavigate}
         />
 
+        {players.length > 0 && (
+          <div className="pt-3">
+            <p
+              className={`px-2 pb-1 text-xs font-cinzel tracking-widest text-[var(--cream)]/30 uppercase ${collapsed ? 'sm:hidden' : ''}`}
+            >
+              Players
+            </p>
+            <div className="space-y-0.5">
+              {players.map((player) => (
+                <NavLink
+                  key={player.id}
+                  href={`/players/${player.id}`}
+                  Icon={User}
+                  label={player.name}
+                  active={isActive(`/players/${player.id}`, true)}
+                  collapsed={collapsed}
+                  onClick={onNavigate}
+                  premium={player.tier === PlayerTier.Premium}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
         {isAdmin && (
           <div className="pt-3">
             <p
@@ -135,30 +159,6 @@ export function Sidebar({
                   </span>
                 </button>
               </form>
-            </div>
-          </div>
-        )}
-
-        {players.length > 0 && (
-          <div className="pt-3">
-            <p
-              className={`px-2 pb-1 text-xs font-cinzel tracking-widest text-[var(--cream)]/30 uppercase ${collapsed ? 'sm:hidden' : ''}`}
-            >
-              Players
-            </p>
-            <div className="space-y-0.5">
-              {players.map((player) => (
-                <NavLink
-                  key={player.id}
-                  href={`/players/${player.id}`}
-                  Icon={User}
-                  label={player.name}
-                  active={isActive(`/players/${player.id}`, true)}
-                  collapsed={collapsed}
-                  onClick={onNavigate}
-                  premium={player.tier === PlayerTier.Premium}
-                />
-              ))}
             </div>
           </div>
         )}

@@ -80,4 +80,20 @@ describe('SidebarShell', () => {
     expect(gamesLink).toHaveAttribute('href', '/games')
     expect(gamesLink).toHaveClass('bg-[var(--gold)]/10')
   })
+
+  it('renders player links before admin links for admins', () => {
+    mockPathname = '/admin/games'
+
+    render(
+      <SidebarShell players={players} isAdmin logoutAction={vi.fn().mockResolvedValue(undefined)}>
+        <main>Dashboard</main>
+      </SidebarShell>,
+    )
+
+    const playerLink = screen.getByRole('link', { name: 'Alice' })
+    const adminGamesLink = screen.getAllByRole('link', { name: 'Games' }).find((link) => link.getAttribute('href') === '/admin/games')
+
+    expect(adminGamesLink).toBeDefined()
+    expect(playerLink.compareDocumentPosition(adminGamesLink as Element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
 })
