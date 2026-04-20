@@ -35,6 +35,7 @@ describe('PlayersPage', () => {
     expect(markup).toContain('/players/1')
     expect(markup).toContain('/players/2')
     expect(markup).toContain('PREMIUM')
+    expect(markup.match(/aria-current="page"/g)).toHaveLength(1)
   })
 
   it('renders an empty state when there are no players', async () => {

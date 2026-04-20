@@ -108,7 +108,7 @@ export function PlayersSection({ players, selectedPlayer, mobileMode }: Props) {
     <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
       <div className="sm:hidden">
         {mobileMode === 'list' ? (
-          <PlayersList players={players} selectedPlayerId={selectedPlayer?.id ?? null} />
+          <PlayersList players={players} selectedPlayerId={null} />
         ) : (
           <div className="space-y-4">
             <Link
