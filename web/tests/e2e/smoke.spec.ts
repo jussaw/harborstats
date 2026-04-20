@@ -55,6 +55,39 @@ test('home page loads and creates a game from the modal', async ({ page }) => {
   await expect(card).toContainText('10')
   await expect(card).toContainText('Bea')
   await expect(card).toContainText('8')
+  await expect(page.getByText('Show per page')).toHaveCount(0)
+})
+
+test('public games page paginates and supports page-size changes', async ({ page }) => {
+  const ada = await createE2ePlayer({ name: 'Ada' })
+  const bea = await createE2ePlayer({ name: 'Bea' })
+
+  await Promise.all(Array.from({ length: 21 }, async (_unused, index) => {
+    const gameNumber = index + 1
+    return createE2eGame({
+      playedAt: new Date(`2026-04-${String(gameNumber).padStart(2, '0')}T12:00:00.000Z`),
+      notes: `Harbor game ${gameNumber}`,
+      players: [
+        { playerId: ada.id, score: 10 + gameNumber, isWinner: true },
+        { playerId: bea.id, score: 5 + gameNumber, isWinner: false },
+      ],
+    })
+  }))
+
+  await page.goto('/games')
+  await expect(page.getByRole('heading', { name: 'Games' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Games' })).toBeVisible()
+  await expect(page.locator('article')).toHaveCount(20)
+  await expect(page).toHaveURL(/\/games$/)
+
+  await page.getByRole('link', { name: '2', exact: true }).click()
+  await expect(page).toHaveURL(/\/games\?page=2&pageSize=20/)
+  await expect(page.locator('article')).toHaveCount(1)
+  await expect(page.getByText('Harbor game 1')).toBeVisible()
+
+  await page.getByRole('link', { name: '50', exact: true }).click()
+  await expect(page).toHaveURL(/\/games\?page=1&pageSize=50/)
+  await expect(page.locator('article')).toHaveCount(21)
 })
 
 test('admin login, edit game, and logout work', async ({ page }) => {

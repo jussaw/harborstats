@@ -6,7 +6,7 @@ import { FormattedDate } from '@/components/FormattedDate'
 export const dynamic = 'force-dynamic'
 
 export default async function HomePage() {
-  const [games, players] = await Promise.all([listRecentGames(20), getPlayers()])
+  const [games, players] = await Promise.all([listRecentGames(), getPlayers()])
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-12">

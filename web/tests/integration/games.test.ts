@@ -7,6 +7,7 @@ import {
   createGame,
   deleteGame,
   getGameForEdit,
+  listGamesPage,
   listRecentGames,
   parseGameFormData,
   updateGame,
@@ -14,7 +15,7 @@ import {
 import { createTestGame, createTestPlayer } from '@/tests/helpers/db';
 
 function createGameFormData(
-  rows: Array<{ playerId?: number | string; score?: number | string; isWinner?: boolean }>,
+  rows: { playerId?: number | string; score?: number | string; isWinner?: boolean }[],
   input?: { playedAt?: string; notes?: string },
 ): FormData {
   const formData = new FormData();
@@ -217,6 +218,96 @@ describe('games lib', () => {
       { playerName: 'Ada', score: 11, isWinner: true },
       { playerName: 'Bea', score: 7, isWinner: false },
     ]);
+  });
+
+  it('defaults recent games to the latest 10 games', async () => {
+    const ada = await createTestPlayer({ name: 'Ada' });
+
+    const createdGames = await Promise.all(Array.from({ length: 12 }, async (_unused, index) => {
+      const gameNumber = index + 1;
+      return createTestGame({
+        playedAt: new Date(`2026-04-${String(gameNumber).padStart(2, '0')}T10:00:00.000Z`),
+        notes: `Game ${gameNumber}`,
+        players: [{ playerId: ada.id, score: gameNumber, isWinner: true }],
+      });
+    }));
+
+    const recentGames = await listRecentGames();
+
+    expect(recentGames).toHaveLength(10);
+    expect(recentGames.map((game) => game.id)).toEqual(
+      createdGames.slice(-10).reverse().map((game) => game.id),
+    );
+  });
+
+  it('lists a paginated slice of games with total counts and stable ordering', async () => {
+    const ada = await createTestPlayer({ name: 'Ada' });
+
+    const createdGames = await Promise.all(Array.from({ length: 25 }, async (_unused, index) => {
+      const day = index + 1
+      return createTestGame({
+        playedAt: new Date(`2026-04-${String(day).padStart(2, '0')}T10:00:00.000Z`),
+        notes: `Game ${day}`,
+        players: [{ playerId: ada.id, score: day, isWinner: true }],
+      })
+    }))
+
+    const page = await listGamesPage(2, 20);
+
+    expect(page.totalGames).toBe(25);
+    expect(page.totalPages).toBe(2);
+    expect(page.page).toBe(2);
+    expect(page.pageSize).toBe(20);
+    expect(page.games).toHaveLength(5);
+    expect(page.games.map((game) => game.id)).toEqual(createdGames.slice(0, 5).reverse().map((game) => game.id));
+  });
+
+  it('clamps page requests past the last page and keeps same-day games ordered by game id', async () => {
+    const ada = await createTestPlayer({ name: 'Ada' });
+    const bea = await createTestPlayer({ name: 'Bea' });
+
+    const olderGame = await createTestGame({
+      playedAt: new Date('2026-04-18T10:00:00.000Z'),
+      notes: 'Older game',
+      players: [{ playerId: ada.id, score: 8, isWinner: true }],
+    });
+
+    const sameDayFirst = await createTestGame({
+      playedAt: new Date('2026-04-19T10:00:00.000Z'),
+      notes: 'Earlier same-day insert',
+      players: [{ playerId: ada.id, score: 9, isWinner: true }],
+    });
+
+    const sameDaySecond = await createTestGame({
+      playedAt: new Date('2026-04-19T10:00:00.000Z'),
+      notes: 'Later same-day insert',
+      players: [{ playerId: bea.id, score: 10, isWinner: true }],
+    });
+
+    const page = await listGamesPage(9, 2);
+
+    expect(page.page).toBe(2);
+    expect(page.totalPages).toBe(2);
+    expect(page.games).toHaveLength(1);
+    expect(page.games[0]?.id).toBe(olderGame.id);
+    expect((await listGamesPage(1, 2)).games.map((game) => game.id)).toEqual([sameDaySecond.id, sameDayFirst.id]);
+  });
+
+  it('supports the allowed public page sizes', async () => {
+    const ada = await createTestPlayer({ name: 'Ada' });
+
+    await Promise.all(Array.from({ length: 65 }, async (_unused, index) => {
+      const gameNumber = index + 1
+      return createTestGame({
+        playedAt: new Date(`2026-03-${String((gameNumber % 28) + 1).padStart(2, '0')}T${String(gameNumber % 24).padStart(2, '0')}:00:00.000Z`),
+        notes: `Game ${gameNumber}`,
+        players: [{ playerId: ada.id, score: gameNumber, isWinner: true }],
+      })
+    }))
+
+    await expect(listGamesPage(1, 20)).resolves.toMatchObject({ pageSize: 20, totalPages: 4 });
+    await expect(listGamesPage(1, 50)).resolves.toMatchObject({ pageSize: 50, totalPages: 2 });
+    await expect(listGamesPage(1, 100)).resolves.toMatchObject({ pageSize: 100, totalPages: 1 });
   });
 
   it('returns a game ready for editing with players ordered by name', async () => {

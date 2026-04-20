@@ -1,4 +1,4 @@
-import { eq, desc, asc } from 'drizzle-orm'
+import { eq, desc, asc, count, inArray } from 'drizzle-orm'
 import { games, gamePlayers, players } from '@/db/schema'
 import { db } from './db'
 
@@ -78,6 +78,19 @@ export interface RecentGame {
   players: { playerName: string; score: number; isWinner: boolean }[]
 }
 
+export const DEFAULT_RECENT_GAMES_LIMIT = 10
+export const GAMES_PAGE_SIZES = [20, 50, 100] as const
+
+export type GamesPageSize = (typeof GAMES_PAGE_SIZES)[number]
+
+export interface GamesPage {
+  games: RecentGame[]
+  totalGames: number
+  page: number
+  pageSize: number
+  totalPages: number
+}
+
 interface GameRow {
   id: number
   playedAt: Date
@@ -103,7 +116,7 @@ function groupGameRows(rows: GameRow[]): RecentGame[] {
   return uniqueGameIds.map((id) => gamesMap.get(id)!)
 }
 
-export async function listRecentGames(limit = 20): Promise<RecentGame[]> {
+export async function listRecentGames(limit = DEFAULT_RECENT_GAMES_LIMIT): Promise<RecentGame[]> {
   const rows = await db
     .select({
       id: games.id,
@@ -119,6 +132,60 @@ export async function listRecentGames(limit = 20): Promise<RecentGame[]> {
     .orderBy(desc(games.playedAt), desc(games.id), asc(players.name))
     .limit(limit * 10)
   return groupGameRows(rows).slice(0, limit)
+}
+
+export async function listGamesPage(page = 1, pageSize = 20): Promise<GamesPage> {
+  const safePageSize = Number.isInteger(pageSize) && pageSize > 0 ? pageSize : 20
+  const safePage = Number.isInteger(page) && page > 0 ? page : 1
+
+  const [{ totalGames }] = await db.select({ totalGames: count() }).from(games)
+  const totalPages = totalGames === 0 ? 0 : Math.ceil(totalGames / safePageSize)
+  const currentPage = totalPages === 0 ? 1 : Math.min(safePage, totalPages)
+
+  if (totalGames === 0) {
+    return { games: [], totalGames, page: currentPage, pageSize: safePageSize, totalPages }
+  }
+
+  const pageGames = await db
+    .select({
+      id: games.id,
+      playedAt: games.playedAt,
+      notes: games.notes,
+    })
+    .from(games)
+    .orderBy(desc(games.playedAt), desc(games.id))
+    .limit(safePageSize)
+    .offset((currentPage - 1) * safePageSize)
+
+  const gameIds = pageGames.map((game) => game.id)
+  if (gameIds.length === 0) {
+    return { games: [], totalGames, page: currentPage, pageSize: safePageSize, totalPages }
+  }
+
+  const rows = await db
+    .select({
+      id: games.id,
+      playedAt: games.playedAt,
+      notes: games.notes,
+      playerName: players.name,
+      score: gamePlayers.score,
+      isWinner: gamePlayers.isWinner,
+    })
+    .from(games)
+    .innerJoin(gamePlayers, eq(gamePlayers.gameId, games.id))
+    .innerJoin(players, eq(players.id, gamePlayers.playerId))
+    .where(inArray(games.id, gameIds))
+    .orderBy(desc(games.playedAt), desc(games.id), asc(players.name))
+
+  const groupedGames = new Map(groupGameRows(rows).map((game) => [game.id, game]))
+
+  return {
+    games: gameIds.map((id) => groupedGames.get(id)).filter((game): game is RecentGame => Boolean(game)),
+    totalGames,
+    page: currentPage,
+    pageSize: safePageSize,
+    totalPages,
+  }
 }
 
 export async function listAllGames(): Promise<RecentGame[]> {

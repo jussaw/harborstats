@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import {
   Home,
+  ScrollText,
   BarChart3,
   ShieldCheck,
   User,
@@ -68,6 +69,14 @@ export function Sidebar({
           Icon={Home}
           label="Home"
           active={isActive('/', true)}
+          collapsed={collapsed}
+          onClick={onNavigate}
+        />
+        <NavLink
+          href="/games"
+          Icon={ScrollText}
+          label="Games"
+          active={isActive('/games', true)}
           collapsed={collapsed}
           onClick={onNavigate}
         />

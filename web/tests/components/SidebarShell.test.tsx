@@ -4,8 +4,10 @@ import { describe, expect, it, vi } from 'vitest'
 import { SidebarShell } from '@/components/SidebarShell'
 import { PlayerTier } from '@/lib/player-tier'
 
+let mockPathname = '/admin/games'
+
 vi.mock('next/navigation', () => ({
-  usePathname: () => '/admin/games',
+  usePathname: () => mockPathname,
 }))
 
 const players = [{ id: 1, name: 'Alice', tier: PlayerTier.Premium }]
@@ -20,6 +22,7 @@ describe('SidebarShell', () => {
   }
 
   it('opens and closes the mobile navigation', async () => {
+    mockPathname = '/admin/games'
     const user = userEvent.setup()
 
     render(
@@ -40,6 +43,7 @@ describe('SidebarShell', () => {
   })
 
   it('persists the collapsed sidebar state in localStorage', async () => {
+    mockPathname = '/admin/games'
     const user = userEvent.setup()
 
     const { unmount } = render(
@@ -60,5 +64,20 @@ describe('SidebarShell', () => {
     )
 
     await waitFor(() => expect(screen.getByLabelText('Expand sidebar')).toBeInTheDocument())
+  })
+
+  it('shows the public Games link and marks it active on /games', () => {
+    mockPathname = '/games'
+
+    render(
+      <SidebarShell players={players} isAdmin={false} logoutAction={vi.fn().mockResolvedValue(undefined)}>
+        <main>Dashboard</main>
+      </SidebarShell>,
+    )
+
+    const gamesLink = screen.getByRole('link', { name: 'Games' })
+
+    expect(gamesLink).toHaveAttribute('href', '/games')
+    expect(gamesLink).toHaveClass('bg-[var(--gold)]/10')
   })
 })
