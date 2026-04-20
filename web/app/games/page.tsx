@@ -19,12 +19,6 @@ export default async function GamesPage({ searchParams }: Props) {
   const { page: requestedPage, pageSize, filters } = parseGamesPageState(params)
   const { games, totalGames, page, totalPages } = await listGamesPage(requestedPage, pageSize, filters)
   const hasActiveFilters = hasActiveGamesPageFilters(filters)
-  const filtersKey = [
-    pageSize,
-    filters.playerIds.join(','),
-    filters.from?.toISOString() ?? '',
-    filters.to?.toISOString() ?? '',
-  ].join('|')
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-12">
@@ -33,7 +27,7 @@ export default async function GamesPage({ searchParams }: Props) {
           <h1 className="text-xl text-[var(--gold)] tracking-wide">Games</h1>
           <p className="mt-1 text-xs text-[var(--cream)]/50">{totalGames} recorded</p>
         </div>
-        <GamesFilters key={filtersKey} players={players} pageSize={pageSize} filters={filters} />
+        <GamesFilters players={players} pageSize={pageSize} filters={filters} />
         <GamesPagination page={page} pageSize={pageSize} totalPages={totalPages} filters={filters} />
       </div>
 

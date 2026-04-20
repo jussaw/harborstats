@@ -13,6 +13,12 @@ interface Props {
   filters: GamesPageFilters
 }
 
+interface FiltersFormState {
+  playerIds: number[]
+  fromLocal: string
+  toLocal: string
+}
+
 function countActiveFilters(filters: GamesPageFilters) {
   let count = 0
   if (filters.playerIds.length > 0) count += 1
@@ -33,16 +39,32 @@ function parseLocalDateValue(value: string) {
   return Number.isNaN(parsed.valueOf()) ? null : parsed
 }
 
+function samePlayerIds(current: number[], next: number[]) {
+  return current.length === next.length && current.every((playerId, index) => playerId === next[index])
+}
+
+function sameFiltersState(current: FiltersFormState, next: FiltersFormState) {
+  return samePlayerIds(current.playerIds, next.playerIds)
+    && current.fromLocal === next.fromLocal
+    && current.toLocal === next.toLocal
+}
+
 export function GamesFilters({ players, pageSize, filters }: Props) {
   const pathname = usePathname()
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [isOpen, setIsOpen] = useState(false)
   const [isPlayersOpen, setIsPlayersOpen] = useState(false)
-  const [selectedPlayerIds, setSelectedPlayerIds] = useState<number[]>(filters.playerIds)
-  const [fromLocal, setFromLocal] = useState(filters.from ? isoToDatetimeLocal(filters.from.toISOString()) : '')
-  const [toLocal, setToLocal] = useState(filters.to ? isoToDatetimeLocal(filters.to.toISOString()) : '')
+  const [draftFilters, setDraftFilters] = useState<FiltersFormState | null>(null)
   const drawerId = useId()
+  const baseFiltersState: FiltersFormState = {
+    playerIds: filters.playerIds,
+    fromLocal: filters.from ? isoToDatetimeLocal(filters.from.toISOString()) : '',
+    toLocal: filters.to ? isoToDatetimeLocal(filters.to.toISOString()) : '',
+  }
+  const activeFiltersState = draftFilters && !sameFiltersState(draftFilters, baseFiltersState)
+    ? draftFilters
+    : baseFiltersState
 
   function replaceWithFilters(nextFilters: GamesPageFilters) {
     const nextSearch = createGamesSearchParams({
@@ -56,42 +78,45 @@ export function GamesFilters({ players, pageSize, filters }: Props) {
     })
   }
 
-  function getCurrentDateFilters() {
+  function getCurrentDateFilters(nextState: FiltersFormState = activeFiltersState) {
     return {
-      from: parseLocalDateValue(fromLocal),
-      to: parseLocalDateValue(toLocal),
+      from: parseLocalDateValue(nextState.fromLocal),
+      to: parseLocalDateValue(nextState.toLocal),
     }
   }
 
   function togglePlayer(playerId: number) {
-    const nextPlayerIds = selectedPlayerIds.includes(playerId)
-      ? selectedPlayerIds.filter((selectedId) => selectedId !== playerId)
-      : [...selectedPlayerIds, playerId]
+    const nextPlayerIds = activeFiltersState.playerIds.includes(playerId)
+      ? activeFiltersState.playerIds.filter((selectedId) => selectedId !== playerId)
+      : [...activeFiltersState.playerIds, playerId]
+    const nextState = { ...activeFiltersState, playerIds: nextPlayerIds }
 
-    setSelectedPlayerIds(nextPlayerIds)
+    setDraftFilters(nextState)
     replaceWithFilters({
       playerIds: nextPlayerIds,
-      ...getCurrentDateFilters(),
+      ...getCurrentDateFilters(nextState),
     })
   }
 
   function clearPlayers() {
-    setSelectedPlayerIds([])
+    const nextState = { ...activeFiltersState, playerIds: [] }
+
+    setDraftFilters(nextState)
     replaceWithFilters({
       playerIds: [],
-      ...getCurrentDateFilters(),
+      ...getCurrentDateFilters(nextState),
     })
   }
 
   function commitDateFilters() {
     replaceWithFilters({
-      playerIds: selectedPlayerIds,
+      playerIds: activeFiltersState.playerIds,
       ...getCurrentDateFilters(),
     })
   }
 
   const activeFilterCount = countActiveFilters({
-    playerIds: selectedPlayerIds,
+    playerIds: activeFiltersState.playerIds,
     ...getCurrentDateFilters(),
   })
 
@@ -114,7 +139,7 @@ export function GamesFilters({ players, pageSize, filters }: Props) {
         </button>
 
         <p className="text-xs text-[var(--cream)]/55">
-          {selectedPlayerIds.length === 0 ? 'All players included' : getPlayersSummary(selectedPlayerIds)}
+          {activeFiltersState.playerIds.length === 0 ? 'All players included' : getPlayersSummary(activeFiltersState.playerIds)}
         </p>
       </div>
 
@@ -131,14 +156,14 @@ export function GamesFilters({ players, pageSize, filters }: Props) {
                 onClick={() => setIsPlayersOpen((open) => !open)}
                 className="flex w-full items-center justify-between rounded border border-[var(--gold)]/30 bg-[var(--navy-900)] px-3 py-2 text-sm text-[var(--cream)] transition-colors hover:border-[var(--gold)]"
               >
-                <span>{getPlayersSummary(selectedPlayerIds)}</span>
+                <span>{getPlayersSummary(activeFiltersState.playerIds)}</span>
                 <span className="text-xs text-[var(--cream)]/50">{isPlayersOpen ? 'Hide' : 'Show'}</span>
               </button>
 
               {isPlayersOpen && (
                 <div className="max-h-56 space-y-2 overflow-y-auto rounded border border-[var(--gold)]/20 bg-[var(--navy-900)]/80 p-3">
                   {players.map((player) => {
-                    const isChecked = selectedPlayerIds.includes(player.id)
+                    const isChecked = activeFiltersState.playerIds.includes(player.id)
 
                     return (
                       <div key={player.id} className="flex items-center gap-2 text-sm text-[var(--cream)]">
@@ -172,8 +197,8 @@ export function GamesFilters({ players, pageSize, filters }: Props) {
               id="games-filter-from"
               aria-label="From"
               type="datetime-local"
-              value={fromLocal}
-              onChange={(event) => setFromLocal(event.target.value)}
+              value={activeFiltersState.fromLocal}
+              onChange={(event) => setDraftFilters({ ...activeFiltersState, fromLocal: event.target.value })}
               onBlur={commitDateFilters}
               className="w-full rounded border border-[var(--gold)]/30 bg-[var(--navy-900)] px-3 py-2 text-sm text-[var(--cream)] [color-scheme:dark]"
             />
@@ -185,8 +210,8 @@ export function GamesFilters({ players, pageSize, filters }: Props) {
               id="games-filter-to"
               aria-label="To"
               type="datetime-local"
-              value={toLocal}
-              onChange={(event) => setToLocal(event.target.value)}
+              value={activeFiltersState.toLocal}
+              onChange={(event) => setDraftFilters({ ...activeFiltersState, toLocal: event.target.value })}
               onBlur={commitDateFilters}
               className="w-full rounded border border-[var(--gold)]/30 bg-[var(--navy-900)] px-3 py-2 text-sm text-[var(--cream)] [color-scheme:dark]"
             />

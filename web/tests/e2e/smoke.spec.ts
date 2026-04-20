@@ -145,9 +145,9 @@ test('public games page filters by players and date range while preserving pagin
 
   await expect(page).toHaveURL(/\/games\?page=1&pageSize=20&player=1$/)
   await expect(page.locator('article')).toHaveCount(12)
+  await expect(page.getByRole('button', { name: /filters/i })).toHaveAttribute('aria-expanded', 'true')
+  await expect(page.getByLabel('Players')).toHaveAttribute('aria-expanded', 'true')
 
-  await openGamesFilters(page)
-  await openPlayersFilter(page)
   await page.getByLabel('Bea').check()
 
   await expect(page).toHaveURL(/\/games\?page=1&pageSize=20&player=1&player=2$/)
