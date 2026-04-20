@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { PlayerTier } from '@/lib/player-tier'
 import { getPlayerWinRates, getPlayerScoreStats, getPlayerPodiumRates } from '@/lib/stats'
 import { getSettings } from '@/lib/settings'
 import { formatPercent, formatAverage } from '@/lib/format'
@@ -71,10 +72,10 @@ export default async function StatsPage() {
                     {totalWinsRanks[idx] === 1 ? '👑' : totalWinsRanks[idx]}
                   </td>
                   <td className="px-3 py-2 text-[var(--cream)]">
-                    <span className={player.tier === 'premium' ? 'text-[var(--gold)] font-semibold' : ''}>
+                    <span className={player.tier === PlayerTier.Premium ? 'text-[var(--gold)] font-semibold' : ''}>
                       {player.name}
                     </span>
-                    {player.tier === 'premium' && (
+                    {player.tier === PlayerTier.Premium && (
                       <span className="ml-2 rounded px-1 py-0.5 text-xs font-cinzel tracking-widest bg-[var(--gold)]/15 text-[var(--gold)] uppercase">
                         Premium
                       </span>
@@ -138,10 +139,10 @@ export default async function StatsPage() {
                       {winRateRanks[idx] === 1 ? '👑' : winRateRanks[idx]}
                     </td>
                     <td className="px-3 py-2 text-[var(--cream)]">
-                      <span className={player.tier === 'premium' ? 'text-[var(--gold)] font-semibold' : ''}>
+                      <span className={player.tier === PlayerTier.Premium ? 'text-[var(--gold)] font-semibold' : ''}>
                         {player.name}
                       </span>
-                      {player.tier === 'premium' && (
+                      {player.tier === PlayerTier.Premium && (
                         <span className="ml-2 rounded px-1 py-0.5 text-xs font-cinzel tracking-widest bg-[var(--gold)]/15 text-[var(--gold)] uppercase">
                           Premium
                         </span>
@@ -198,11 +199,11 @@ export default async function StatsPage() {
                     </td>
                     <td className="px-3 py-2 text-[var(--cream)]">
                       <span
-                        className={player.tier === 'premium' ? 'text-[var(--gold)] font-semibold' : ''}
+                        className={player.tier === PlayerTier.Premium ? 'text-[var(--gold)] font-semibold' : ''}
                       >
                         {player.name}
                       </span>
-                      {player.tier === 'premium' && (
+                      {player.tier === PlayerTier.Premium && (
                         <span className="ml-2 rounded px-1 py-0.5 text-xs font-cinzel tracking-widest bg-[var(--gold)]/15 text-[var(--gold)] uppercase">
                           Premium
                         </span>
@@ -257,12 +258,14 @@ export default async function StatsPage() {
                       <td className="px-3 py-2 text-[var(--cream)]">
                         <span
                           className={
-                            player.tier === 'premium' ? 'text-[var(--gold)] font-semibold' : ''
+                            player.tier === PlayerTier.Premium
+                              ? 'text-[var(--gold)] font-semibold'
+                              : ''
                           }
                         >
                           {player.name}
                         </span>
-                        {player.tier === 'premium' && (
+                        {player.tier === PlayerTier.Premium && (
                           <span className="ml-2 rounded px-1 py-0.5 text-xs font-cinzel tracking-widest bg-[var(--gold)]/15 text-[var(--gold)] uppercase">
                             Premium
                           </span>
@@ -319,11 +322,13 @@ export default async function StatsPage() {
                     </td>
                     <td className="px-3 py-2 text-[var(--cream)]">
                       <span
-                        className={player.tier === 'premium' ? 'text-[var(--gold)] font-semibold' : ''}
+                        className={
+                          player.tier === PlayerTier.Premium ? 'text-[var(--gold)] font-semibold' : ''
+                        }
                       >
                         {player.name}
                       </span>
-                      {player.tier === 'premium' && (
+                      {player.tier === PlayerTier.Premium && (
                         <span className="ml-2 rounded px-1 py-0.5 text-xs font-cinzel tracking-widest bg-[var(--gold)]/15 text-[var(--gold)] uppercase">
                           Premium
                         </span>

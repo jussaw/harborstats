@@ -2,12 +2,13 @@
 
 import { count, eq, sql } from 'drizzle-orm'
 import { gamePlayers, players } from '@/db/schema'
+import { parsePlayerTier, type PlayerTier } from '@/lib/player-tier'
 import { db } from './db'
 
 export interface PlayerWinRate {
   playerId: number
   name: string
-  tier: string
+  tier: PlayerTier
   games: number
   wins: number
   winRate: number // 0.0–1.0
@@ -29,6 +30,7 @@ export async function getPlayerWinRates(): Promise<PlayerWinRate[]> {
   return rows
     .map((row) => ({
       ...row,
+      tier: parsePlayerTier(row.tier),
       winRate: row.games > 0 ? row.wins / row.games : 0,
     }))
     .sort((a, b) => b.wins - a.wins || b.winRate - a.winRate)
@@ -37,7 +39,7 @@ export async function getPlayerWinRates(): Promise<PlayerWinRate[]> {
 export interface PlayerScoreStats {
   playerId: number
   name: string
-  tier: string
+  tier: PlayerTier
   games: number
   avgScore: number
   medianScore: number
@@ -62,6 +64,7 @@ export async function getPlayerScoreStats(): Promise<PlayerScoreStats[]> {
   return rows
     .map((row) => ({
       ...row,
+      tier: parsePlayerTier(row.tier),
       avgScore: round1(row.avgScore),
       medianScore: round1(row.medianScore),
     }))
@@ -71,7 +74,7 @@ export async function getPlayerScoreStats(): Promise<PlayerScoreStats[]> {
 export interface PlayerPodiumRate {
   playerId: number
   name: string
-  tier: string
+  tier: PlayerTier
   games: number
   podiums: number
   podiumRate: number // 0.0–1.0
@@ -104,7 +107,7 @@ export async function getPlayerPodiumRates(): Promise<PlayerPodiumRate[]> {
       return {
         playerId: row.playerId as number,
         name: row.name as string,
-        tier: row.tier as string,
+        tier: parsePlayerTier(row.tier as string),
         games,
         podiums,
         podiumRate: games > 0 ? podiums / games : 0,

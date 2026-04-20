@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
+import { PlayerTier } from '@/lib/player-tier'
 import { getPlayerById } from '@/lib/players'
 
 export const dynamic = 'force-dynamic'
@@ -33,7 +34,7 @@ export default async function PlayerProfilePage({ params }: Props) {
           </div>
           <div>
             <h1 className="font-cinzel text-2xl tracking-wide text-[var(--gold)]">{player.name}</h1>
-            {player.tier === 'premium' && (
+            {player.tier === PlayerTier.Premium && (
               <span className="mt-1 inline-block rounded px-1.5 py-0.5 text-xs font-cinzel tracking-widest bg-[var(--gold)]/15 text-[var(--gold)] uppercase">
                 PREMIUM
               </span>

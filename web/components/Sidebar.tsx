@@ -13,6 +13,7 @@ import {
   Users,
   Settings,
 } from 'lucide-react'
+import { PlayerTier } from '@/lib/player-tier'
 import type { Player } from '@/lib/players'
 
 interface Props {
@@ -146,7 +147,7 @@ export function Sidebar({
                   active={isActive(`/players/${player.id}`, true)}
                   collapsed={collapsed}
                   onClick={onNavigate}
-                  premium={player.tier === 'premium'}
+                  premium={player.tier === PlayerTier.Premium}
                 />
               ))}
             </div>

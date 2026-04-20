@@ -1,6 +1,7 @@
 import { listPlayersWithUsage } from '@/lib/players'
-import { createPlayerAction, updatePlayerAction, deletePlayerAction } from './actions'
+import { PLAYER_TIER_OPTIONS } from '@/lib/player-tier'
 import { ConfirmDeleteButton } from '@/app/admin/ConfirmDeleteButton'
+import { createPlayerAction, updatePlayerAction, deletePlayerAction } from './actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -67,8 +68,11 @@ export default async function AdminPlayersPage({ searchParams }: Props) {
                 name="tier"
                 className="rounded border border-[var(--gold)]/40 bg-[var(--navy-900)] px-3 py-2 text-sm text-[var(--cream)] focus:border-[var(--gold)] focus:outline-none transition-colors"
               >
-                <option value="premium">Premium</option>
-                <option value="standard">Standard</option>
+                {PLAYER_TIER_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </div>
             <button
@@ -115,8 +119,11 @@ export default async function AdminPlayersPage({ searchParams }: Props) {
                     defaultValue={player.tier}
                     className="rounded border border-[var(--gold)]/30 bg-[var(--navy-900)] px-2 py-1.5 text-xs text-[var(--cream)] focus:border-[var(--gold)] focus:outline-none transition-colors"
                   >
-                    <option value="premium">Premium</option>
-                    <option value="standard">Standard</option>
+                    {PLAYER_TIER_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
                   </select>
                   <span className="text-xs text-[var(--cream)]/30 tabular-nums shrink-0">
                     {player.gameCount} {player.gameCount === 1 ? 'game' : 'games'}

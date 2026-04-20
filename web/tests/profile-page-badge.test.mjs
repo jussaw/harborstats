@@ -12,4 +12,5 @@ test('premium player profiles use the PREMIUM badge label', async () => {
 
   assert.match(source, /PREMIUM/);
   assert.doesNotMatch(source, />\s*Pro\s*</);
+  assert.match(source, /player\.tier === PlayerTier\.Premium/);
 });

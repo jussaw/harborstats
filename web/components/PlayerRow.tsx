@@ -1,5 +1,6 @@
 'use client'
 
+import { PlayerTier } from '@/lib/player-tier'
 import { Stepper } from './Stepper'
 
 interface PlayerRowValue {
@@ -11,13 +12,13 @@ interface PlayerRowValue {
 interface PlayerRowProps {
   value: PlayerRowValue
   onChange: (v: PlayerRowValue) => void
-  players: { id: number; name: string; tier: string }[]
+  players: { id: number; name: string; tier: PlayerTier }[]
   selectedPlayerIds: number[]
 }
 
 export function PlayerRow({ value, onChange, players, selectedPlayerIds }: PlayerRowProps) {
-  const premium = players.filter((p) => p.tier === 'premium')
-  const standard = players.filter((p) => p.tier === 'standard')
+  const premium = players.filter((p) => p.tier === PlayerTier.Premium)
+  const standard = players.filter((p) => p.tier === PlayerTier.Standard)
   const selectedIds = new Set(selectedPlayerIds)
 
   const handlePlayerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
