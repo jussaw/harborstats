@@ -84,6 +84,11 @@ pnpm db:baseline
 pnpm db:studio
 ```
 
+## Git / Worktree Workflow
+- Use repo-local `.worktrees/` for worktrees created by any agentic AI tool working in this repo.
+- `.worktrees/` is already gitignored for this repo, so treat it as the standard worktree location for agentic tooling instead of checking for alternates each time.
+- Only use a different worktree location if the user explicitly asks for one.
+
 Schema change protocol:
 1. Edit `db/schema.ts`
 2. Run `pnpm db:generate`
@@ -116,12 +121,39 @@ Schema change protocol:
 - Keep admin shell/nav consistent via `app/admin/AdminShell.tsx`.
 
 ## Testing and Verification
-There is currently **no automated test suite** configured.
+Automated tests are configured and should be part of normal feature work.
+
+When adding a new feature or making a meaningful behavior change, add or update automated tests in the narrowest matching layer. Purely cosmetic or copy-only edits can use lighter judgment, but default to coverage for anything users or domain logic can feel.
+
+Use the existing test layout and patterns:
+- `tests/unit/**`: pure server/lib/proxy/helper coverage with Vitest in the node environment
+- `tests/components/**`: React component behavior with Vitest, Testing Library, and jsdom
+- `tests/integration/**`: DB-backed domain logic and server-action flows using the prepared test database helpers
+- `tests/e2e/**`: Playwright coverage for multi-step user journeys, navigation, auth, and cross-layer regressions
+
+Choose the smallest layer that proves the behavior:
+- Logic-only change: add/update a unit test near similar coverage such as `tests/unit/lib/*.test.ts`
+- Interactive UI change: add/update a component test such as `tests/components/*.test.tsx`
+- Persistence/query/server-action change: add/update an integration test such as `tests/integration/*.test.ts`
+- Full workflow regression spanning multiple layers: add/update an e2e spec such as `tests/e2e/*.spec.ts`
+
+Follow the current test style instead of inventing new conventions:
+- Use focused `describe`/`it` scenarios
+- Use `vi.mock`, `vi.stubEnv`, and fake timers where appropriate in unit tests
+- Use Testing Library helpers such as `render`, `screen`, `waitFor`, and `userEvent` for component tests
+- Reuse shared DB helpers such as `createTestPlayer`, `createTestGame`, and the prepared integration DB flow instead of bespoke setup
+- Keep tests grouped by domain under the existing `tests/` folders rather than creating a new test layout
 
 Minimum validation after meaningful changes:
-1. `pnpm lint`
-2. `pnpm build`
-3. Manual smoke check:
+1. `pnpm test`
+2. `pnpm lint`
+3. `pnpm build`
+4. Run targeted suites when relevant:
+   - `pnpm test:unit`
+   - `pnpm test:components`
+   - `pnpm test:integration`
+   - `pnpm test:e2e`
+5. Manual smoke check when the change touches the corresponding flows:
    - Create game from home modal
    - Edit/delete game in admin
    - Add/rename/delete player in admin
