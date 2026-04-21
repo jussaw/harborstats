@@ -39,16 +39,16 @@ Placement tags: `[H]` home page · `[S]` new `/stats` landing · `[P]` per-playe
 
 ### 1.3 Average score per player `[S]` `[P]`
 - [x] `[S]` Show each player's mean score across all their games.
-- [ ] `[P]` Show player's mean score on their profile page.
+- [x] `[P]` Show player's mean score on their profile page.
 
 ### 1.4 Median score per player `[S]` `[P]`
 - [x] `[S]` Show each player's median score; more robust than mean for skewed distributions.
-- [ ] `[P]` Show player's median score on their profile page.
+- [x] `[P]` Show player's median score on their profile page.
 - **Needs:** per-player score list (share query from 1.3)
 
 ### 1.5 Podium rate `[S]` `[P]`
 - [x] `[S]` Show each player's percentage of games finishing 1st or 2nd.
-- [ ] `[P]` Show player's podium rate on their profile page.
+- [x] `[P]` Show player's podium rate on their profile page.
 
 ### 1.6 Finish-position breakdown `[S]` `[P]`
 - [ ] Show % of games each player finished 1st / 2nd / 3rd / last; needs a defined tie-breaking rule.

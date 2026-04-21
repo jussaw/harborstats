@@ -1,7 +1,10 @@
 import Link from 'next/link'
 import { ArrowLeft, User } from 'lucide-react'
+import { StatsCard } from '@/components/StatsCard'
+import { formatAverage, formatPercent } from '@/lib/format'
 import { PlayerTier } from '@/lib/player-tier'
 import type { Player } from '@/lib/players'
+import type { PlayerPodiumRate, PlayerScoreStats } from '@/lib/stats'
 import { PlayerProfileCard } from './PlayerProfileCard'
 
 const cinzelStyle = {
@@ -12,6 +15,8 @@ interface Props {
   players: Player[]
   selectedPlayer: Player | null
   mobileMode: 'list' | 'detail'
+  scoreStats: PlayerScoreStats[]
+  podiumRates: PlayerPodiumRate[]
 }
 
 interface PlayersListProps {
@@ -92,11 +97,95 @@ function PlayersList({ players, selectedPlayerId }: PlayersListProps) {
   )
 }
 
-function PlayerDetail({ player }: { player: Player }) {
+function EmptyMetricState() {
+  return <p className="py-8 text-center text-sm text-(--cream)/50">No games recorded yet.</p>
+}
+
+interface ProfileMetricCardProps {
+  id: string
+  title: string
+  description: string
+  value: string | null
+  detail: string | null
+}
+
+function ProfileMetricCard({ id, title, description, value, detail }: ProfileMetricCardProps) {
   return (
-    <div>
+    <StatsCard id={id} title={title} description={description} badge={undefined} span="single">
+      {value && detail ? (
+        <div className="space-y-2">
+          <p
+            style={cinzelStyle}
+            className="
+              text-4xl leading-none font-semibold tracking-wide text-(--gold)
+            "
+          >
+            {value}
+          </p>
+          <p className="text-sm text-(--cream)/55">{detail}</p>
+        </div>
+      ) : (
+        <EmptyMetricState />
+      )}
+    </StatsCard>
+  )
+}
+
+function formatCount(value: number, singular: string, plural = `${singular}s`) {
+  return `${value} ${value === 1 ? singular : plural}`
+}
+
+function PlayerDetail({
+  player,
+  scoreStats,
+  podiumRates,
+}: {
+  player: Player
+  scoreStats: PlayerScoreStats[]
+  podiumRates: PlayerPodiumRate[]
+}) {
+  const scoreStat = scoreStats.find((candidate) => candidate.playerId === player.id) ?? null
+  const podiumStat = podiumRates.find((candidate) => candidate.playerId === player.id) ?? null
+
+  const hasGames = scoreStat !== null && scoreStat.games > 0
+  const podiumHasGames = podiumStat !== null && podiumStat.games > 0
+
+  return (
+    <div className="space-y-5">
       <PlayerProfileCard player={player} />
-      <p className="py-8 text-center text-sm text-(--cream)/40">Full profile stats coming soon.</p>
+      <div className="
+        grid grid-cols-1 gap-5
+        lg:grid-cols-3
+      ">
+        <ProfileMetricCard
+          id="player-avg-score"
+          title="Average Score"
+          description="Mean score across all recorded games."
+          value={hasGames ? formatAverage(scoreStat.avgScore) : null}
+          detail={hasGames ? `Across ${formatCount(scoreStat.games, 'game')}` : null}
+        />
+        <ProfileMetricCard
+          id="player-median-score"
+          title="Median Score"
+          description="Middle score to smooth out unusually high or low games."
+          value={hasGames ? formatAverage(scoreStat.medianScore) : null}
+          detail={hasGames ? `Across ${formatCount(scoreStat.games, 'game')}` : null}
+        />
+        <ProfileMetricCard
+          id="player-podium-rate"
+          title="Podium Rate"
+          description="Share of games finished in first or second place."
+          value={podiumHasGames ? formatPercent(podiumStat.podiumRate, 1) : null}
+          detail={
+            podiumHasGames
+              ? `${formatCount(podiumStat.podiums, 'podium')} in ${formatCount(
+                  podiumStat.games,
+                  'game',
+                )}`
+              : null
+          }
+        />
+      </div>
     </div>
   )
 }
@@ -114,7 +203,13 @@ function PlayersDetailEmptyState() {
   )
 }
 
-export function PlayersSection({ players, selectedPlayer, mobileMode }: Props) {
+export function PlayersSection({
+  players,
+  selectedPlayer,
+  mobileMode,
+  scoreStats,
+  podiumRates,
+}: Props) {
   if (players.length === 0) {
     return (
       <main className="mx-auto max-w-3xl px-4 py-12">
@@ -157,7 +252,13 @@ export function PlayersSection({ players, selectedPlayer, mobileMode }: Props) {
               <ArrowLeft className="size-4" />
               <span>Back to players</span>
             </Link>
-            {selectedPlayer ? <PlayerDetail player={selectedPlayer} /> : null}
+            {selectedPlayer ? (
+              <PlayerDetail
+                player={selectedPlayer}
+                scoreStats={scoreStats}
+                podiumRates={podiumRates}
+              />
+            ) : null}
           </div>
         )}
       </div>
@@ -170,7 +271,15 @@ export function PlayersSection({ players, selectedPlayer, mobileMode }: Props) {
         <div className="
           rounded-2xl border border-(--gold)/20 bg-(--navy-900)/30 p-6
         ">
-          {selectedPlayer ? <PlayerDetail player={selectedPlayer} /> : <PlayersDetailEmptyState />}
+          {selectedPlayer ? (
+            <PlayerDetail
+              player={selectedPlayer}
+              scoreStats={scoreStats}
+              podiumRates={podiumRates}
+            />
+          ) : (
+            <PlayersDetailEmptyState />
+          )}
         </div>
       </div>
     </main>
