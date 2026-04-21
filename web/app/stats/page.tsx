@@ -35,15 +35,6 @@ function PlayerName({ name, tier }: { name: string; tier: PlayerTier }) {
       ` : ''}>
         {name}
       </span>
-      {tier === PlayerTier.Premium && (
-        <span className="
-          ml-2 hidden rounded-sm bg-(--gold)/15 px-1 py-0.5 text-xs
-          tracking-widest text-(--gold) uppercase
-          sm:inline-block
-        ">
-          Premium
-        </span>
-      )}
     </div>
   )
 }

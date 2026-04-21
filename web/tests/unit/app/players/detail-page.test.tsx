@@ -205,6 +205,8 @@ describe('PlayerProfilePage', () => {
     expect(markup).toContain('Bea')
     expect(markup).toContain('href="/players"')
     expect(markup).not.toContain('PREMIUM')
+    expect(markup).not.toContain('lucide-user')
+    expect(markup).not.toContain('size-16 shrink-0')
     expect(markup).toContain('Average Score')
     expect(markup).toContain('Median Score')
     expect(markup).toContain('Podium Rate')

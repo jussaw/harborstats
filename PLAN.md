@@ -8,7 +8,7 @@ A menu of stat / graph / table / leaderboard ideas to surface insights from game
 - [x] Reorganize as a responsive grid of self-contained stat cards/components; each item in the plan below maps to one card.
 
 ### Player profile page
-- [x] Banner at the top of the page for the profile header (avatar placeholder, name, key summary numbers).
+- [x] Banner at the top of the page for the profile header (name and key summary numbers).
 - [x] Below the banner: responsive grid of stat cards for all per-player stats.
 
 ### Global navigation

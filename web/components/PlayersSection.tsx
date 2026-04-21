@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ArrowLeft, User } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { StatsCard } from '@/components/StatsCard'
 import { formatAverage, formatPercent, formatSignedNumber } from '@/lib/format'
 import { PlayerTier } from '@/lib/player-tier'
@@ -64,7 +64,7 @@ function PlayersList({ players, selectedPlayerId }: PlayersListProps) {
               href={`/players/${player.id}`}
               aria-current={active ? 'page' : undefined}
               className={`
-                flex items-center gap-3 rounded-xl border p-3 text-sm
+                block rounded-xl border p-3 text-sm
                 transition-colors
                 ${
                 active
@@ -76,12 +76,6 @@ function PlayersList({ players, selectedPlayerId }: PlayersListProps) {
               }
               `}
             >
-              <div className="
-                flex size-10 shrink-0 items-center justify-center rounded-full
-                border border-(--gold)/20 bg-(--navy-900)/70
-              ">
-                <User className="size-4" />
-              </div>
               <div className="min-w-0">
                 <p
                   style={cinzelStyle}
