@@ -1,10 +1,10 @@
-import { getSettings } from '@/lib/settings'
-import { saveSettings } from './actions'
+import { getSettings } from '@/lib/settings';
+import { saveSettings } from './actions';
 
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic';
 
 export default async function AdminSettingsPage() {
-  const settings = await getSettings()
+  const settings = await getSettings();
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-8">
@@ -21,14 +21,19 @@ export default async function AdminSettingsPage() {
             background: 'color-mix(in srgb, var(--navy-900) 80%, black)',
           }}
         >
-          <p className="
+          <p
+            className="
             font-cinzel mb-4 text-xs tracking-widest text-(--gold) uppercase
-          ">
+          "
+          >
             Stats
           </p>
           <form action={saveSettings} className="flex flex-wrap items-end gap-4">
             <div className="flex min-w-48 flex-1 flex-col gap-1.5">
-              <label className="flex flex-col gap-1.5 text-xs text-(--cream)/50" htmlFor="win-rate-min-games">
+              <label
+                className="flex flex-col gap-1.5 text-xs text-(--cream)/50"
+                htmlFor="win-rate-min-games"
+              >
                 <span>Win Rate — Min Games Threshold</span>
                 <input
                   id="win-rate-min-games"
@@ -36,6 +41,27 @@ export default async function AdminSettingsPage() {
                   type="number"
                   min="0"
                   defaultValue={settings.winRateMinGames}
+                  className="
+                    rounded-sm border border-(--gold)/40 bg-(--navy-900) px-3
+                    py-2 text-sm text-(--cream) transition-colors
+                    placeholder:text-(--cream)/30
+                    focus:border-(--gold) focus:outline-none
+                  "
+                />
+              </label>
+            </div>
+            <div className="flex min-w-48 flex-1 flex-col gap-1.5">
+              <label
+                className="flex flex-col gap-1.5 text-xs text-(--cream)/50"
+                htmlFor="podium-rate-min-games"
+              >
+                <span>Podium Rate — Min Games Threshold</span>
+                <input
+                  id="podium-rate-min-games"
+                  name="podium_rate_min_games"
+                  type="number"
+                  min="0"
+                  defaultValue={settings.podiumRateMinGames}
                   className="
                     rounded-sm border border-(--gold)/40 bg-(--navy-900) px-3
                     py-2 text-sm text-(--cream) transition-colors
@@ -60,5 +86,5 @@ export default async function AdminSettingsPage() {
         </div>
       </div>
     </main>
-  )
+  );
 }

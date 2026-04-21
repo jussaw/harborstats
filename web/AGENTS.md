@@ -92,7 +92,7 @@ pnpm db:studio
 Schema change protocol:
 1. Edit `db/schema.ts`
 2. Run `pnpm db:generate`
-3. Review generated SQL in `db/migrations/`
+3. Review generated SQL in `db/migrations/` and make `.sql` migrations idempotent before committing them
 4. Run `pnpm db:migrate`
 
 ## Deployment Notes

@@ -15,6 +15,13 @@
       "when": 1776619548162,
       "tag": "0001_add_app_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1776795597824,
+      "tag": "0002_add_podium_rate_min_games",
+      "breakpoints": true
     }
   ]
 }

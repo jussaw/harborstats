@@ -235,20 +235,22 @@ describe('admin settings action', () => {
   test('saveSettings clamps negative values to zero, persists them, and revalidates stats pages', async () => {
     const formData = new FormData();
     formData.set('win_rate_min_games', '-4');
+    formData.set('podium_rate_min_games', '-9');
 
     await saveSettings(formData);
 
-    expect(await getSettings()).toEqual({ winRateMinGames: 0 });
+    expect(await getSettings()).toEqual({ winRateMinGames: 0, podiumRateMinGames: 0 });
     expect(mocked.revalidatePathMock).toHaveBeenCalledWith('/stats');
     expect(mocked.revalidatePathMock).toHaveBeenCalledWith('/admin/settings');
   });
 
-  test('saveSettings persists positive values', async () => {
+  test('saveSettings persists positive values independently', async () => {
     const formData = new FormData();
     formData.set('win_rate_min_games', '12');
+    formData.set('podium_rate_min_games', '7');
 
     await saveSettings(formData);
 
-    expect(await getSettings()).toEqual({ winRateMinGames: 12 });
+    expect(await getSettings()).toEqual({ winRateMinGames: 12, podiumRateMinGames: 7 });
   });
 });
