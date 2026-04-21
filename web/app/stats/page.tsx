@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 import type { Metadata } from 'next';
+import { ActivityDistributionChart } from '@/components/ActivityDistributionChart';
+import { AverageGamesPerSessionCard } from '@/components/AverageGamesPerSessionCard';
 import { CalendarHeatmap } from '@/components/CalendarHeatmap';
 import { GamesOverTimeChart } from '@/components/GamesOverTimeChart';
 import { PlayerAttendanceChart } from '@/components/PlayerAttendanceChart';
@@ -10,9 +12,8 @@ import { PlayerTier } from '@/lib/player-tier';
 import { rankWithTies } from '@/lib/rank';
 import { getSettings } from '@/lib/settings';
 import {
-  getCalendarHeatmapData,
-  getGamesOverTimeSeries,
-  getPlayerAttendanceSeries,
+  getGameActivityTimestamps,
+  getPlayerAttendanceEvents,
   getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
   getPlayerParticipationRates,
@@ -91,10 +92,9 @@ export default async function StatsPage() {
     finishBreakdowns,
     tierShowdown,
     expectedVsActualWins,
-    gamesOverTimeSeries,
+    gameActivityTimestamps,
     participationRates,
-    playerAttendanceSeries,
-    calendarHeatmapData,
+    playerAttendanceEvents,
   ] = await Promise.all([
     getPlayerWinRates(),
     getSettings(),
@@ -103,10 +103,9 @@ export default async function StatsPage() {
     getPlayerFinishBreakdowns(),
     getTierShowdownStats(),
     getPlayerExpectedVsActualWins(),
-    getGamesOverTimeSeries(),
+    getGameActivityTimestamps(),
     getPlayerParticipationRates(),
-    getPlayerAttendanceSeries(),
-    getCalendarHeatmapData(),
+    getPlayerAttendanceEvents(),
   ]);
 
   const winRateQualified = winRates
@@ -206,7 +205,7 @@ export default async function StatsPage() {
     {
       id: 'games-over-time',
       title: 'Games Over Time',
-      description: 'Game frequency plotted across weekly or monthly activity buckets.',
+      description: 'Game frequency plotted across weekly or monthly activity buckets in your local time.',
       badge: undefined,
       span: 'full',
     },
@@ -220,16 +219,37 @@ export default async function StatsPage() {
     {
       id: 'player-attendance-over-time',
       title: 'Player Attendance Over Time',
-      description: 'Stacked appearance totals showing who participated in each activity bucket.',
+      description: 'Stacked appearance totals showing who participated in each activity bucket in your local time.',
       badge: undefined,
       span: 'full',
     },
     {
       id: 'calendar-heatmap',
       title: 'Calendar Heatmap',
-      description: 'Daily game frequency across the last 12 months or any recorded year.',
+      description: 'Daily game frequency across the last 12 months or any recorded year in your local time.',
       badge: undefined,
       span: 'full',
+    },
+    {
+      id: 'day-of-week-pattern',
+      title: 'Day-of-Week Pattern',
+      description: 'How many games were played on each weekday in your local time.',
+      badge: undefined,
+      span: 'single',
+    },
+    {
+      id: 'time-of-day-pattern',
+      title: 'Time-of-Day Pattern',
+      description: 'Local start-time distribution bucketed by hour of day.',
+      badge: undefined,
+      span: 'single',
+    },
+    {
+      id: 'average-games-per-session',
+      title: 'Average Games per Session',
+      description: 'Mean games per local-calendar-day session.',
+      badge: undefined,
+      span: 'single',
     },
   ];
 
@@ -646,11 +666,7 @@ export default async function StatsPage() {
         </StatsCard>
 
         <StatsCard {...cardById['games-over-time']}>
-          <GamesOverTimeChart
-            weekly={gamesOverTimeSeries.weekly}
-            monthly={gamesOverTimeSeries.monthly}
-            defaultView="week"
-          />
+          <GamesOverTimeChart playedAtIsos={gameActivityTimestamps} defaultView="week" />
         </StatsCard>
 
         <StatsCard {...cardById['participation-rate']}>
@@ -693,20 +709,23 @@ export default async function StatsPage() {
         </StatsCard>
 
         <StatsCard {...cardById['player-attendance-over-time']}>
-          <PlayerAttendanceChart
-            weekly={playerAttendanceSeries.weekly}
-            monthly={playerAttendanceSeries.monthly}
-            defaultView="week"
-          />
+          <PlayerAttendanceChart events={playerAttendanceEvents} defaultView="week" />
         </StatsCard>
 
         <StatsCard {...cardById['calendar-heatmap']}>
-          <CalendarHeatmap
-            recentDays={calendarHeatmapData.recentDays}
-            recentRangeLabel={calendarHeatmapData.recentRangeLabel}
-            years={calendarHeatmapData.years}
-            defaultSelection="recent"
-          />
+          <CalendarHeatmap playedAtIsos={gameActivityTimestamps} defaultSelection="recent" />
+        </StatsCard>
+
+        <StatsCard {...cardById['day-of-week-pattern']}>
+          <ActivityDistributionChart playedAtIsos={gameActivityTimestamps} variant="weekday" />
+        </StatsCard>
+
+        <StatsCard {...cardById['time-of-day-pattern']}>
+          <ActivityDistributionChart playedAtIsos={gameActivityTimestamps} variant="hour" />
+        </StatsCard>
+
+        <StatsCard {...cardById['average-games-per-session']}>
+          <AverageGamesPerSessionCard playedAtIsos={gameActivityTimestamps} />
         </StatsCard>
       </div>
     </main>

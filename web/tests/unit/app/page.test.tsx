@@ -46,8 +46,7 @@ describe('HomePage', () => {
     ]);
     vi.mocked(getRecentActivitySummary).mockResolvedValue({
       totalGames: 4,
-      latestPlayedAt: new Date('2026-04-18T12:00:00.000Z'),
-      daysSinceLastGame: 3,
+      latestPlayedAt: '2026-04-18T12:00:00.000Z',
     });
 
     const element = await HomePage();
@@ -56,7 +55,7 @@ describe('HomePage', () => {
     expect(markup).toContain('Recent Games');
     expect(markup).toContain('Days Since Last Game');
     expect(markup).toContain('Latest recorded game');
-    expect(markup).toContain('3');
+    expect(markup).toContain('Loading your local-time view...');
     expect(markup).toContain('2026-04-18T12:00:00.000Z');
     expect(markup).toContain('Fast game');
   });
@@ -67,7 +66,6 @@ describe('HomePage', () => {
     vi.mocked(getRecentActivitySummary).mockResolvedValue({
       totalGames: 0,
       latestPlayedAt: null,
-      daysSinceLastGame: null,
     });
 
     const element = await HomePage();

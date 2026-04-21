@@ -1,13 +1,17 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import type { CalendarHeatmapDay, CalendarHeatmapYear } from '@/lib/stats'
+import {
+  buildCalendarHeatmapData,
+  type CalendarHeatmapDay,
+  type CalendarHeatmapYear,
+} from '@/lib/activity-local-time'
+import { localTimeLoadingMessage, useResolvedTimeZone } from '@/lib/use-resolved-time-zone'
 
 interface Props {
-  recentDays: CalendarHeatmapDay[]
-  recentRangeLabel: string | null
-  years: CalendarHeatmapYear[]
+  playedAtIsos: string[]
   defaultSelection: 'recent' | number
+  timeZone?: string
 }
 
 type HeatmapSelection = 'recent' | number
@@ -30,7 +34,7 @@ function buildWeekColumns(days: CalendarHeatmapDay[]) {
   }
 
   const paddedDays: { key: string; day: CalendarHeatmapDay | null }[] = []
-  const leadingPadding = days[0].date.getUTCDay()
+  const leadingPadding = new Date(`${days[0].date}T00:00:00.000Z`).getUTCDay()
 
   for (let index = 0; index < leadingPadding; index += 1) {
     paddedDays.push({ key: `pad-start-${index}`, day: null })
@@ -38,7 +42,7 @@ function buildWeekColumns(days: CalendarHeatmapDay[]) {
 
   paddedDays.push(
     ...days.map((day) => ({
-      key: day.date.toISOString(),
+      key: day.date,
       day,
     })),
   )
@@ -69,39 +73,46 @@ function getCellClasses(intensity: number) {
   }
 }
 
-export function CalendarHeatmap({
-  recentDays,
-  recentRangeLabel,
-  years,
-  defaultSelection,
-}: Props) {
+export function CalendarHeatmap({ playedAtIsos, defaultSelection, timeZone }: Props) {
   const [selection, setSelection] = useState<HeatmapSelection>(defaultSelection)
   const [activeDateKey, setActiveDateKey] = useState<string | null>(null)
+  const resolvedTimeZone = useResolvedTimeZone(timeZone)
+  const data = useMemo(() => {
+    if (!resolvedTimeZone) {
+      return null
+    }
 
-  const options = useMemo(
-    () => [
-      { id: 'recent' as const, label: 'Last 12 Months' },
-      ...years.map((year) => ({ id: year.year, label: String(year.year) })),
-    ],
-    [years],
-  )
+    return buildCalendarHeatmapData({
+      playedAtIsos,
+      timeZone: resolvedTimeZone,
+    })
+  }, [playedAtIsos, resolvedTimeZone])
+
+  if (playedAtIsos.length === 0) {
+    return <p className="py-8 text-center text-sm text-(--cream)/50">No games recorded yet.</p>
+  }
+
+  if (!data) {
+    return <p className="py-8 text-center text-sm text-(--cream)/50">{localTimeLoadingMessage}</p>
+  }
+
+  const options = [
+    { id: 'recent' as const, label: 'Last 12 Months' },
+    ...data.years.map((year) => ({ id: year.year, label: String(year.year) })),
+  ]
 
   const selectedYear =
-    typeof selection === 'number' ? years.find((year) => year.year === selection) ?? null : null
-  const days = selection === 'recent' ? recentDays : (selectedYear?.days ?? [])
-  let summaryLabel = recentRangeLabel
+    typeof selection === 'number' ? data.years.find((year) => year.year === selection) ?? null : null
+  const days = selection === 'recent' ? data.recentDays : (selectedYear?.days ?? [])
+  let summaryLabel = data.recentRangeLabel
   if (selection !== 'recent') {
     summaryLabel = selectedYear ? `${selectedYear.year} · ${selectedYear.totalGames} total games` : null
   }
   const maxGameCount = Math.max(...days.map((day) => day.gameCount), 0)
   const weekColumns = buildWeekColumns(days)
   const activeDay = activeDateKey
-    ? days.find((day) => day.date.toISOString() === activeDateKey) ?? null
+    ? days.find((day) => day.date === activeDateKey) ?? null
     : null
-
-  if (recentDays.length === 0 && years.length === 0) {
-    return <p className="py-8 text-center text-sm text-(--cream)/50">No games recorded yet.</p>
-  }
 
   return (
     <div className="space-y-4">
@@ -188,11 +199,9 @@ export function CalendarHeatmap({
                     size-3 rounded-[3px]
                     ${getCellClasses(intensity)}
                   `}
-                  onMouseEnter={() => setActiveDateKey(day.date.toISOString())}
-                  onFocus={() => setActiveDateKey(day.date.toISOString())}
-                  onBlur={() => setActiveDateKey((current) =>
-                    current === day.date.toISOString() ? null : current
-                  )}
+                  onMouseEnter={() => setActiveDateKey(day.date)}
+                  onFocus={() => setActiveDateKey(day.date)}
+                  onBlur={() => setActiveDateKey((current) => (current === day.date ? null : current))}
                 />
               )
             }),

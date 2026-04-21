@@ -11,11 +11,6 @@ function startOfUtcDay(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
 }
 
-function getUtcDayDifference(laterDate: Date, earlierDate: Date): number {
-  const millisecondsPerDay = 24 * 60 * 60 * 1000
-  return Math.floor((startOfUtcDay(laterDate).getTime() - startOfUtcDay(earlierDate).getTime()) / millisecondsPerDay)
-}
-
 function getIsoWeekStart(date: Date): Date {
   const start = startOfUtcDay(date)
   const day = start.getUTCDay()
@@ -590,8 +585,7 @@ export async function getPlayerExpectedVsActualWins(): Promise<PlayerExpectedVsA
 
 export interface RecentActivitySummary {
   totalGames: number
-  latestPlayedAt: Date | null
-  daysSinceLastGame: number | null
+  latestPlayedAt: string | null
 }
 
 export async function getRecentActivitySummary(): Promise<RecentActivitySummary> {
@@ -613,15 +607,18 @@ export async function getRecentActivitySummary(): Promise<RecentActivitySummary>
     return {
       totalGames,
       latestPlayedAt: null,
-      daysSinceLastGame: null,
     }
   }
 
   return {
     totalGames,
-    latestPlayedAt: latestGame.playedAt,
-    daysSinceLastGame: getUtcDayDifference(new Date(Date.now()), latestGame.playedAt),
+    latestPlayedAt: latestGame.playedAt.toISOString(),
   }
+}
+
+export async function getGameActivityTimestamps(): Promise<string[]> {
+  const playedAtDates = await getOrderedGameDates()
+  return playedAtDates.map((playedAt) => playedAt.toISOString())
 }
 
 export interface ActivityBucket {
@@ -746,6 +743,13 @@ export interface PlayerAttendanceSeries {
   monthly: PlayerAttendanceBucket[]
 }
 
+export interface PlayerAttendanceEvent {
+  playedAt: string
+  playerId: number
+  name: string
+  tier: PlayerTierType
+}
+
 function buildPlayerAttendanceBuckets(
   rows: PlayerActivityRow[],
   playedAtDates: Date[],
@@ -827,6 +831,27 @@ export async function getPlayerAttendanceSeries(): Promise<PlayerAttendanceSerie
       formatShortUtcMonth,
     ),
   }
+}
+
+export async function getPlayerAttendanceEvents(): Promise<PlayerAttendanceEvent[]> {
+  const rows = await db
+    .select({
+      playedAt: games.playedAt,
+      playerId: players.id,
+      name: players.name,
+      tier: players.tier,
+    })
+    .from(gamePlayers)
+    .innerJoin(games, eq(games.id, gamePlayers.gameId))
+    .innerJoin(players, eq(players.id, gamePlayers.playerId))
+    .orderBy(games.playedAt, games.id, players.name)
+
+  return rows.map((row) => ({
+    playedAt: row.playedAt.toISOString(),
+    playerId: row.playerId,
+    name: row.name,
+    tier: parsePlayerTier(row.tier),
+  }))
 }
 
 export interface CalendarHeatmapDay {

@@ -73,6 +73,8 @@ Placement tags: `[H]` home page · `[S]` new `/stats` landing · `[P]` per-playe
 
 ## 2. Activity (over time)
 
+All activity and time-based stats in this section use the viewer's local time.
+
 ### 2.1 Days since last game tile `[H]` `[S]`
 - [x] Show how many days have passed since the most recent recorded game.
 
@@ -96,13 +98,13 @@ Placement tags: `[H]` home page · `[S]` new `/stats` landing · `[P]` per-playe
 - **Needs:** game date list (share query from 2.2)
 
 ### 2.7 Day-of-week pattern `[S]`
-- [ ] Bar chart of how many games have been played on each day of the week.
+- [x] Bar chart of how many games have been played on each day of the week in the viewer's local time.
 
 ### 2.8 Time-of-day pattern `[S]`
-- [ ] Distribution of game start times bucketed by hour, using `played_at` timestamp.
+- [x] Distribution of game start times bucketed by hour, using `played_at` timestamp in the viewer's local time.
 
 ### 2.9 Average games per session `[S]`
-- [ ] Compute mean number of games played per session, where a session is games on the same calendar day.
+- [x] Compute mean number of games played per session, where a session is games on the same local calendar day.
 
 ### 2.10 Busiest day / week / month records `[S]`
 - [ ] Surface the single most active day, week, and month by game count.

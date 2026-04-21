@@ -3,6 +3,7 @@ import { getPlayers } from '@/lib/players'
 import { getRecentActivitySummary } from '@/lib/stats'
 import { NewGameButton } from '@/components/NewGameButton'
 import { FormattedDate } from '@/components/FormattedDate'
+import { RecentActivityCard } from '@/components/RecentActivityCard'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,25 +40,7 @@ export default async function HomePage() {
         </div>
 
         <div className="mt-4">
-          {activitySummary.latestPlayedAt && activitySummary.daysSinceLastGame !== null ? (
-            <div className="space-y-2">
-              <p className="
-                font-cinzel text-5xl leading-none font-semibold tracking-wide
-                text-(--gold)
-              ">
-                {activitySummary.daysSinceLastGame}
-              </p>
-              <div className="text-sm text-(--cream)/55">
-                <p>Latest recorded game</p>
-                <FormattedDate
-                  iso={activitySummary.latestPlayedAt.toISOString()}
-                  className="mt-1 block text-(--cream)/70"
-                />
-              </div>
-            </div>
-          ) : (
-            <p className="py-8 text-center text-sm text-(--cream)/50">No games recorded yet.</p>
-          )}
+          <RecentActivityCard latestPlayedAt={activitySummary.latestPlayedAt} />
         </div>
       </section>
 

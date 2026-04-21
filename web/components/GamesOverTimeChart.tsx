@@ -1,13 +1,14 @@
 'use client'
 
-import { useState } from 'react'
-import type { ActivityBucket } from '@/lib/stats'
+import { useMemo, useState } from 'react'
+import { buildGamesOverTimeSeries, type ActivityBucket } from '@/lib/activity-local-time'
+import { localTimeLoadingMessage, useResolvedTimeZone } from '@/lib/use-resolved-time-zone'
 import { ActivityViewToggle, type ActivityView } from '@/components/ActivityViewToggle'
 
 interface Props {
-  weekly: ActivityBucket[]
-  monthly: ActivityBucket[]
+  playedAtIsos: string[]
   defaultView: ActivityView
+  timeZone?: string
 }
 
 function buildPolylinePoints(data: ActivityBucket[]) {
@@ -61,19 +62,30 @@ function getXAxisLabelIndices(pointCount: number) {
   ])
 }
 
-export function GamesOverTimeChart({
-  weekly,
-  monthly,
-  defaultView,
-}: Props) {
+export function GamesOverTimeChart({ playedAtIsos, defaultView, timeZone }: Props) {
   const [view, setView] = useState<ActivityView>(defaultView)
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
-  const data = view === 'week' ? weekly : monthly
+  const resolvedTimeZone = useResolvedTimeZone(timeZone)
+  const series = useMemo(() => {
+    if (!resolvedTimeZone) {
+      return null
+    }
 
-  if (data.length === 0) {
+    return buildGamesOverTimeSeries({
+      playedAtIsos,
+      timeZone: resolvedTimeZone,
+    })
+  }, [playedAtIsos, resolvedTimeZone])
+
+  if (playedAtIsos.length === 0) {
     return <p className="py-8 text-center text-sm text-(--cream)/50">No games recorded yet.</p>
   }
 
+  if (!series) {
+    return <p className="py-8 text-center text-sm text-(--cream)/50">{localTimeLoadingMessage}</p>
+  }
+
+  const data = view === 'week' ? series.weekly : series.monthly
   const {
     width,
     height,
@@ -116,10 +128,12 @@ export function GamesOverTimeChart({
         />
       </div>
 
-      <div className="
-        rounded-2xl border border-(--gold)/15 bg-(--navy-800)/30 p-4
-        sm:p-5
-      ">
+      <div
+        className="
+          rounded-2xl border border-(--gold)/15 bg-(--navy-800)/30 p-4
+          sm:p-5
+        "
+      >
         <svg
           viewBox={`0 0 ${width} ${height}`}
           className="h-56 w-full"
@@ -167,7 +181,7 @@ export function GamesOverTimeChart({
             className="stroke-(--cream)/10"
             strokeWidth="1"
           />
-          {activePoint && (
+          {activePoint ? (
             <line
               x1={activePoint.x}
               y1={plotTop}
@@ -178,7 +192,7 @@ export function GamesOverTimeChart({
               strokeDasharray="4 6"
               opacity="0.55"
             />
-          )}
+          ) : null}
           <polyline
             fill="none"
             stroke="var(--gold)"
@@ -189,7 +203,7 @@ export function GamesOverTimeChart({
           />
           {points.map((point) => (
             <circle
-              key={point.bucketStart.toISOString()}
+              key={point.bucketStart}
               cx={point.x}
               cy={point.y}
               r="5"
@@ -199,7 +213,7 @@ export function GamesOverTimeChart({
             />
           ))}
           {points.map((point, index) => (
-            <g key={`${point.bucketStart.toISOString()}-x-axis`}>
+            <g key={`${point.bucketStart}-x-axis`}>
               <line
                 x1={point.x}
                 y1={plotBottom}
@@ -209,7 +223,7 @@ export function GamesOverTimeChart({
                 strokeWidth="1"
                 opacity="0.5"
               />
-              {xAxisLabelIndices.has(index) && (
+              {xAxisLabelIndices.has(index) ? (
                 <text
                   x={point.x}
                   y={height - 10}
@@ -218,11 +232,11 @@ export function GamesOverTimeChart({
                 >
                   {point.label}
                 </text>
-              )}
+              ) : null}
             </g>
           ))}
           {points.map((point, index) => (
-            <g key={`${point.bucketStart.toISOString()}-target`}>
+            <g key={`${point.bucketStart}-target`}>
               <rect
                 x={point.x - hoverWidth / 2}
                 y={plotTop}

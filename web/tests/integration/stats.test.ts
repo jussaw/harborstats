@@ -1,8 +1,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import {
-  getCalendarHeatmapData,
-  getGamesOverTimeSeries,
-  getPlayerAttendanceSeries,
+  getGameActivityTimestamps,
+  getPlayerAttendanceEvents,
   getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
   getPlayerMarginStats,
@@ -531,13 +530,10 @@ describe('stats integration', () => {
     await expect(getRecentActivitySummary()).resolves.toEqual({
       totalGames: 0,
       latestPlayedAt: null,
-      daysSinceLastGame: null,
     });
   });
 
-  test('getRecentActivitySummary uses UTC calendar days and reports zero for same-day games', async () => {
-    vi.spyOn(Date, 'now').mockReturnValue(new Date('2026-04-21T23:59:59.000Z').getTime());
-
+  test('getRecentActivitySummary returns the latest timestamp without server-computed day math', async () => {
     const alice = await createTestPlayer({ name: 'Alice' });
     const bob = await createTestPlayer({ name: 'Bob' });
 
@@ -552,13 +548,10 @@ describe('stats integration', () => {
     const summary = await getRecentActivitySummary();
 
     expect(summary.totalGames).toBe(1);
-    expect(summary.latestPlayedAt?.toISOString()).toBe('2026-04-21T00:05:00.000Z');
-    expect(summary.daysSinceLastGame).toBe(0);
+    expect(summary.latestPlayedAt).toBe('2026-04-21T00:05:00.000Z');
   });
 
-  test('getRecentActivitySummary counts multi-day gaps using UTC dates', async () => {
-    vi.spyOn(Date, 'now').mockReturnValue(new Date('2026-04-21T01:00:00.000Z').getTime());
-
+  test('getGameActivityTimestamps returns ascending iso timestamps', async () => {
     const alice = await createTestPlayer({ name: 'Alice' });
     const bob = await createTestPlayer({ name: 'Bob' });
 
@@ -570,281 +563,54 @@ describe('stats integration', () => {
       ],
     });
 
-    const summary = await getRecentActivitySummary();
-
-    expect(summary.totalGames).toBe(1);
-    expect(summary.latestPlayedAt?.toISOString()).toBe('2026-04-18T23:59:59.000Z');
-    expect(summary.daysSinceLastGame).toBe(3);
-  });
-
-  test('getGamesOverTimeSeries returns weekly and monthly buckets with zero-filled gaps', async () => {
-    const alice = await createTestPlayer({ name: 'Alice' });
-    const bob = await createTestPlayer({ name: 'Bob' });
-
     await createTestGame({
-      playedAt: new Date('2026-01-05T12:00:00.000Z'),
+      playedAt: new Date('2026-04-21T00:05:00.000Z'),
       players: [
-        { playerId: alice.id, score: 10, isWinner: true },
-        { playerId: bob.id, score: 7, isWinner: false },
-      ],
-    });
-    await createTestGame({
-      playedAt: new Date('2026-01-06T12:00:00.000Z'),
-      players: [
-        { playerId: bob.id, score: 11, isWinner: true },
+        { playerId: bob.id, score: 10, isWinner: true },
         { playerId: alice.id, score: 8, isWinner: false },
       ],
     });
-    await createTestGame({
-      playedAt: new Date('2026-01-20T12:00:00.000Z'),
-      players: [
-        { playerId: alice.id, score: 9, isWinner: true },
-        { playerId: bob.id, score: 4, isWinner: false },
-      ],
-    });
-    await createTestGame({
-      playedAt: new Date('2026-03-02T12:00:00.000Z'),
-      players: [
-        { playerId: bob.id, score: 9, isWinner: true },
-        { playerId: alice.id, score: 6, isWinner: false },
-      ],
-    });
 
-    const series = await getGamesOverTimeSeries();
-
-    expect(series.totalGames).toBe(4);
-    expect(series.weekly.map((bucket) => ({
-      bucketStart: bucket.bucketStart.toISOString().slice(0, 10),
-      gameCount: bucket.gameCount,
-    }))).toEqual([
-      { bucketStart: '2026-01-05', gameCount: 2 },
-      { bucketStart: '2026-01-12', gameCount: 0 },
-      { bucketStart: '2026-01-19', gameCount: 1 },
-      { bucketStart: '2026-01-26', gameCount: 0 },
-      { bucketStart: '2026-02-02', gameCount: 0 },
-      { bucketStart: '2026-02-09', gameCount: 0 },
-      { bucketStart: '2026-02-16', gameCount: 0 },
-      { bucketStart: '2026-02-23', gameCount: 0 },
-      { bucketStart: '2026-03-02', gameCount: 1 },
+    await expect(getGameActivityTimestamps()).resolves.toEqual([
+      '2026-04-18T23:59:59.000Z',
+      '2026-04-21T00:05:00.000Z',
     ]);
-    expect(series.monthly.map((bucket) => ({
-      bucketStart: bucket.bucketStart.toISOString().slice(0, 10),
-      gameCount: bucket.gameCount,
-    }))).toEqual([
-      { bucketStart: '2026-01-01', gameCount: 3 },
-      { bucketStart: '2026-02-01', gameCount: 0 },
-      { bucketStart: '2026-03-01', gameCount: 1 },
-    ]);
-    expect(series.weekly.every((bucket) => bucket.label.length > 0)).toBe(true);
-    expect(series.monthly.every((bucket) => bucket.label.length > 0)).toBe(true);
   });
 
-  test('getPlayerAttendanceSeries counts per-player appearances and zero-fills bucket gaps', async () => {
+  test('getPlayerAttendanceEvents returns ordered raw attendance rows with parsed tiers', async () => {
     const alice = await createTestPlayer({ name: 'Alice', tier: PlayerTier.Premium });
     const bob = await createTestPlayer({ name: 'Bob', tier: PlayerTier.Standard });
-    const carol = await createTestPlayer({ name: 'Carol', tier: PlayerTier.Standard });
 
     await createTestGame({
-      playedAt: new Date('2026-01-05T12:00:00.000Z'),
+      playedAt: new Date('2026-04-21T00:05:00.000Z'),
       players: [
-        { playerId: alice.id, score: 10, isWinner: true },
-        { playerId: bob.id, score: 7, isWinner: false },
-      ],
-    });
-    await createTestGame({
-      playedAt: new Date('2026-01-06T12:00:00.000Z'),
-      players: [
-        { playerId: alice.id, score: 11, isWinner: true },
-        { playerId: carol.id, score: 8, isWinner: false },
-      ],
-    });
-    await createTestGame({
-      playedAt: new Date('2026-01-20T12:00:00.000Z'),
-      players: [
-        { playerId: bob.id, score: 9, isWinner: true },
-        { playerId: carol.id, score: 4, isWinner: false },
-      ],
-    });
-    await createTestGame({
-      playedAt: new Date('2026-03-02T12:00:00.000Z'),
-      players: [
-        { playerId: alice.id, score: 9, isWinner: true },
-      ],
-    });
-
-    const series = await getPlayerAttendanceSeries();
-
-    expect(series.weekly.map((bucket) => ({
-      bucketStart: bucket.bucketStart.toISOString().slice(0, 10),
-      totalAppearances: bucket.totalAppearances,
-      segments: bucket.segments.map((segment) => ({
-        name: segment.name,
-        tier: segment.tier,
-        gameCount: segment.gameCount,
-      })),
-    }))).toEqual([
-      {
-        bucketStart: '2026-01-05',
-        totalAppearances: 4,
-        segments: [
-          { name: 'Alice', tier: PlayerTier.Premium, gameCount: 2 },
-          { name: 'Bob', tier: PlayerTier.Standard, gameCount: 1 },
-          { name: 'Carol', tier: PlayerTier.Standard, gameCount: 1 },
-        ],
-      },
-      {
-        bucketStart: '2026-01-12',
-        totalAppearances: 0,
-        segments: [],
-      },
-      {
-        bucketStart: '2026-01-19',
-        totalAppearances: 2,
-        segments: [
-          { name: 'Bob', tier: PlayerTier.Standard, gameCount: 1 },
-          { name: 'Carol', tier: PlayerTier.Standard, gameCount: 1 },
-        ],
-      },
-      {
-        bucketStart: '2026-01-26',
-        totalAppearances: 0,
-        segments: [],
-      },
-      {
-        bucketStart: '2026-02-02',
-        totalAppearances: 0,
-        segments: [],
-      },
-      {
-        bucketStart: '2026-02-09',
-        totalAppearances: 0,
-        segments: [],
-      },
-      {
-        bucketStart: '2026-02-16',
-        totalAppearances: 0,
-        segments: [],
-      },
-      {
-        bucketStart: '2026-02-23',
-        totalAppearances: 0,
-        segments: [],
-      },
-      {
-        bucketStart: '2026-03-02',
-        totalAppearances: 1,
-        segments: [{ name: 'Alice', tier: PlayerTier.Premium, gameCount: 1 }],
-      },
-    ]);
-
-    expect(series.monthly.map((bucket) => ({
-      bucketStart: bucket.bucketStart.toISOString().slice(0, 10),
-      totalAppearances: bucket.totalAppearances,
-      segments: bucket.segments.map((segment) => ({
-        name: segment.name,
-        gameCount: segment.gameCount,
-      })),
-    }))).toEqual([
-      {
-        bucketStart: '2026-01-01',
-        totalAppearances: 6,
-        segments: [
-          { name: 'Alice', gameCount: 2 },
-          { name: 'Bob', gameCount: 2 },
-          { name: 'Carol', gameCount: 2 },
-        ],
-      },
-      {
-        bucketStart: '2026-02-01',
-        totalAppearances: 0,
-        segments: [],
-      },
-      {
-        bucketStart: '2026-03-01',
-        totalAppearances: 1,
-        segments: [{ name: 'Alice', gameCount: 1 }],
-      },
-    ]);
-  });
-
-  test('getCalendarHeatmapData builds recent and yearly UTC day grids', async () => {
-    const alice = await createTestPlayer({ name: 'Alice' });
-    const bob = await createTestPlayer({ name: 'Bob' });
-
-    await createTestGame({
-      playedAt: new Date('2025-04-22T12:00:00.000Z'),
-      players: [
-        { playerId: alice.id, score: 10, isWinner: true },
-        { playerId: bob.id, score: 7, isWinner: false },
-      ],
-    });
-    await createTestGame({
-      playedAt: new Date('2025-12-31T22:00:00.000Z'),
-      players: [
-        { playerId: bob.id, score: 11, isWinner: true },
+        { playerId: bob.id, score: 10, isWinner: true },
         { playerId: alice.id, score: 8, isWinner: false },
       ],
     });
-    await createTestGame({
-      playedAt: new Date('2026-04-20T18:00:00.000Z'),
-      players: [
-        { playerId: alice.id, score: 9, isWinner: true },
-      ],
-    });
-    await createTestGame({
-      playedAt: new Date('2026-04-21T03:00:00.000Z'),
-      players: [
-        { playerId: bob.id, score: 9, isWinner: true },
-      ],
-    });
-    await createTestGame({
-      playedAt: new Date('2026-04-21T21:00:00.000Z'),
-      players: [
-        { playerId: alice.id, score: 12, isWinner: true },
-      ],
-    });
 
-    const heatmap = await getCalendarHeatmapData();
-
-    expect(heatmap.defaultYear).toBe(2026);
-    expect(heatmap.years.map((year) => year.year)).toEqual([2026, 2025]);
-    expect(heatmap.years.find((year) => year.year === 2026)).toMatchObject({
-      totalGames: 3,
-    });
-    expect(heatmap.years.find((year) => year.year === 2025)).toMatchObject({
-      totalGames: 2,
-    });
-
-    expect(heatmap.years.find((year) => year.year === 2026)?.days.find(
-      (day) => day.date.toISOString().slice(0, 10) === '2026-04-21',
-    )).toMatchObject({
-      gameCount: 2,
-      label: 'Apr 21, 2026',
-    });
-
-    expect(heatmap.recentDays[0]?.date.toISOString().slice(0, 10)).toBe('2025-04-22');
-    expect(heatmap.recentDays.at(-1)?.date.toISOString().slice(0, 10)).toBe('2026-04-21');
-    expect(
-      heatmap.recentDays.find((day) => day.date.toISOString().slice(0, 10) === '2026-04-20'),
-    ).toMatchObject({ gameCount: 1 });
-    expect(
-      heatmap.recentDays.find((day) => day.date.toISOString().slice(0, 10) === '2025-04-23'),
-    ).toMatchObject({ gameCount: 0 });
+    await expect(getPlayerAttendanceEvents()).resolves.toEqual([
+      {
+        playedAt: '2026-04-21T00:05:00.000Z',
+        playerId: alice.id,
+        name: 'Alice',
+        tier: PlayerTier.Premium,
+      },
+      {
+        playedAt: '2026-04-21T00:05:00.000Z',
+        playerId: bob.id,
+        name: 'Bob',
+        tier: PlayerTier.Standard,
+      },
+    ]);
   });
+
 
   test('new activity stats return empty structures when no games exist', async () => {
     await createTestPlayer({ name: 'Alice' });
 
-    await expect(getPlayerAttendanceSeries()).resolves.toEqual({
-      weekly: [],
-      monthly: [],
-    });
-    await expect(getCalendarHeatmapData()).resolves.toEqual({
-      recentDays: [],
-      recentRangeLabel: null,
-      years: [],
-      defaultYear: null,
-    });
+    await expect(getGameActivityTimestamps()).resolves.toEqual([]);
+    await expect(getPlayerAttendanceEvents()).resolves.toEqual([]);
   });
 
   test('getPlayerParticipationRates includes zero-game players and sorts ties by player name', async () => {

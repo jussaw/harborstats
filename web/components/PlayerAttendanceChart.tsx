@@ -2,12 +2,17 @@
 
 import { useMemo, useState } from 'react'
 import { ActivityViewToggle, type ActivityView } from '@/components/ActivityViewToggle'
-import type { PlayerAttendanceBucket } from '@/lib/stats'
+import {
+  buildPlayerAttendanceSeries,
+  type PlayerAttendanceBucket,
+  type PlayerAttendanceEvent,
+} from '@/lib/activity-local-time'
+import { localTimeLoadingMessage, useResolvedTimeZone } from '@/lib/use-resolved-time-zone'
 
 interface Props {
-  weekly: PlayerAttendanceBucket[]
-  monthly: PlayerAttendanceBucket[]
+  events: PlayerAttendanceEvent[]
   defaultView: ActivityView
+  timeZone?: string
 }
 
 const PLAYER_COLORS = [
@@ -50,7 +55,6 @@ function buildAttendanceLayout(data: PlayerAttendanceBucket[]) {
   const plotTop = 24
   const plotBottom = 200
   const innerWidth = width - plotLeft - plotRight
-  const innerHeight = plotBottom - plotTop
   const maxAppearances = Math.max(...data.map((bucket) => bucket.totalAppearances), 1)
   const slotWidth = data.length === 0 ? innerWidth : innerWidth / data.length
   const barWidth = Math.max(Math.min(slotWidth * 0.62, 42), 20)
@@ -119,29 +123,42 @@ function getAttendanceDialogPosition({
   }
 }
 
-export function PlayerAttendanceChart({ weekly, monthly, defaultView }: Props) {
+export function PlayerAttendanceChart({ events, defaultView, timeZone }: Props) {
   const [view, setView] = useState<ActivityView>(defaultView)
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
-  const data = view === 'week' ? weekly : monthly
+  const resolvedTimeZone = useResolvedTimeZone(timeZone)
+  const series = useMemo(() => {
+    if (!resolvedTimeZone) {
+      return null
+    }
+
+    return buildPlayerAttendanceSeries({
+      events,
+      timeZone: resolvedTimeZone,
+    })
+  }, [events, resolvedTimeZone])
 
   const playerLegend = useMemo(() => {
     const players = new Map<number, { playerId: number; name: string }>()
 
-    ;[...weekly, ...monthly].forEach((bucket) => {
-      bucket.segments.forEach((segment) => {
-        if (!players.has(segment.playerId)) {
-          players.set(segment.playerId, { playerId: segment.playerId, name: segment.name })
-        }
-      })
+    events.forEach((event) => {
+      if (!players.has(event.playerId)) {
+        players.set(event.playerId, { playerId: event.playerId, name: event.name })
+      }
     })
 
     return [...players.values()].sort((a, b) => a.name.localeCompare(b.name))
-  }, [monthly, weekly])
+  }, [events])
 
-  if (data.length === 0) {
+  if (events.length === 0) {
     return <p className="py-8 text-center text-sm text-(--cream)/50">No games recorded yet.</p>
   }
 
+  if (!series) {
+    return <p className="py-8 text-center text-sm text-(--cream)/50">{localTimeLoadingMessage}</p>
+  }
+
+  const data = view === 'week' ? series.weekly : series.monthly
   const { width, height, plotLeft, plotRight, plotTop, plotBottom, maxAppearances, barWidth, points } =
     buildAttendanceLayout(data)
   const activeBucket = activeIndex === null ? null : points[activeIndex] ?? null
@@ -300,7 +317,7 @@ export function PlayerAttendanceChart({ weekly, monthly, defaultView }: Props) {
             let segmentBottom = plotBottom
 
             return (
-              <g key={bucket.bucketStart.toISOString()}>
+              <g key={bucket.bucketStart}>
                 {bucket.segments.map((segment) => {
                   const heightRatio = segment.gameCount / maxAppearances
                   const segmentHeight = heightRatio * (plotBottom - plotTop)
@@ -336,7 +353,7 @@ export function PlayerAttendanceChart({ weekly, monthly, defaultView }: Props) {
             )
           })}
           {points.map((bucket, index) => (
-            <g key={`${bucket.bucketStart.toISOString()}-x-axis`}>
+            <g key={`${bucket.bucketStart}-x-axis`}>
               <line
                 x1={bucket.x}
                 y1={plotBottom}
@@ -360,7 +377,7 @@ export function PlayerAttendanceChart({ weekly, monthly, defaultView }: Props) {
           ))}
           {points.map((bucket, index) => (
             <rect
-              key={`${bucket.bucketStart.toISOString()}-target`}
+              key={`${bucket.bucketStart}-target`}
               x={bucket.x - hoverWidth / 2}
               y={plotTop}
               width={hoverWidth}
@@ -370,7 +387,6 @@ export function PlayerAttendanceChart({ weekly, monthly, defaultView }: Props) {
               tabIndex={0}
               aria-label={`${bucket.label}: ${formatAppearanceCount(bucket.totalAppearances)}`}
               onMouseEnter={() => setActiveIndex(index)}
-              onMouseLeave={() => setActiveIndex((current) => (current === index ? null : current))}
               onFocus={() => setActiveIndex(index)}
               onBlur={() => setActiveIndex((current) => (current === index ? null : current))}
             />
