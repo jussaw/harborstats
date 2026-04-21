@@ -5,17 +5,21 @@ import StatsPage from '@/app/stats/page'
 import { PlayerTier } from '@/lib/player-tier'
 import { getSettings } from '@/lib/settings'
 import {
+  getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
   getPlayerPodiumRates,
   getPlayerScoreStats,
+  getTierShowdownStats,
   getPlayerWinRates,
 } from '@/lib/stats'
 
 vi.mock('@/lib/stats', () => ({
+  getPlayerExpectedVsActualWins: vi.fn(),
   getPlayerWinRates: vi.fn(),
   getPlayerScoreStats: vi.fn(),
   getPlayerPodiumRates: vi.fn(),
   getPlayerFinishBreakdowns: vi.fn(),
+  getTierShowdownStats: vi.fn(),
 }))
 
 vi.mock('@/lib/settings', () => ({
@@ -108,6 +112,42 @@ describe('StatsPage', () => {
         lastRate: 0.25,
       },
     ])
+    vi.mocked(getTierShowdownStats).mockResolvedValue([
+      {
+        tier: PlayerTier.Premium,
+        players: 2,
+        appearances: 9,
+        wins: 4,
+        winRate: 4 / 9,
+      },
+      {
+        tier: PlayerTier.Standard,
+        players: 3,
+        appearances: 14,
+        wins: 3,
+        winRate: 3 / 14,
+      },
+    ])
+    vi.mocked(getPlayerExpectedVsActualWins).mockResolvedValue([
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+        games: 5,
+        wins: 3,
+        expectedWins: 1.8,
+        winDelta: 1.2,
+      },
+      {
+        playerId: 2,
+        name: 'Bea',
+        tier: PlayerTier.Standard,
+        games: 4,
+        wins: 1,
+        expectedWins: 1.5,
+        winDelta: -0.5,
+      },
+    ])
     vi.mocked(getSettings).mockResolvedValue({ winRateMinGames: 3 })
 
     const element = await StatsPage()
@@ -129,6 +169,8 @@ describe('StatsPage', () => {
     const medianScoreIndex = markup.indexOf('id="median-score"')
     const podiumRateIndex = markup.indexOf('id="podium-rate"')
     const finishBreakdownIndex = markup.indexOf('id="finish-breakdown"')
+    const tierShowdownIndex = markup.indexOf('id="tier-showdown"')
+    const expectedVsActualWinsIndex = markup.indexOf('id="expected-vs-actual-wins"')
 
     expect(totalWinsIndex).toBeGreaterThan(-1)
     expect(winRateIndex).toBeGreaterThan(totalWinsIndex)
@@ -136,11 +178,20 @@ describe('StatsPage', () => {
     expect(medianScoreIndex).toBeGreaterThan(avgScoreIndex)
     expect(podiumRateIndex).toBeGreaterThan(medianScoreIndex)
     expect(finishBreakdownIndex).toBeGreaterThan(podiumRateIndex)
+    expect(tierShowdownIndex).toBeGreaterThan(finishBreakdownIndex)
+    expect(expectedVsActualWinsIndex).toBeGreaterThan(tierShowdownIndex)
     expect(markup).toContain('Finish Breakdown')
     expect(markup).toContain('>1st<')
     expect(markup).toContain('>2nd<')
     expect(markup).toContain('>3rd<')
     expect(markup).toContain('>Last<')
+    expect(markup).toContain('Tier Showdown')
+    expect(markup).toContain('>Tier<')
+    expect(markup).toContain('>Appearances<')
+    expect(markup).toContain('>Players<')
+    expect(markup).toContain('Expected vs Actual Wins')
+    expect(markup).toContain('+1.2')
+    expect(markup).toContain('-0.5')
   })
 
   it('renders card empty states when no stats are available', async () => {
@@ -148,6 +199,8 @@ describe('StatsPage', () => {
     vi.mocked(getPlayerScoreStats).mockResolvedValue([])
     vi.mocked(getPlayerPodiumRates).mockResolvedValue([])
     vi.mocked(getPlayerFinishBreakdowns).mockResolvedValue([])
+    vi.mocked(getTierShowdownStats).mockResolvedValue([])
+    vi.mocked(getPlayerExpectedVsActualWins).mockResolvedValue([])
     vi.mocked(getSettings).mockResolvedValue({ winRateMinGames: 2 })
 
     const element = await StatsPage()
@@ -157,6 +210,6 @@ describe('StatsPage', () => {
     expect(markup).not.toContain('href="#total-wins"')
     expect(markup).toContain('No wins recorded yet.')
     expect(markup).toContain('No players have played 2+ games yet.')
-    expect(markup.match(/No games recorded yet\./g)).toHaveLength(4)
+    expect(markup.match(/No games recorded yet\./g)).toHaveLength(6)
   })
 })

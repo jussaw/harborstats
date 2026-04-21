@@ -62,13 +62,13 @@ Placement tags: `[H]` home page · `[S]` new `/stats` landing · `[P]` per-playe
 - **Needs:** winner score per game (share query from 1.7)
 
 ### 1.9 Win rate by opponent count `[P]`
-- [ ] Break out each player's win rate by game size (3p / 4p / 5p / 6p).
+- [x] Break out each player's win rate by game size (3p / 4p / 5p / 6p).
 
 ### 1.10 Tier showdown `[S]`
-- [ ] Aggregate and compare win rates across premium vs. standard tier players.
+- [x] Aggregate and compare win rates across premium vs. standard tier players.
 
 ### 1.11 Expected-vs-actual wins `[S]` `[P]`
-- [ ] Compare each player's actual win count against the baseline 1/N expectation as an over/underperformance signal.
+- [x] Compare each player's actual win count against the baseline 1/N expectation as an over/underperformance signal.
 - **Needs:** game-size data (share query from 1.9)
 
 ## 2. Activity (over time)

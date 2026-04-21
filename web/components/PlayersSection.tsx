@@ -1,14 +1,16 @@
 import Link from 'next/link'
 import { ArrowLeft, User } from 'lucide-react'
 import { StatsCard } from '@/components/StatsCard'
-import { formatAverage, formatPercent } from '@/lib/format'
+import { formatAverage, formatPercent, formatSignedNumber } from '@/lib/format'
 import { PlayerTier } from '@/lib/player-tier'
 import type { Player } from '@/lib/players'
 import type {
+  PlayerExpectedVsActualWins,
   PlayerFinishBreakdown,
   PlayerMarginStats,
   PlayerPodiumRate,
   PlayerScoreStats,
+  PlayerWinRateByGameSize,
 } from '@/lib/stats'
 import { PlayerProfileCard } from './PlayerProfileCard'
 
@@ -24,6 +26,8 @@ interface Props {
   podiumRates: PlayerPodiumRate[]
   finishBreakdowns: PlayerFinishBreakdown[]
   marginStats: PlayerMarginStats[]
+  winRateByGameSize: PlayerWinRateByGameSize[]
+  expectedVsActualWins: PlayerExpectedVsActualWins[]
 }
 
 interface PlayersListProps {
@@ -142,6 +146,10 @@ function formatCount(value: number, singular: string, plural = `${singular}s`) {
   return `${value} ${value === 1 ? singular : plural}`
 }
 
+function formatGameSizeLabel(playerCount: number) {
+  return `${playerCount}p`
+}
+
 function ProfileFinishBreakdownCard({ breakdown }: { breakdown: PlayerFinishBreakdown | null }) {
   return (
     <StatsCard
@@ -180,26 +188,77 @@ function ProfileFinishBreakdownCard({ breakdown }: { breakdown: PlayerFinishBrea
   )
 }
 
+function ProfileOpponentCountWinRateCard({
+  rows,
+}: {
+  rows: PlayerWinRateByGameSize[]
+}) {
+  return (
+    <StatsCard
+      id="player-win-rate-by-opponent-count"
+      title="Win Rate by Opponent Count"
+      description="How this player performs as the table size changes."
+      badge={undefined}
+      span="single"
+    >
+      {rows.length > 0 ? (
+        <div className="space-y-3">
+          {rows.map((row) => (
+            <div
+              key={row.playerCount}
+              className="
+                flex items-center justify-between gap-3 text-sm
+                text-(--cream)/70
+              "
+            >
+              <span className="tracking-wide text-(--cream)">
+                {formatGameSizeLabel(row.playerCount)}
+              </span>
+              <div className="text-right">
+                <p className="text-(--gold) tabular-nums">{formatPercent(row.winRate, 1)}</p>
+                <p className="text-xs text-(--cream)/50">
+                  {row.wins} / {row.games} wins
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <EmptyMetricState />
+      )}
+    </StatsCard>
+  )
+}
+
 function PlayerDetail({
   player,
   scoreStats,
   podiumRates,
   finishBreakdowns,
   marginStats,
+  winRateByGameSize,
+  expectedVsActualWins,
 }: {
   player: Player
   scoreStats: PlayerScoreStats[]
   podiumRates: PlayerPodiumRate[]
   finishBreakdowns: PlayerFinishBreakdown[]
   marginStats: PlayerMarginStats[]
+  winRateByGameSize: PlayerWinRateByGameSize[]
+  expectedVsActualWins: PlayerExpectedVsActualWins[]
 }) {
   const scoreStat = scoreStats.find((candidate) => candidate.playerId === player.id) ?? null
   const podiumStat = podiumRates.find((candidate) => candidate.playerId === player.id) ?? null
   const finishBreakdown = finishBreakdowns.find((candidate) => candidate.playerId === player.id) ?? null
   const marginStat = marginStats.find((candidate) => candidate.playerId === player.id) ?? null
+  const opponentCountStats = winRateByGameSize
+    .filter((candidate) => candidate.playerId === player.id)
+    .sort((a, b) => a.playerCount - b.playerCount)
+  const expectedVsActualStat = expectedVsActualWins.find((candidate) => candidate.playerId === player.id) ?? null
 
   const hasGames = scoreStat !== null && scoreStat.games > 0
   const podiumHasGames = podiumStat !== null && podiumStat.games > 0
+  const expectedVsActualHasGames = expectedVsActualStat !== null && expectedVsActualStat.games > 0
   const victoryMarginValue = marginStat?.averageVictoryMargin ?? null
   const defeatMarginValue = marginStat?.averageDefeatMargin ?? null
 
@@ -239,6 +298,23 @@ function PlayerDetail({
           }
         />
         <ProfileFinishBreakdownCard breakdown={finishBreakdown} />
+        <ProfileOpponentCountWinRateCard rows={opponentCountStats} />
+        <ProfileMetricCard
+          id="player-expected-vs-actual-wins"
+          title="Expected vs Actual Wins"
+          description="Actual wins minus the baseline 1/N expectation for each game size."
+          value={expectedVsActualHasGames ? formatSignedNumber(expectedVsActualStat.winDelta) : null}
+          detail={
+            expectedVsActualHasGames
+              ? `${expectedVsActualStat.wins} actual ${
+                  expectedVsActualStat.wins === 1 ? 'win' : 'wins'
+                } vs ${formatAverage(expectedVsActualStat.expectedWins)} expected across ${formatCount(
+                  expectedVsActualStat.games,
+                  'game',
+                )}`
+              : null
+          }
+        />
         <ProfileMetricCard
           id="player-average-margin-of-victory"
           title="Average Margin of Victory"
@@ -287,6 +363,8 @@ export function PlayersSection({
   podiumRates,
   finishBreakdowns,
   marginStats,
+  winRateByGameSize,
+  expectedVsActualWins,
 }: Props) {
   if (players.length === 0) {
     return (
@@ -337,6 +415,8 @@ export function PlayersSection({
                 podiumRates={podiumRates}
                 finishBreakdowns={finishBreakdowns}
                 marginStats={marginStats}
+                winRateByGameSize={winRateByGameSize}
+                expectedVsActualWins={expectedVsActualWins}
               />
             ) : null}
           </div>
@@ -358,6 +438,8 @@ export function PlayersSection({
               podiumRates={podiumRates}
               finishBreakdowns={finishBreakdowns}
               marginStats={marginStats}
+              winRateByGameSize={winRateByGameSize}
+              expectedVsActualWins={expectedVsActualWins}
             />
           ) : (
             <PlayersDetailEmptyState />

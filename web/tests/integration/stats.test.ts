@@ -1,10 +1,13 @@
 import { describe, expect, test } from 'vitest';
 import {
+  getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
   getPlayerMarginStats,
   getPlayerPodiumRates,
   getPlayerScoreStats,
+  getPlayerWinRateByGameSize,
   getPlayerWinRates,
+  getTierShowdownStats,
 } from '@/lib/stats';
 import { PlayerTier } from '@/lib/player-tier';
 import { createTestGame, createTestPlayer } from '../helpers/db';
@@ -367,5 +370,151 @@ describe('stats integration', () => {
       averageVictoryMargin: null,
       averageDefeatMargin: null,
     });
+  });
+
+  test('game-size aggregates drive opponent-count win rates, tier showdown, and expected wins', async () => {
+    const alice = await createTestPlayer({ name: 'Alice', tier: PlayerTier.Premium });
+    const bob = await createTestPlayer({ name: 'Bob', tier: PlayerTier.Standard });
+    const carol = await createTestPlayer({ name: 'Carol', tier: PlayerTier.Standard });
+    const dana = await createTestPlayer({ name: 'Dana', tier: PlayerTier.Premium });
+    const eve = await createTestPlayer({ name: 'Eve', tier: PlayerTier.Standard });
+    const frank = await createTestPlayer({ name: 'Frank', tier: PlayerTier.Standard });
+
+    await createTestGame({
+      players: [
+        { playerId: alice.id, score: 10, isWinner: true },
+        { playerId: bob.id, score: 7, isWinner: false },
+      ],
+    });
+
+    await createTestGame({
+      players: [
+        { playerId: bob.id, score: 11, isWinner: true },
+        { playerId: alice.id, score: 8, isWinner: false },
+        { playerId: carol.id, score: 6, isWinner: false },
+      ],
+    });
+
+    await createTestGame({
+      players: [
+        { playerId: alice.id, score: 12, isWinner: true },
+        { playerId: dana.id, score: 12, isWinner: true },
+        { playerId: bob.id, score: 9, isWinner: false },
+        { playerId: carol.id, score: 8, isWinner: false },
+      ],
+    });
+
+    await createTestGame({
+      players: [
+        { playerId: carol.id, score: 10, isWinner: true },
+        { playerId: bob.id, score: 8, isWinner: false },
+        { playerId: dana.id, score: 7, isWinner: false },
+        { playerId: eve.id, score: 6, isWinner: false },
+      ],
+    });
+
+    const [winRateByGameSize, expectedVsActualWins, tierShowdown] = await Promise.all([
+      getPlayerWinRateByGameSize(),
+      getPlayerExpectedVsActualWins(),
+      getTierShowdownStats(),
+    ]);
+
+    expect(winRateByGameSize.filter((player) => player.playerId === alice.id)).toEqual([
+      expect.objectContaining({
+        playerCount: 2,
+        games: 1,
+        wins: 1,
+        winRate: 1,
+      }),
+      expect.objectContaining({
+        playerCount: 3,
+        games: 1,
+        wins: 0,
+        winRate: 0,
+      }),
+      expect.objectContaining({
+        playerCount: 4,
+        games: 1,
+        wins: 1,
+        winRate: 1,
+      }),
+    ]);
+
+    expect(winRateByGameSize.filter((player) => player.playerId === bob.id)).toEqual([
+      expect.objectContaining({
+        playerCount: 2,
+        games: 1,
+        wins: 0,
+        winRate: 0,
+      }),
+      expect.objectContaining({
+        playerCount: 3,
+        games: 1,
+        wins: 1,
+        winRate: 1,
+      }),
+      expect.objectContaining({
+        playerCount: 4,
+        games: 2,
+        wins: 0,
+        winRate: 0,
+      }),
+    ]);
+
+    expect(expectedVsActualWins.find((player) => player.playerId === alice.id)).toMatchObject({
+      games: 3,
+      wins: 2,
+      expectedWins: 1.1,
+      winDelta: 0.9,
+    });
+
+    expect(expectedVsActualWins.find((player) => player.playerId === dana.id)).toMatchObject({
+      games: 2,
+      wins: 1,
+      expectedWins: 0.5,
+      winDelta: 0.5,
+    });
+
+    expect(expectedVsActualWins.find((player) => player.playerId === bob.id)).toMatchObject({
+      games: 4,
+      wins: 1,
+      expectedWins: 1.3,
+      winDelta: -0.3,
+    });
+
+    expect(expectedVsActualWins.find((player) => player.playerId === eve.id)).toMatchObject({
+      games: 1,
+      wins: 0,
+      expectedWins: 0.3,
+      winDelta: -0.2,
+    });
+
+    expect(expectedVsActualWins.find((player) => player.playerId === frank.id)).toMatchObject({
+      games: 0,
+      wins: 0,
+      expectedWins: 0,
+      winDelta: 0,
+    });
+
+    expect(expectedVsActualWins.findIndex((player) => player.playerId === eve.id)).toBeLessThan(
+      expectedVsActualWins.findIndex((player) => player.playerId === bob.id),
+    );
+
+    expect(tierShowdown).toEqual([
+      expect.objectContaining({
+        tier: PlayerTier.Premium,
+        players: 2,
+        appearances: 5,
+        wins: 3,
+        winRate: 0.6,
+      }),
+      expect.objectContaining({
+        tier: PlayerTier.Standard,
+        players: 4,
+        appearances: 8,
+        wins: 2,
+        winRate: 0.25,
+      }),
+    ]);
   });
 });

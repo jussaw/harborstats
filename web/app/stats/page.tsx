@@ -2,14 +2,16 @@ import type { ReactNode } from 'react'
 import type { Metadata } from 'next'
 import { StatsCard } from '@/components/StatsCard'
 import { StatsLeaderboardTable } from '@/components/StatsLeaderboardTable'
-import { formatAverage, formatPercent } from '@/lib/format'
+import { formatAverage, formatPercent, formatSignedNumber } from '@/lib/format'
 import { PlayerTier } from '@/lib/player-tier'
 import { rankWithTies } from '@/lib/rank'
 import { getSettings } from '@/lib/settings'
 import {
+  getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
   getPlayerPodiumRates,
   getPlayerScoreStats,
+  getTierShowdownStats,
   getPlayerWinRates,
 } from '@/lib/stats'
 
@@ -70,13 +72,27 @@ function EmptyState({ children }: { children: ReactNode }) {
   return <p className="py-8 text-center text-sm text-(--cream)/50">{children}</p>
 }
 
+function formatTierLabel(tier: PlayerTier) {
+  return tier === PlayerTier.Premium ? 'Premium' : 'Standard'
+}
+
 export default async function StatsPage() {
-  const [winRates, settings, scoreStats, podiumRates, finishBreakdowns] = await Promise.all([
+  const [
+    winRates,
+    settings,
+    scoreStats,
+    podiumRates,
+    finishBreakdowns,
+    tierShowdown,
+    expectedVsActualWins,
+  ] = await Promise.all([
     getPlayerWinRates(),
     getSettings(),
     getPlayerScoreStats(),
     getPlayerPodiumRates(),
     getPlayerFinishBreakdowns(),
+    getTierShowdownStats(),
+    getPlayerExpectedVsActualWins(),
   ])
 
   const winRateQualified = winRates
@@ -91,6 +107,8 @@ export default async function StatsPage() {
   const medianScoreRanks = rankWithTies(medianSorted, (player) => player.medianScore)
   const podiumRateRanks = rankWithTies(podiumRates, (player) => player.podiumRate)
   const finishBreakdownRanks = rankWithTies(finishBreakdowns, (player) => player.firstRate)
+  const tierShowdownRanks = rankWithTies(tierShowdown, (row) => row.winRate)
+  const expectedVsActualRanks = rankWithTies(expectedVsActualWins, (player) => player.winDelta)
 
   const statsCards: StatsCardMeta[] = [
     {
@@ -135,6 +153,20 @@ export default async function StatsPage() {
       id: 'finish-breakdown',
       title: 'Finish Breakdown',
       description: 'Share of games each player finished first, second, third, or last.',
+      badge: undefined,
+      span: 'full',
+    },
+    {
+      id: 'tier-showdown',
+      title: 'Tier Showdown',
+      description: 'Premium and standard tier players compared by wins per appearance.',
+      badge: undefined,
+      span: 'full',
+    },
+    {
+      id: 'expected-vs-actual-wins',
+      title: 'Expected vs Actual Wins',
+      description: 'Actual wins versus the baseline 1/N expectation for each game played.',
       badge: undefined,
       span: 'full',
     },
@@ -393,6 +425,100 @@ export default async function StatsPage() {
                   </DataRow>
                 ))}
               </StatsLeaderboardTable>
+            )}
+        </StatsCard>
+
+        <StatsCard {...cardById['tier-showdown']}>
+            {tierShowdown.some((row) => row.appearances > 0) ? (
+              <StatsLeaderboardTable
+                columns={[
+                  { label: '#', align: 'center', widthClass: 'w-10' },
+                  { label: 'Tier' },
+                  { label: 'Win Rate', align: 'right' },
+                  { label: 'Wins', align: 'right' },
+                  { label: 'Appearances', align: 'right' },
+                  { label: 'Players', align: 'right' },
+                ]}
+              >
+                {tierShowdown.map((row, index) => (
+                  <DataRow key={row.tier}>
+                    <RankCell rank={tierShowdownRanks[index]} />
+                    <td className="px-3 py-2 text-(--cream)">
+                      <span className={row.tier === PlayerTier.Premium ? `
+                        font-semibold text-(--gold)
+                      ` : ''}>
+                        {formatTierLabel(row.tier)}
+                      </span>
+                    </td>
+                    <td className="
+                      px-3 py-2 text-right font-semibold text-(--gold)
+                      tabular-nums
+                    ">
+                      {formatPercent(row.winRate, 1)}
+                    </td>
+                    <td className="
+                      px-3 py-2 text-right text-(--cream) tabular-nums
+                    ">
+                      {row.wins}
+                    </td>
+                    <td className="
+                      px-3 py-2 text-right text-(--cream) tabular-nums
+                    ">
+                      {row.appearances}
+                    </td>
+                    <td className="
+                      px-3 py-2 text-right text-(--cream)/70 tabular-nums
+                    ">
+                      {row.players}
+                    </td>
+                  </DataRow>
+                ))}
+              </StatsLeaderboardTable>
+            ) : (
+              <EmptyState>No games recorded yet.</EmptyState>
+            )}
+        </StatsCard>
+
+        <StatsCard {...cardById['expected-vs-actual-wins']}>
+            {expectedVsActualWins.some((player) => player.games > 0) ? (
+              <StatsLeaderboardTable
+                columns={[
+                  { label: '#', align: 'center', widthClass: 'w-10' },
+                  { label: 'Player' },
+                  { label: 'Delta', align: 'right' },
+                  { label: 'Actual Wins', align: 'right' },
+                  { label: 'Expected Wins', align: 'right' },
+                ]}
+              >
+                {expectedVsActualWins.map((player, index) => (
+                  <DataRow key={player.playerId}>
+                    <RankCell rank={expectedVsActualRanks[index]} />
+                    <td className="px-3 py-2 text-(--cream)">
+                      <PlayerName name={player.name} tier={player.tier} />
+                    </td>
+                    <td className={`
+                      px-3 py-2 text-right font-semibold tabular-nums
+                      ${player.winDelta >= 0 ? 'text-(--gold)' : `
+                        text-(--cream)
+                      `}
+                    `}>
+                      {formatSignedNumber(player.winDelta)}
+                    </td>
+                    <td className="
+                      px-3 py-2 text-right text-(--cream) tabular-nums
+                    ">
+                      {player.wins}
+                    </td>
+                    <td className="
+                      px-3 py-2 text-right text-(--cream)/70 tabular-nums
+                    ">
+                      {formatAverage(player.expectedWins)}
+                    </td>
+                  </DataRow>
+                ))}
+              </StatsLeaderboardTable>
+            ) : (
+              <EmptyState>No games recorded yet.</EmptyState>
             )}
         </StatsCard>
       </div>

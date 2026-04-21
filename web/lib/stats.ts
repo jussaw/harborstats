@@ -2,17 +2,207 @@
 
 import { count, eq, sql } from 'drizzle-orm'
 import { gamePlayers, players } from '@/db/schema'
-import { parsePlayerTier, type PlayerTier } from '@/lib/player-tier'
+import { parsePlayerTier, PlayerTier, type PlayerTier as PlayerTierType } from '@/lib/player-tier'
 import { db } from './db'
 
 function round1(value: number): number {
   return Math.round(value * 10) / 10
 }
 
+interface PlayerIdentity {
+  playerId: number
+  name: string
+  tier: PlayerTierType
+}
+
+interface PlayerGameSizeAccumulator extends PlayerIdentity {
+  playerCount: number
+  games: number
+  wins: number
+  expectedWins: number
+}
+
+interface PlayerExpectedWinsAccumulator extends PlayerIdentity {
+  games: number
+  wins: number
+  expectedWins: number
+}
+
+interface TierShowdownAccumulator {
+  tier: PlayerTierType
+  players: number
+  appearances: number
+  wins: number
+}
+
+interface GameSizeAggregateData {
+  playerWinRateByGameSize: PlayerWinRateByGameSize[]
+  playerExpectedVsActualWins: PlayerExpectedVsActualWins[]
+  tierShowdownStats: TierShowdownStats[]
+}
+
+async function getGameSizeAggregateData(): Promise<GameSizeAggregateData> {
+  const [playerRows, participantRows] = await Promise.all([
+    db
+      .select({
+        playerId: players.id,
+        name: players.name,
+        tier: players.tier,
+      })
+      .from(players)
+      .orderBy(sql`CASE ${players.tier} WHEN 'premium' THEN 0 ELSE 1 END`, players.name),
+    db
+      .select({
+        gameId: gamePlayers.gameId,
+        playerId: gamePlayers.playerId,
+        isWinner: gamePlayers.isWinner,
+      })
+      .from(gamePlayers),
+  ])
+
+  const playersById = new Map<number, PlayerIdentity>(
+    playerRows.map((player) => [
+      player.playerId,
+      {
+        playerId: player.playerId,
+        name: player.name,
+        tier: parsePlayerTier(player.tier),
+      },
+    ]),
+  )
+
+  const expectedWinsByPlayerId = new Map<number, PlayerExpectedWinsAccumulator>(
+    playerRows.map((player) => [
+      player.playerId,
+      {
+        playerId: player.playerId,
+        name: player.name,
+        tier: parsePlayerTier(player.tier),
+        games: 0,
+        wins: 0,
+        expectedWins: 0,
+      },
+    ]),
+  )
+
+  const tierStats = new Map<PlayerTier, TierShowdownAccumulator>([
+    [PlayerTier.Premium, {
+      tier: PlayerTier.Premium,
+      players: playerRows.filter((player) => parsePlayerTier(player.tier) === PlayerTier.Premium).length,
+      appearances: 0,
+      wins: 0,
+    }],
+    [PlayerTier.Standard, {
+      tier: PlayerTier.Standard,
+      players: playerRows.filter((player) => parsePlayerTier(player.tier) === PlayerTier.Standard).length,
+      appearances: 0,
+      wins: 0,
+    }],
+  ])
+
+  const gameSizeBuckets = new Map<string, PlayerGameSizeAccumulator>()
+  const participantsByGameId = new Map<number, typeof participantRows>()
+
+  participantRows.forEach((participant) => {
+    const existing = participantsByGameId.get(participant.gameId) ?? []
+    existing.push(participant)
+    participantsByGameId.set(participant.gameId, existing)
+  })
+
+  participantsByGameId.forEach((participants) => {
+    const playerCount = participants.length
+    if (playerCount === 0) {
+      return
+    }
+
+    const expectedWinShare = 1 / playerCount
+
+    participants.forEach((participant) => {
+      const player = playersById.get(participant.playerId)
+      const expectedWins = expectedWinsByPlayerId.get(participant.playerId)
+      if (!player || !expectedWins) {
+        return
+      }
+
+      expectedWins.games += 1
+      expectedWins.wins += participant.isWinner ? 1 : 0
+      expectedWins.expectedWins += expectedWinShare
+
+      const tier = tierStats.get(player.tier)
+      if (tier) {
+        tier.appearances += 1
+        tier.wins += participant.isWinner ? 1 : 0
+      }
+
+      const key = `${participant.playerId}:${playerCount}`
+      const bucket = gameSizeBuckets.get(key) ?? {
+        ...player,
+        playerCount,
+        games: 0,
+        wins: 0,
+        expectedWins: 0,
+      }
+
+      bucket.games += 1
+      bucket.wins += participant.isWinner ? 1 : 0
+      bucket.expectedWins += expectedWinShare
+
+      gameSizeBuckets.set(key, bucket)
+    })
+  })
+
+  return {
+    playerWinRateByGameSize: [...gameSizeBuckets.values()]
+      .map((bucket) => ({
+        playerId: bucket.playerId,
+        name: bucket.name,
+        tier: bucket.tier,
+        playerCount: bucket.playerCount,
+        games: bucket.games,
+        wins: bucket.wins,
+        winRate: bucket.games > 0 ? bucket.wins / bucket.games : 0,
+      }))
+      .sort(
+        (a, b) => a.playerId - b.playerId
+          || a.playerCount - b.playerCount
+          || b.winRate - a.winRate,
+      ),
+    playerExpectedVsActualWins: [...expectedWinsByPlayerId.values()]
+      .map((player) => ({
+        playerId: player.playerId,
+        name: player.name,
+        tier: player.tier,
+        games: player.games,
+        wins: player.wins,
+        expectedWins: round1(player.expectedWins),
+        winDelta: round1(player.wins - player.expectedWins),
+      }))
+      .sort(
+        (a, b) => b.winDelta - a.winDelta
+          || b.wins - a.wins
+          || b.expectedWins - a.expectedWins
+          || a.name.localeCompare(b.name),
+      ),
+    tierShowdownStats: [...tierStats.values()]
+      .map((tier) => ({
+        tier: tier.tier,
+        players: tier.players,
+        appearances: tier.appearances,
+        wins: tier.wins,
+        winRate: tier.appearances > 0 ? tier.wins / tier.appearances : 0,
+      }))
+      .sort(
+        (a, b) => b.winRate - a.winRate
+          || b.wins - a.wins
+          || a.tier.localeCompare(b.tier),
+      ),
+  }
+}
+
 export interface PlayerWinRate {
   playerId: number
   name: string
-  tier: PlayerTier
+  tier: PlayerTierType
   games: number
   wins: number
   winRate: number // 0.0–1.0
@@ -43,7 +233,7 @@ export async function getPlayerWinRates(): Promise<PlayerWinRate[]> {
 export interface PlayerScoreStats {
   playerId: number
   name: string
-  tier: PlayerTier
+  tier: PlayerTierType
   games: number
   avgScore: number
   medianScore: number
@@ -76,7 +266,7 @@ export async function getPlayerScoreStats(): Promise<PlayerScoreStats[]> {
 export interface PlayerPodiumRate {
   playerId: number
   name: string
-  tier: PlayerTier
+  tier: PlayerTierType
   games: number
   podiums: number
   podiumRate: number // 0.0–1.0
@@ -121,7 +311,7 @@ export async function getPlayerPodiumRates(): Promise<PlayerPodiumRate[]> {
 export interface PlayerFinishBreakdown {
   playerId: number
   name: string
-  tier: PlayerTier
+  tier: PlayerTierType
   games: number
   firsts: number
   seconds: number
@@ -195,7 +385,7 @@ export async function getPlayerFinishBreakdowns(): Promise<PlayerFinishBreakdown
 export interface PlayerMarginStats {
   playerId: number
   name: string
-  tier: PlayerTier
+  tier: PlayerTierType
   winGames: number
   lossGames: number
   averageVictoryMargin: number | null
@@ -205,7 +395,7 @@ export interface PlayerMarginStats {
 interface PlayerMarginAccumulator {
   playerId: number
   name: string
-  tier: PlayerTier
+  tier: PlayerTierType
   winGames: number
   lossGames: number
   victoryMarginTotal: number
@@ -295,4 +485,47 @@ export async function getPlayerMarginStats(): Promise<PlayerMarginStats[]> {
     averageDefeatMargin:
       player.lossGames > 0 ? round1(player.defeatMarginTotal / player.lossGames) : null,
   }))
+}
+
+export interface PlayerWinRateByGameSize {
+  playerId: number
+  name: string
+  tier: PlayerTierType
+  playerCount: number
+  games: number
+  wins: number
+  winRate: number
+}
+
+export async function getPlayerWinRateByGameSize(): Promise<PlayerWinRateByGameSize[]> {
+  const data = await getGameSizeAggregateData()
+  return data.playerWinRateByGameSize
+}
+
+export interface TierShowdownStats {
+  tier: PlayerTierType
+  players: number
+  appearances: number
+  wins: number
+  winRate: number
+}
+
+export async function getTierShowdownStats(): Promise<TierShowdownStats[]> {
+  const data = await getGameSizeAggregateData()
+  return data.tierShowdownStats
+}
+
+export interface PlayerExpectedVsActualWins {
+  playerId: number
+  name: string
+  tier: PlayerTierType
+  games: number
+  wins: number
+  expectedWins: number
+  winDelta: number
+}
+
+export async function getPlayerExpectedVsActualWins(): Promise<PlayerExpectedVsActualWins[]> {
+  const data = await getGameSizeAggregateData()
+  return data.playerExpectedVsActualWins
 }

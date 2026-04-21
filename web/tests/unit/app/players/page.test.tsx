@@ -5,10 +5,12 @@ import PlayersPage from '@/app/players/page'
 import { getPlayers } from '@/lib/players'
 import { PlayerTier } from '@/lib/player-tier'
 import {
+  getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
   getPlayerMarginStats,
   getPlayerPodiumRates,
   getPlayerScoreStats,
+  getPlayerWinRateByGameSize,
 } from '@/lib/stats'
 
 vi.mock('@/lib/players', () => ({
@@ -16,10 +18,12 @@ vi.mock('@/lib/players', () => ({
 }))
 
 vi.mock('@/lib/stats', () => ({
+  getPlayerExpectedVsActualWins: vi.fn(),
   getPlayerScoreStats: vi.fn(),
   getPlayerPodiumRates: vi.fn(),
   getPlayerFinishBreakdowns: vi.fn(),
   getPlayerMarginStats: vi.fn(),
+  getPlayerWinRateByGameSize: vi.fn(),
 }))
 
 describe('PlayersPage', () => {
@@ -124,6 +128,55 @@ describe('PlayersPage', () => {
         averageDefeatMargin: 2.3,
       },
     ])
+    vi.mocked(getPlayerWinRateByGameSize).mockResolvedValue([
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+        playerCount: 2,
+        games: 1,
+        wins: 1,
+        winRate: 1,
+      },
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+        playerCount: 3,
+        games: 2,
+        wins: 1,
+        winRate: 0.5,
+      },
+      {
+        playerId: 2,
+        name: 'Bea',
+        tier: PlayerTier.Standard,
+        playerCount: 4,
+        games: 4,
+        wins: 1,
+        winRate: 0.25,
+      },
+    ])
+    vi.mocked(getPlayerExpectedVsActualWins).mockResolvedValue([
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+        games: 3,
+        wins: 2,
+        expectedWins: 1.2,
+        winDelta: 0.8,
+      },
+      {
+        playerId: 2,
+        name: 'Bea',
+        tier: PlayerTier.Standard,
+        games: 4,
+        wins: 1,
+        expectedWins: 1.5,
+        winDelta: -0.5,
+      },
+    ])
 
     const element = await PlayersPage()
     const markup = renderToStaticMarkup(element)
@@ -139,13 +192,19 @@ describe('PlayersPage', () => {
     expect(markup).toContain('Median Score')
     expect(markup).toContain('Podium Rate')
     expect(markup).toContain('Finish Breakdown')
+    expect(markup).toContain('Win Rate by Opponent Count')
     expect(markup).toContain('Average Margin of Victory')
     expect(markup).toContain('Average Margin of Defeat')
+    expect(markup).toContain('Expected vs Actual Wins')
     expect(markup).toContain('9.4')
     expect(markup).toContain('9.0')
     expect(markup).toContain('80.0%')
     expect(markup).toContain('40.0% (2)')
     expect(markup).toContain('20.0% (1)')
+    expect(markup).toContain('2p')
+    expect(markup).toContain('3p')
+    expect(markup).toContain('+0.8')
+    expect(markup).toContain('2 actual wins vs 1.2 expected across 3 games')
     expect(markup).toContain('2.5')
     expect(markup).toContain('1.7')
     expect(markup).toContain('Across 5 games')
@@ -160,6 +219,8 @@ describe('PlayersPage', () => {
     vi.mocked(getPlayerPodiumRates).mockResolvedValue([])
     vi.mocked(getPlayerFinishBreakdowns).mockResolvedValue([])
     vi.mocked(getPlayerMarginStats).mockResolvedValue([])
+    vi.mocked(getPlayerWinRateByGameSize).mockResolvedValue([])
+    vi.mocked(getPlayerExpectedVsActualWins).mockResolvedValue([])
 
     const element = await PlayersPage()
     const markup = renderToStaticMarkup(element)
