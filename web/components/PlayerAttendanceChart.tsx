@@ -79,6 +79,46 @@ function getColorForPlayer(playerId: number) {
   return PLAYER_COLORS[playerId % PLAYER_COLORS.length]
 }
 
+function getAttendanceDialogPosition({
+  bucketX,
+  bucketAppearances,
+  width,
+  height,
+  plotTop,
+  plotBottom,
+  maxAppearances,
+}: {
+  bucketX: number
+  bucketAppearances: number
+  width: number
+  height: number
+  plotTop: number
+  plotBottom: number
+  maxAppearances: number
+}) {
+  const dialogWidth = 240
+  const dialogGap = 18
+  const dialogPadding = 16
+  const rightSpace = width - bucketX - dialogPadding
+  const leftSpace = bucketX - dialogPadding
+  const side = rightSpace >= dialogWidth + dialogGap || rightSpace >= leftSpace ? 'right' : 'left'
+  const bucketHeight = (bucketAppearances / maxAppearances) * (plotBottom - plotTop)
+  const unclampedAnchorY = plotBottom - bucketHeight + 10
+  const minAnchorY = plotTop + 18
+  const maxAnchorY = plotTop + (plotBottom - plotTop) * 0.62
+  const anchorY = Math.min(maxAnchorY, Math.max(minAnchorY, unclampedAnchorY))
+
+  return {
+    side,
+    left: `${(bucketX / width) * 100}%`,
+    top: `${(anchorY / height) * 100}%`,
+    transform:
+      side === 'right'
+        ? 'translate(18px, -18%)'
+        : 'translate(calc(-100% - 18px), -18%)',
+  }
+}
+
 export function PlayerAttendanceChart({ weekly, monthly, defaultView }: Props) {
   const [view, setView] = useState<ActivityView>(defaultView)
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
@@ -110,30 +150,23 @@ export function PlayerAttendanceChart({ weekly, monthly, defaultView }: Props) {
     : Math.max(((points[1]?.x ?? points[0].x) - points[0].x) / 1.5, 28)
   const yAxisTicks = getYAxisTicks(maxAppearances)
   const xAxisLabelIndices = getXAxisLabelIndices(points.length)
+  const dialogPosition = activeBucket
+    ? getAttendanceDialogPosition({
+        bucketX: activeBucket.x,
+        bucketAppearances: activeBucket.totalAppearances,
+        width,
+        height,
+        plotTop,
+        plotBottom,
+        maxAppearances,
+      })
+    : null
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="text-sm text-(--cream)/55">
-          {activeBucket ? (
-            <div>
-              <p className="text-(--cream)">{activeBucket.label}</p>
-              <p className="mt-1 tabular-nums">
-                {formatAppearanceCount(activeBucket.totalAppearances)}
-              </p>
-              {activeBucket.segments.length > 0 ? (
-                <div className="mt-2 space-y-1">
-                  {activeBucket.segments.map((segment) => (
-                    <p key={segment.playerId} className="tabular-nums text-(--cream)/70">
-                      {segment.name}: {segment.gameCount}
-                    </p>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          ) : (
-            <p>Hover over a bar to inspect attendance.</p>
-          )}
+          <p>Hover over a bar to inspect attendance.</p>
         </div>
         <ActivityViewToggle
           view={view}
@@ -166,10 +199,44 @@ export function PlayerAttendanceChart({ weekly, monthly, defaultView }: Props) {
 
       <div
         className="
-          rounded-2xl border border-(--gold)/15 bg-(--navy-800)/30 p-4
+          relative rounded-2xl border border-(--gold)/15 bg-(--navy-800)/30 p-4
           sm:p-5
         "
       >
+        {activeBucket ? (
+          <div
+            role="dialog"
+            aria-label={`Attendance details for ${activeBucket.label}`}
+            data-side={dialogPosition?.side}
+            className="
+              pointer-events-none absolute z-10 min-w-52
+              rounded-2xl border border-(--gold)/20 bg-(--navy-900)/95 p-4
+              shadow-[0_18px_40px_rgba(0,0,0,0.28)]
+            "
+            style={{
+              left: dialogPosition?.left,
+              top: dialogPosition?.top,
+              transform: dialogPosition?.transform,
+              maxWidth: 'min(15rem, calc(100% - 2rem))',
+            }}
+          >
+            <p className="text-sm font-semibold text-(--cream)">{activeBucket.label}</p>
+            <p className="mt-1 text-sm text-(--gold) tabular-nums">
+              {formatAppearanceCount(activeBucket.totalAppearances)}
+            </p>
+            {activeBucket.segments.length > 0 ? (
+              <div className="mt-3 space-y-1 text-sm text-(--cream)/70">
+                {activeBucket.segments.map((segment) => (
+                  <p key={segment.playerId} className="tabular-nums">
+                    {segment.name}: {segment.gameCount}
+                  </p>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-3 text-sm text-(--cream)/55">No appearances in this bucket.</p>
+            )}
+          </div>
+        ) : null}
         <svg
           viewBox={`0 0 ${width} ${height}`}
           className="h-64 w-full"
@@ -303,6 +370,7 @@ export function PlayerAttendanceChart({ weekly, monthly, defaultView }: Props) {
               tabIndex={0}
               aria-label={`${bucket.label}: ${formatAppearanceCount(bucket.totalAppearances)}`}
               onMouseEnter={() => setActiveIndex(index)}
+              onMouseLeave={() => setActiveIndex((current) => (current === index ? null : current))}
               onFocus={() => setActiveIndex(index)}
               onBlur={() => setActiveIndex((current) => (current === index ? null : current))}
             />

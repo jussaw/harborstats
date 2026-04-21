@@ -47,18 +47,41 @@ describe('PlayerAttendanceChart', () => {
     expect(screen.getByText('Ada')).toBeInTheDocument();
     expect(screen.getByText('Bea')).toBeInTheDocument();
     expect(screen.getByText('Hover over a bar to inspect attendance.')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 
     await user.hover(screen.getByRole('button', { name: 'Apr 7: 4 appearances' }));
 
+    const firstDialog = screen.getByRole('dialog', { name: 'Attendance details for Apr 7' });
+
+    expect(firstDialog).toHaveAttribute(
+      'data-side',
+      'right',
+    );
+    const firstTop = Number.parseFloat(firstDialog.style.top);
     expect(screen.getByText('4 appearances')).toBeInTheDocument();
     expect(screen.getByText('Ada: 3')).toBeInTheDocument();
     expect(screen.getByText('Bea: 1')).toBeInTheDocument();
 
+    await user.hover(screen.getByRole('button', { name: 'Apr 14: 0 appearances' }));
+
+    const secondDialog = screen.getByRole('dialog', { name: 'Attendance details for Apr 14' });
+
+    expect(secondDialog).toHaveAttribute(
+      'data-side',
+      'left',
+    );
+    const secondTop = Number.parseFloat(secondDialog.style.top);
+    expect(secondTop).toBeGreaterThan(firstTop);
+    expect(secondTop).toBeLessThan(65);
+    expect(screen.getByText('No appearances in this bucket.')).toBeInTheDocument();
+
     await user.click(screen.getByRole('button', { name: 'Month' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     await user.hover(screen.getByRole('button', { name: 'Apr 2026: 5 appearances' }));
 
     expect(screen.getByRole('button', { name: 'Week' })).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByRole('button', { name: 'Month' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('dialog', { name: 'Attendance details for Apr 2026' })).toBeInTheDocument();
     expect(screen.getByText('5 appearances')).toBeInTheDocument();
     expect(screen.getByText('Bea: 2')).toBeInTheDocument();
   });
