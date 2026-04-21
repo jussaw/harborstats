@@ -2,45 +2,12 @@
 
 import { useState } from 'react'
 import type { ActivityBucket } from '@/lib/stats'
-
-type ViewMode = 'week' | 'month'
+import { ActivityViewToggle, type ActivityView } from '@/components/ActivityViewToggle'
 
 interface Props {
   weekly: ActivityBucket[]
   monthly: ActivityBucket[]
-  defaultView: ViewMode
-}
-
-function ToggleButton({
-  active,
-  label,
-  onClick,
-}: {
-  active: boolean
-  label: string
-  onClick: () => void
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className={`
-        rounded-full px-3 py-1 text-xs font-semibold tracking-[0.2em] uppercase
-        transition-colors
-        ${
-        active
-          ? 'bg-(--gold) text-(--navy-900)'
-          : `
-            text-(--cream)/60
-            hover:text-(--cream)
-          `
-      }
-      `}
-    >
-      {label}
-    </button>
-  )
+  defaultView: ActivityView
 }
 
 function buildPolylinePoints(data: ActivityBucket[]) {
@@ -99,7 +66,7 @@ export function GamesOverTimeChart({
   monthly,
   defaultView,
 }: Props) {
-  const [view, setView] = useState<ViewMode>(defaultView)
+  const [view, setView] = useState<ActivityView>(defaultView)
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
   const data = view === 'week' ? weekly : monthly
 
@@ -140,27 +107,13 @@ export function GamesOverTimeChart({
             <p>Hover over a data point to inspect its bucket.</p>
           )}
         </div>
-        <div className="
-          inline-flex items-center gap-1 rounded-full border border-(--gold)/15
-          bg-(--navy-900)/50 p-1
-        ">
-          <ToggleButton
-            active={view === 'week'}
-            label="Week"
-            onClick={() => {
-              setView('week')
-              setActiveIndex(null)
-            }}
-          />
-          <ToggleButton
-            active={view === 'month'}
-            label="Month"
-            onClick={() => {
-              setView('month')
-              setActiveIndex(null)
-            }}
-          />
-        </div>
+        <ActivityViewToggle
+          view={view}
+          onChange={(nextView) => {
+            setView(nextView)
+            setActiveIndex(null)
+          }}
+        />
       </div>
 
       <div className="

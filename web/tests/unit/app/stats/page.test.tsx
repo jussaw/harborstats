@@ -5,7 +5,9 @@ import StatsPage from '@/app/stats/page';
 import { PlayerTier } from '@/lib/player-tier';
 import { getSettings } from '@/lib/settings';
 import {
+  getCalendarHeatmapData,
   getGamesOverTimeSeries,
+  getPlayerAttendanceSeries,
   getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
   getPlayerParticipationRates,
@@ -16,7 +18,9 @@ import {
 } from '@/lib/stats';
 
 vi.mock('@/lib/stats', () => ({
+  getCalendarHeatmapData: vi.fn(),
   getGamesOverTimeSeries: vi.fn(),
+  getPlayerAttendanceSeries: vi.fn(),
   getPlayerExpectedVsActualWins: vi.fn(),
   getPlayerWinRates: vi.fn(),
   getPlayerScoreStats: vi.fn(),
@@ -181,6 +185,48 @@ describe('StatsPage', () => {
         participationRate: 2 / 3,
       },
     ]);
+    vi.mocked(getPlayerAttendanceSeries).mockResolvedValue({
+      weekly: [
+        {
+          bucketStart: new Date('2026-04-07T00:00:00.000Z'),
+          label: 'Apr 7',
+          totalAppearances: 3,
+          segments: [
+            { playerId: 1, name: 'Ada', tier: PlayerTier.Premium, gameCount: 2 },
+            { playerId: 2, name: 'Bea', tier: PlayerTier.Standard, gameCount: 1 },
+          ],
+        },
+      ],
+      monthly: [
+        {
+          bucketStart: new Date('2026-04-01T00:00:00.000Z'),
+          label: 'Apr 2026',
+          totalAppearances: 4,
+          segments: [
+            { playerId: 1, name: 'Ada', tier: PlayerTier.Premium, gameCount: 3 },
+            { playerId: 2, name: 'Bea', tier: PlayerTier.Standard, gameCount: 1 },
+          ],
+        },
+      ],
+    });
+    vi.mocked(getCalendarHeatmapData).mockResolvedValue({
+      recentDays: [
+        { date: new Date('2026-04-20T00:00:00.000Z'), label: 'Apr 20, 2026', gameCount: 1 },
+        { date: new Date('2026-04-21T00:00:00.000Z'), label: 'Apr 21, 2026', gameCount: 2 },
+      ],
+      recentRangeLabel: 'Apr 20, 2026 - Apr 21, 2026',
+      years: [
+        {
+          year: 2026,
+          totalGames: 3,
+          days: [
+            { date: new Date('2026-04-20T00:00:00.000Z'), label: 'Apr 20, 2026', gameCount: 1 },
+            { date: new Date('2026-04-21T00:00:00.000Z'), label: 'Apr 21, 2026', gameCount: 2 },
+          ],
+        },
+      ],
+      defaultYear: 2026,
+    });
     vi.mocked(getSettings).mockResolvedValue({ winRateMinGames: 3, podiumRateMinGames: 4 });
 
     const element = await StatsPage();
@@ -205,6 +251,8 @@ describe('StatsPage', () => {
     const finishBreakdownIndex = markup.indexOf('id="finish-breakdown"');
     const gamesOverTimeIndex = markup.indexOf('id="games-over-time"');
     const participationRateIndex = markup.indexOf('id="participation-rate"');
+    const attendanceIndex = markup.indexOf('id="player-attendance-over-time"');
+    const calendarHeatmapIndex = markup.indexOf('id="calendar-heatmap"');
 
     expect(totalWinsIndex).toBeGreaterThan(-1);
     expect(winRateIndex).toBeGreaterThan(totalWinsIndex);
@@ -216,6 +264,8 @@ describe('StatsPage', () => {
     expect(finishBreakdownIndex).toBeGreaterThan(tierShowdownIndex);
     expect(gamesOverTimeIndex).toBeGreaterThan(finishBreakdownIndex);
     expect(participationRateIndex).toBeGreaterThan(gamesOverTimeIndex);
+    expect(attendanceIndex).toBeGreaterThan(participationRateIndex);
+    expect(calendarHeatmapIndex).toBeGreaterThan(attendanceIndex);
     expect(markup).toContain('Finish Breakdown');
     expect(markup).toContain('>1st<');
     expect(markup).toContain('>2nd<');
@@ -231,6 +281,11 @@ describe('StatsPage', () => {
     expect(markup).toContain('Week');
     expect(markup).toContain('Month');
     expect(markup).toContain('Participation Rate');
+    expect(markup).toContain('Player Attendance Over Time');
+    expect(markup).not.toContain('id="cumulative-games"');
+    expect(markup).not.toContain('Cumulative Games');
+    expect(markup).toContain('Calendar Heatmap');
+    expect(markup).toContain('Last 12 Months');
     expect(markup).toContain('88.9%');
     expect(markup).toContain('66.7%');
     expect(markup).toContain('+1.2');
@@ -250,6 +305,10 @@ describe('StatsPage', () => {
     expect(markup.slice(participationRateIndex, participationRateIndex + 160)).toContain(
       'lg:col-span-2',
     );
+    expect(markup.slice(attendanceIndex, attendanceIndex + 160)).toContain('lg:col-span-2');
+    expect(markup.slice(calendarHeatmapIndex, calendarHeatmapIndex + 160)).toContain(
+      'lg:col-span-2',
+    );
   });
 
   it('renders card empty states when no stats are available', async () => {
@@ -265,6 +324,16 @@ describe('StatsPage', () => {
       monthly: [],
     });
     vi.mocked(getPlayerParticipationRates).mockResolvedValue([]);
+    vi.mocked(getPlayerAttendanceSeries).mockResolvedValue({
+      weekly: [],
+      monthly: [],
+    });
+    vi.mocked(getCalendarHeatmapData).mockResolvedValue({
+      recentDays: [],
+      recentRangeLabel: null,
+      years: [],
+      defaultYear: null,
+    });
     vi.mocked(getSettings).mockResolvedValue({ winRateMinGames: 2, podiumRateMinGames: 5 });
 
     const element = await StatsPage();
@@ -278,7 +347,11 @@ describe('StatsPage', () => {
     expect(markup).not.toContain('Days Since Last Game');
     expect(markup).toContain('Games Over Time');
     expect(markup).toContain('Participation Rate');
-    expect(markup.match(/No games recorded yet\./g)).toHaveLength(7);
+    expect(markup).toContain('Player Attendance Over Time');
+    expect(markup).not.toContain('id="cumulative-games"');
+    expect(markup).not.toContain('Cumulative Games');
+    expect(markup).toContain('Calendar Heatmap');
+    expect(markup.match(/No games recorded yet\./g)).toHaveLength(9);
   });
 
   it('filters the podium leaderboard using the podium threshold instead of the win-rate threshold', async () => {
@@ -328,6 +401,16 @@ describe('StatsPage', () => {
       monthly: [],
     });
     vi.mocked(getPlayerParticipationRates).mockResolvedValue([]);
+    vi.mocked(getPlayerAttendanceSeries).mockResolvedValue({
+      weekly: [],
+      monthly: [],
+    });
+    vi.mocked(getCalendarHeatmapData).mockResolvedValue({
+      recentDays: [],
+      recentRangeLabel: null,
+      years: [],
+      defaultYear: null,
+    });
     vi.mocked(getSettings).mockResolvedValue({ winRateMinGames: 2, podiumRateMinGames: 4 });
 
     const element = await StatsPage();

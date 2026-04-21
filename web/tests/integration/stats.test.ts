@@ -1,6 +1,8 @@
 import { describe, expect, test, vi } from 'vitest';
 import {
+  getCalendarHeatmapData,
   getGamesOverTimeSeries,
+  getPlayerAttendanceSeries,
   getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
   getPlayerMarginStats,
@@ -635,6 +637,214 @@ describe('stats integration', () => {
     ]);
     expect(series.weekly.every((bucket) => bucket.label.length > 0)).toBe(true);
     expect(series.monthly.every((bucket) => bucket.label.length > 0)).toBe(true);
+  });
+
+  test('getPlayerAttendanceSeries counts per-player appearances and zero-fills bucket gaps', async () => {
+    const alice = await createTestPlayer({ name: 'Alice', tier: PlayerTier.Premium });
+    const bob = await createTestPlayer({ name: 'Bob', tier: PlayerTier.Standard });
+    const carol = await createTestPlayer({ name: 'Carol', tier: PlayerTier.Standard });
+
+    await createTestGame({
+      playedAt: new Date('2026-01-05T12:00:00.000Z'),
+      players: [
+        { playerId: alice.id, score: 10, isWinner: true },
+        { playerId: bob.id, score: 7, isWinner: false },
+      ],
+    });
+    await createTestGame({
+      playedAt: new Date('2026-01-06T12:00:00.000Z'),
+      players: [
+        { playerId: alice.id, score: 11, isWinner: true },
+        { playerId: carol.id, score: 8, isWinner: false },
+      ],
+    });
+    await createTestGame({
+      playedAt: new Date('2026-01-20T12:00:00.000Z'),
+      players: [
+        { playerId: bob.id, score: 9, isWinner: true },
+        { playerId: carol.id, score: 4, isWinner: false },
+      ],
+    });
+    await createTestGame({
+      playedAt: new Date('2026-03-02T12:00:00.000Z'),
+      players: [
+        { playerId: alice.id, score: 9, isWinner: true },
+      ],
+    });
+
+    const series = await getPlayerAttendanceSeries();
+
+    expect(series.weekly.map((bucket) => ({
+      bucketStart: bucket.bucketStart.toISOString().slice(0, 10),
+      totalAppearances: bucket.totalAppearances,
+      segments: bucket.segments.map((segment) => ({
+        name: segment.name,
+        tier: segment.tier,
+        gameCount: segment.gameCount,
+      })),
+    }))).toEqual([
+      {
+        bucketStart: '2026-01-05',
+        totalAppearances: 4,
+        segments: [
+          { name: 'Alice', tier: PlayerTier.Premium, gameCount: 2 },
+          { name: 'Bob', tier: PlayerTier.Standard, gameCount: 1 },
+          { name: 'Carol', tier: PlayerTier.Standard, gameCount: 1 },
+        ],
+      },
+      {
+        bucketStart: '2026-01-12',
+        totalAppearances: 0,
+        segments: [],
+      },
+      {
+        bucketStart: '2026-01-19',
+        totalAppearances: 2,
+        segments: [
+          { name: 'Bob', tier: PlayerTier.Standard, gameCount: 1 },
+          { name: 'Carol', tier: PlayerTier.Standard, gameCount: 1 },
+        ],
+      },
+      {
+        bucketStart: '2026-01-26',
+        totalAppearances: 0,
+        segments: [],
+      },
+      {
+        bucketStart: '2026-02-02',
+        totalAppearances: 0,
+        segments: [],
+      },
+      {
+        bucketStart: '2026-02-09',
+        totalAppearances: 0,
+        segments: [],
+      },
+      {
+        bucketStart: '2026-02-16',
+        totalAppearances: 0,
+        segments: [],
+      },
+      {
+        bucketStart: '2026-02-23',
+        totalAppearances: 0,
+        segments: [],
+      },
+      {
+        bucketStart: '2026-03-02',
+        totalAppearances: 1,
+        segments: [{ name: 'Alice', tier: PlayerTier.Premium, gameCount: 1 }],
+      },
+    ]);
+
+    expect(series.monthly.map((bucket) => ({
+      bucketStart: bucket.bucketStart.toISOString().slice(0, 10),
+      totalAppearances: bucket.totalAppearances,
+      segments: bucket.segments.map((segment) => ({
+        name: segment.name,
+        gameCount: segment.gameCount,
+      })),
+    }))).toEqual([
+      {
+        bucketStart: '2026-01-01',
+        totalAppearances: 6,
+        segments: [
+          { name: 'Alice', gameCount: 2 },
+          { name: 'Bob', gameCount: 2 },
+          { name: 'Carol', gameCount: 2 },
+        ],
+      },
+      {
+        bucketStart: '2026-02-01',
+        totalAppearances: 0,
+        segments: [],
+      },
+      {
+        bucketStart: '2026-03-01',
+        totalAppearances: 1,
+        segments: [{ name: 'Alice', gameCount: 1 }],
+      },
+    ]);
+  });
+
+  test('getCalendarHeatmapData builds recent and yearly UTC day grids', async () => {
+    const alice = await createTestPlayer({ name: 'Alice' });
+    const bob = await createTestPlayer({ name: 'Bob' });
+
+    await createTestGame({
+      playedAt: new Date('2025-04-22T12:00:00.000Z'),
+      players: [
+        { playerId: alice.id, score: 10, isWinner: true },
+        { playerId: bob.id, score: 7, isWinner: false },
+      ],
+    });
+    await createTestGame({
+      playedAt: new Date('2025-12-31T22:00:00.000Z'),
+      players: [
+        { playerId: bob.id, score: 11, isWinner: true },
+        { playerId: alice.id, score: 8, isWinner: false },
+      ],
+    });
+    await createTestGame({
+      playedAt: new Date('2026-04-20T18:00:00.000Z'),
+      players: [
+        { playerId: alice.id, score: 9, isWinner: true },
+      ],
+    });
+    await createTestGame({
+      playedAt: new Date('2026-04-21T03:00:00.000Z'),
+      players: [
+        { playerId: bob.id, score: 9, isWinner: true },
+      ],
+    });
+    await createTestGame({
+      playedAt: new Date('2026-04-21T21:00:00.000Z'),
+      players: [
+        { playerId: alice.id, score: 12, isWinner: true },
+      ],
+    });
+
+    const heatmap = await getCalendarHeatmapData();
+
+    expect(heatmap.defaultYear).toBe(2026);
+    expect(heatmap.years.map((year) => year.year)).toEqual([2026, 2025]);
+    expect(heatmap.years.find((year) => year.year === 2026)).toMatchObject({
+      totalGames: 3,
+    });
+    expect(heatmap.years.find((year) => year.year === 2025)).toMatchObject({
+      totalGames: 2,
+    });
+
+    expect(heatmap.years.find((year) => year.year === 2026)?.days.find(
+      (day) => day.date.toISOString().slice(0, 10) === '2026-04-21',
+    )).toMatchObject({
+      gameCount: 2,
+      label: 'Apr 21, 2026',
+    });
+
+    expect(heatmap.recentDays[0]?.date.toISOString().slice(0, 10)).toBe('2025-04-22');
+    expect(heatmap.recentDays.at(-1)?.date.toISOString().slice(0, 10)).toBe('2026-04-21');
+    expect(
+      heatmap.recentDays.find((day) => day.date.toISOString().slice(0, 10) === '2026-04-20'),
+    ).toMatchObject({ gameCount: 1 });
+    expect(
+      heatmap.recentDays.find((day) => day.date.toISOString().slice(0, 10) === '2025-04-23'),
+    ).toMatchObject({ gameCount: 0 });
+  });
+
+  test('new activity stats return empty structures when no games exist', async () => {
+    await createTestPlayer({ name: 'Alice' });
+
+    await expect(getPlayerAttendanceSeries()).resolves.toEqual({
+      weekly: [],
+      monthly: [],
+    });
+    await expect(getCalendarHeatmapData()).resolves.toEqual({
+      recentDays: [],
+      recentRangeLabel: null,
+      years: [],
+      defaultYear: null,
+    });
   });
 
   test('getPlayerParticipationRates includes zero-game players and sorts ties by player name', async () => {

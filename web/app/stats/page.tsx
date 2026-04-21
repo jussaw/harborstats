@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 import type { Metadata } from 'next';
+import { CalendarHeatmap } from '@/components/CalendarHeatmap';
 import { GamesOverTimeChart } from '@/components/GamesOverTimeChart';
+import { PlayerAttendanceChart } from '@/components/PlayerAttendanceChart';
 import { StatsCard } from '@/components/StatsCard';
 import { StatsLeaderboardTable } from '@/components/StatsLeaderboardTable';
 import { formatAverage, formatPercent, formatSignedNumber } from '@/lib/format';
@@ -8,7 +10,9 @@ import { PlayerTier } from '@/lib/player-tier';
 import { rankWithTies } from '@/lib/rank';
 import { getSettings } from '@/lib/settings';
 import {
+  getCalendarHeatmapData,
   getGamesOverTimeSeries,
+  getPlayerAttendanceSeries,
   getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
   getPlayerParticipationRates,
@@ -89,6 +93,8 @@ export default async function StatsPage() {
     expectedVsActualWins,
     gamesOverTimeSeries,
     participationRates,
+    playerAttendanceSeries,
+    calendarHeatmapData,
   ] = await Promise.all([
     getPlayerWinRates(),
     getSettings(),
@@ -99,6 +105,8 @@ export default async function StatsPage() {
     getPlayerExpectedVsActualWins(),
     getGamesOverTimeSeries(),
     getPlayerParticipationRates(),
+    getPlayerAttendanceSeries(),
+    getCalendarHeatmapData(),
   ]);
 
   const winRateQualified = winRates
@@ -109,6 +117,15 @@ export default async function StatsPage() {
     .sort((a, b) => b.podiumRate - a.podiumRate || b.podiums - a.podiums);
 
   const medianSorted = [...scoreStats].sort((a, b) => b.medianScore - a.medianScore);
+  const podiumRateEmptyState =
+    settings.podiumRateMinGames > 0 ? (
+      <EmptyState>
+        No players have played {settings.podiumRateMinGames}+ game
+        {settings.podiumRateMinGames === 1 ? '' : 's'} yet.
+      </EmptyState>
+    ) : (
+      <EmptyState>No games recorded yet.</EmptyState>
+    );
 
   const totalWinsRanks = rankWithTies(winRates, (player) => player.wins);
   const winRateRanks = rankWithTies(winRateQualified, (player) => player.winRate);
@@ -197,6 +214,20 @@ export default async function StatsPage() {
       id: 'participation-rate',
       title: 'Participation Rate',
       description: 'Share of all recorded games each player has appeared in.',
+      badge: undefined,
+      span: 'full',
+    },
+    {
+      id: 'player-attendance-over-time',
+      title: 'Player Attendance Over Time',
+      description: 'Stacked appearance totals showing who participated in each activity bucket.',
+      badge: undefined,
+      span: 'full',
+    },
+    {
+      id: 'calendar-heatmap',
+      title: 'Calendar Heatmap',
+      description: 'Daily game frequency across the last 12 months or any recorded year.',
       badge: undefined,
       span: 'full',
     },
@@ -388,14 +419,7 @@ export default async function StatsPage() {
 
         <StatsCard {...cardById['podium-rate']}>
           {podiumRateQualified.length === 0 ? (
-            settings.podiumRateMinGames > 0 ? (
-              <EmptyState>
-                No players have played {settings.podiumRateMinGames}+ game
-                {settings.podiumRateMinGames === 1 ? '' : 's'} yet.
-              </EmptyState>
-            ) : (
-              <EmptyState>No games recorded yet.</EmptyState>
-            )
+            podiumRateEmptyState
           ) : (
             <StatsLeaderboardTable
               columns={[
@@ -666,6 +690,23 @@ export default async function StatsPage() {
           ) : (
             <EmptyState>No games recorded yet.</EmptyState>
           )}
+        </StatsCard>
+
+        <StatsCard {...cardById['player-attendance-over-time']}>
+          <PlayerAttendanceChart
+            weekly={playerAttendanceSeries.weekly}
+            monthly={playerAttendanceSeries.monthly}
+            defaultView="week"
+          />
+        </StatsCard>
+
+        <StatsCard {...cardById['calendar-heatmap']}>
+          <CalendarHeatmap
+            recentDays={calendarHeatmapData.recentDays}
+            recentRangeLabel={calendarHeatmapData.recentRangeLabel}
+            years={calendarHeatmapData.years}
+            defaultSelection="recent"
+          />
         </StatsCard>
       </div>
     </main>

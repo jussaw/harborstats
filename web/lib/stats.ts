@@ -54,6 +54,15 @@ function formatShortUtcMonth(date: Date): string {
   })
 }
 
+function formatLongUtcDate(date: Date): string {
+  return date.toLocaleDateString('en-US', {
+    timeZone: 'UTC',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
+
 function toUtcDateKey(date: Date): string {
   return date.toISOString().slice(0, 10)
 }
@@ -627,6 +636,30 @@ export interface GamesOverTimeSeries {
   totalGames: number
 }
 
+function buildBucketStarts(
+  playedAtDates: Date[],
+  getBucketStart: (date: Date) => Date,
+  getNextBucketStart: (date: Date) => Date,
+): Date[] {
+  if (playedAtDates.length === 0) {
+    return []
+  }
+
+  const firstBucket = getBucketStart(playedAtDates[0])
+  const lastBucket = getBucketStart(playedAtDates[playedAtDates.length - 1])
+  const bucketStarts: Date[] = []
+
+  for (
+    let bucketStart = firstBucket;
+    bucketStart.getTime() <= lastBucket.getTime();
+    bucketStart = getNextBucketStart(bucketStart)
+  ) {
+    bucketStarts.push(bucketStart)
+  }
+
+  return bucketStarts
+}
+
 function buildActivityBuckets(
   playedAtDates: Date[],
   getBucketStart: (date: Date) => Date,
@@ -645,28 +678,18 @@ function buildActivityBuckets(
     countsByBucket.set(bucketKey, (countsByBucket.get(bucketKey) ?? 0) + 1)
   })
 
-  const firstBucket = getBucketStart(playedAtDates[0])
-  const lastBucket = getBucketStart(playedAtDates[playedAtDates.length - 1])
-  const buckets: ActivityBucket[] = []
-
-  for (
-    let bucketStart = firstBucket;
-    bucketStart.getTime() <= lastBucket.getTime();
-    bucketStart = getNextBucketStart(bucketStart)
-  ) {
+  return buildBucketStarts(playedAtDates, getBucketStart, getNextBucketStart).map((bucketStart) => {
     const bucketKey = toUtcDateKey(bucketStart)
 
-    buckets.push({
+    return {
       bucketStart,
       label: formatLabel(bucketStart),
       gameCount: countsByBucket.get(bucketKey) ?? 0,
-    })
-  }
-
-  return buckets
+    }
+  })
 }
 
-export async function getGamesOverTimeSeries(): Promise<GamesOverTimeSeries> {
+async function getOrderedGameDates(): Promise<Date[]> {
   const gameRows = await db
     .select({
       playedAt: games.playedAt,
@@ -674,7 +697,11 @@ export async function getGamesOverTimeSeries(): Promise<GamesOverTimeSeries> {
     .from(games)
     .orderBy(games.playedAt, games.id)
 
-  const playedAtDates = gameRows.map((game) => game.playedAt)
+  return gameRows.map((game) => game.playedAt)
+}
+
+export async function getGamesOverTimeSeries(): Promise<GamesOverTimeSeries> {
+  const playedAtDates = await getOrderedGameDates()
 
   return {
     weekly: buildActivityBuckets(
@@ -690,6 +717,218 @@ export async function getGamesOverTimeSeries(): Promise<GamesOverTimeSeries> {
       formatShortUtcMonth,
     ),
     totalGames: playedAtDates.length,
+  }
+}
+
+interface PlayerActivityRow {
+  playedAt: Date
+  playerId: number
+  name: string
+  tier: PlayerTierType
+}
+
+export interface PlayerAttendanceSegment {
+  playerId: number
+  name: string
+  tier: PlayerTierType
+  gameCount: number
+}
+
+export interface PlayerAttendanceBucket {
+  bucketStart: Date
+  label: string
+  totalAppearances: number
+  segments: PlayerAttendanceSegment[]
+}
+
+export interface PlayerAttendanceSeries {
+  weekly: PlayerAttendanceBucket[]
+  monthly: PlayerAttendanceBucket[]
+}
+
+function buildPlayerAttendanceBuckets(
+  rows: PlayerActivityRow[],
+  playedAtDates: Date[],
+  getBucketStart: (date: Date) => Date,
+  getNextBucketStart: (date: Date) => Date,
+  formatLabel: (date: Date) => string,
+): PlayerAttendanceBucket[] {
+  if (rows.length === 0) {
+    return []
+  }
+
+  const segmentsByBucket = new Map<string, Map<number, PlayerAttendanceSegment>>()
+
+  rows.forEach((row) => {
+    const bucketStart = getBucketStart(row.playedAt)
+    const bucketKey = toUtcDateKey(bucketStart)
+    const bucketSegments = segmentsByBucket.get(bucketKey) ?? new Map<number, PlayerAttendanceSegment>()
+    const existing = bucketSegments.get(row.playerId) ?? {
+      playerId: row.playerId,
+      name: row.name,
+      tier: row.tier,
+      gameCount: 0,
+    }
+
+    existing.gameCount += 1
+    bucketSegments.set(row.playerId, existing)
+    segmentsByBucket.set(bucketKey, bucketSegments)
+  })
+
+  return buildBucketStarts(playedAtDates, getBucketStart, getNextBucketStart).map((bucketStart) => {
+    const bucketKey = toUtcDateKey(bucketStart)
+    const segments = [...(segmentsByBucket.get(bucketKey)?.values() ?? [])].sort(
+      (a, b) => b.gameCount - a.gameCount || a.name.localeCompare(b.name),
+    )
+
+    return {
+      bucketStart,
+      label: formatLabel(bucketStart),
+      totalAppearances: segments.reduce((total, segment) => total + segment.gameCount, 0),
+      segments,
+    }
+  })
+}
+
+export async function getPlayerAttendanceSeries(): Promise<PlayerAttendanceSeries> {
+  const rows = await db
+    .select({
+      playedAt: games.playedAt,
+      playerId: players.id,
+      name: players.name,
+      tier: players.tier,
+    })
+    .from(gamePlayers)
+    .innerJoin(games, eq(games.id, gamePlayers.gameId))
+    .innerJoin(players, eq(players.id, gamePlayers.playerId))
+    .orderBy(games.playedAt, games.id, players.name)
+
+  const attendanceRows = rows.map((row) => ({
+    playedAt: row.playedAt,
+    playerId: row.playerId,
+    name: row.name,
+    tier: parsePlayerTier(row.tier),
+  }))
+  const playedAtDates = attendanceRows.map((row) => row.playedAt)
+
+  return {
+    weekly: buildPlayerAttendanceBuckets(
+      attendanceRows,
+      playedAtDates,
+      getIsoWeekStart,
+      (date) => addUtcDays(date, 7),
+      formatShortUtcDate,
+    ),
+    monthly: buildPlayerAttendanceBuckets(
+      attendanceRows,
+      playedAtDates,
+      getUtcMonthStart,
+      (date) => addUtcMonths(date, 1),
+      formatShortUtcMonth,
+    ),
+  }
+}
+
+export interface CalendarHeatmapDay {
+  date: Date
+  label: string
+  gameCount: number
+}
+
+export interface CalendarHeatmapYear {
+  year: number
+  days: CalendarHeatmapDay[]
+  totalGames: number
+}
+
+export interface CalendarHeatmapData {
+  recentDays: CalendarHeatmapDay[]
+  recentRangeLabel: string | null
+  years: CalendarHeatmapYear[]
+  defaultYear: number | null
+}
+
+function buildUtcDateRange(start: Date, end: Date): Date[] {
+  const days: Date[] = []
+
+  for (
+    let current = startOfUtcDay(start);
+    current.getTime() <= startOfUtcDay(end).getTime();
+    current = addUtcDays(current, 1)
+  ) {
+    days.push(current)
+  }
+
+  return days
+}
+
+function buildCalendarHeatmapDays(
+  start: Date,
+  end: Date,
+  countsByDay: Map<string, number>,
+): CalendarHeatmapDay[] {
+  return buildUtcDateRange(start, end).map((date) => {
+    const dateKey = toUtcDateKey(date)
+
+    return {
+      date,
+      label: formatLongUtcDate(date),
+      gameCount: countsByDay.get(dateKey) ?? 0,
+    }
+  })
+}
+
+export async function getCalendarHeatmapData(): Promise<CalendarHeatmapData> {
+  const playedAtDates = await getOrderedGameDates()
+
+  if (playedAtDates.length === 0) {
+    return {
+      recentDays: [],
+      recentRangeLabel: null,
+      years: [],
+      defaultYear: null,
+    }
+  }
+
+  const countsByDay = new Map<string, number>()
+
+  playedAtDates.forEach((playedAt) => {
+    const day = startOfUtcDay(playedAt)
+    const dayKey = toUtcDateKey(day)
+    countsByDay.set(dayKey, (countsByDay.get(dayKey) ?? 0) + 1)
+  })
+
+  const latestDay = startOfUtcDay(playedAtDates[playedAtDates.length - 1])
+  const recentStart = addUtcDays(
+    new Date(
+      Date.UTC(latestDay.getUTCFullYear() - 1, latestDay.getUTCMonth(), latestDay.getUTCDate()),
+    ),
+    1,
+  )
+  const firstRecordedYear = playedAtDates[0].getUTCFullYear()
+  const lastRecordedYear = latestDay.getUTCFullYear()
+  const years: CalendarHeatmapYear[] = []
+
+  for (let year = lastRecordedYear; year >= firstRecordedYear; year -= 1) {
+    const start = new Date(Date.UTC(year, 0, 1))
+    const end = new Date(Date.UTC(year, 11, 31))
+    const days = buildCalendarHeatmapDays(start, end, countsByDay)
+    const totalGames = days.reduce((total, day) => total + day.gameCount, 0)
+
+    if (totalGames > 0) {
+      years.push({
+        year,
+        days,
+        totalGames,
+      })
+    }
+  }
+
+  return {
+    recentDays: buildCalendarHeatmapDays(recentStart, latestDay, countsByDay),
+    recentRangeLabel: `${formatLongUtcDate(recentStart)} - ${formatLongUtcDate(latestDay)}`,
+    years,
+    defaultYear: lastRecordedYear,
   }
 }
 

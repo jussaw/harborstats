@@ -84,7 +84,7 @@ Placement tags: `[H]` home page · `[S]` new `/stats` landing · `[P]` per-playe
 - **Needs:** total game count (extend query from 2.2)
 
 ### 2.4 Player attendance over time `[S]`
-- [ ] Stacked chart showing which players participated in each time bucket.
+- [x] Stacked chart showing which players participated in each time bucket.
 - **Needs:** per-player game dates (extend query from 2.3)
 
 ### 2.5 Cumulative games area chart `[S]`
@@ -92,7 +92,7 @@ Placement tags: `[H]` home page · `[S]` new `/stats` landing · `[P]` per-playe
 - **Needs:** game date list (share query from 2.2)
 
 ### 2.6 Calendar heatmap `[S]`
-- [ ] GitHub-contribution-style grid showing game frequency by calendar day.
+- [x] GitHub-contribution-style grid showing game frequency by calendar day.
 - **Needs:** game date list (share query from 2.2)
 
 ### 2.7 Day-of-week pattern `[S]`
