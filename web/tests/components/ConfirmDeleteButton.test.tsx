@@ -12,6 +12,8 @@ describe('ConfirmDeleteButton', () => {
         formAction={formAction}
         hiddenFields={{ id: '42' }}
         confirmMessage="Delete this game?"
+        label="Delete"
+        className="text-red-500"
       />,
     )
 
@@ -30,6 +32,8 @@ describe('ConfirmDeleteButton', () => {
         formAction={formAction}
         hiddenFields={{ id: '42' }}
         confirmMessage="Delete this game?"
+        label="Delete"
+        className="text-red-500"
       />,
     )
 

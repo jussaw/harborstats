@@ -23,11 +23,17 @@ interface StatsCardMeta {
 function PlayerName({ name, tier }: { name: string; tier: PlayerTier }) {
   return (
     <div className="min-w-0">
-      <span className={tier === PlayerTier.Premium ? 'text-[var(--gold)] font-semibold' : ''}>
+      <span className={tier === PlayerTier.Premium ? `
+        font-semibold text-(--gold)
+      ` : ''}>
         {name}
       </span>
       {tier === PlayerTier.Premium && (
-        <span className="ml-2 hidden rounded px-1 py-0.5 text-xs tracking-widest bg-[var(--gold)]/15 text-[var(--gold)] uppercase sm:inline-block">
+        <span className="
+          ml-2 hidden rounded-sm bg-(--gold)/15 px-1 py-0.5 text-xs
+          tracking-widest text-(--gold) uppercase
+          sm:inline-block
+        ">
           Premium
         </span>
       )}
@@ -37,7 +43,7 @@ function PlayerName({ name, tier }: { name: string; tier: PlayerTier }) {
 
 function RankCell({ rank }: { rank: number }) {
   return (
-    <td className="px-3 py-2 text-center tabular-nums text-[var(--cream)]/50">
+    <td className="px-3 py-2 text-center text-(--cream)/50 tabular-nums">
       {rank === 1 ? '👑' : rank}
     </td>
   )
@@ -45,14 +51,18 @@ function RankCell({ rank }: { rank: number }) {
 
 function DataRow({ children }: { children: ReactNode }) {
   return (
-    <tr className="border-b border-[var(--gold)]/10 bg-[var(--navy-900)]/35 transition-colors hover:bg-[var(--navy-900)]/70 last:border-0">
+    <tr className="
+      border-b border-(--gold)/10 bg-(--navy-900)/35 transition-colors
+      last:border-0
+      hover:bg-(--navy-900)/70
+    ">
       {children}
     </tr>
   )
 }
 
 function EmptyState({ children }: { children: ReactNode }) {
-  return <p className="py-8 text-center text-sm text-[var(--cream)]/50">{children}</p>
+  return <p className="py-8 text-center text-sm text-(--cream)/50">{children}</p>
 }
 
 export default async function StatsPage() {
@@ -122,8 +132,14 @@ export default async function StatsPage() {
   >
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+    <main className="
+      mx-auto max-w-7xl px-4 py-6
+      sm:px-6 sm:py-8
+    ">
+      <div className="
+        grid grid-cols-1 gap-5
+        lg:grid-cols-2
+      ">
         <StatsCard {...cardById['total-wins']}>
             {winRates.length === 0 ? (
               <EmptyState>No wins recorded yet.</EmptyState>
@@ -139,13 +155,17 @@ export default async function StatsPage() {
                 {winRates.map((player, index) => (
                   <DataRow key={player.playerId}>
                     <RankCell rank={totalWinsRanks[index]} />
-                    <td className="px-3 py-2 text-[var(--cream)]">
+                    <td className="px-3 py-2 text-(--cream)">
                       <PlayerName name={player.name} tier={player.tier} />
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums text-[var(--cream)]">
+                    <td className="
+                      px-3 py-2 text-right text-(--cream) tabular-nums
+                    ">
                       {player.wins}
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums text-[var(--cream)]/70">
+                    <td className="
+                      px-3 py-2 text-right text-(--cream)/70 tabular-nums
+                    ">
                       {formatPercent(player.winRate, 1)}
                     </td>
                   </DataRow>
@@ -173,16 +193,23 @@ export default async function StatsPage() {
                 {winRateQualified.map((player, index) => (
                   <DataRow key={player.playerId}>
                     <RankCell rank={winRateRanks[index]} />
-                    <td className="px-3 py-2 text-[var(--cream)]">
+                    <td className="px-3 py-2 text-(--cream)">
                       <PlayerName name={player.name} tier={player.tier} />
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums font-semibold text-[var(--gold)]">
+                    <td className="
+                      px-3 py-2 text-right font-semibold text-(--gold)
+                      tabular-nums
+                    ">
                       {formatPercent(player.winRate, 1)}
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums text-[var(--cream)]">
+                    <td className="
+                      px-3 py-2 text-right text-(--cream) tabular-nums
+                    ">
                       {player.wins}
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums text-[var(--cream)]/70">
+                    <td className="
+                      px-3 py-2 text-right text-(--cream)/70 tabular-nums
+                    ">
                       {player.games}
                     </td>
                   </DataRow>
@@ -206,13 +233,18 @@ export default async function StatsPage() {
                 {scoreStats.map((player, index) => (
                   <DataRow key={player.playerId}>
                     <RankCell rank={avgScoreRanks[index]} />
-                    <td className="px-3 py-2 text-[var(--cream)]">
+                    <td className="px-3 py-2 text-(--cream)">
                       <PlayerName name={player.name} tier={player.tier} />
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums font-semibold text-[var(--gold)]">
+                    <td className="
+                      px-3 py-2 text-right font-semibold text-(--gold)
+                      tabular-nums
+                    ">
                       {formatAverage(player.avgScore)}
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums text-[var(--cream)]/70">
+                    <td className="
+                      px-3 py-2 text-right text-(--cream)/70 tabular-nums
+                    ">
                       {player.games}
                     </td>
                   </DataRow>
@@ -236,13 +268,18 @@ export default async function StatsPage() {
                 {medianSorted.map((player, index) => (
                   <DataRow key={player.playerId}>
                     <RankCell rank={medianScoreRanks[index]} />
-                    <td className="px-3 py-2 text-[var(--cream)]">
+                    <td className="px-3 py-2 text-(--cream)">
                       <PlayerName name={player.name} tier={player.tier} />
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums font-semibold text-[var(--gold)]">
+                    <td className="
+                      px-3 py-2 text-right font-semibold text-(--gold)
+                      tabular-nums
+                    ">
                       {formatAverage(player.medianScore)}
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums text-[var(--cream)]/70">
+                    <td className="
+                      px-3 py-2 text-right text-(--cream)/70 tabular-nums
+                    ">
                       {player.games}
                     </td>
                   </DataRow>
@@ -267,16 +304,23 @@ export default async function StatsPage() {
                 {podiumRates.map((player, index) => (
                   <DataRow key={player.playerId}>
                     <RankCell rank={podiumRateRanks[index]} />
-                    <td className="px-3 py-2 text-[var(--cream)]">
+                    <td className="px-3 py-2 text-(--cream)">
                       <PlayerName name={player.name} tier={player.tier} />
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums font-semibold text-[var(--gold)]">
+                    <td className="
+                      px-3 py-2 text-right font-semibold text-(--gold)
+                      tabular-nums
+                    ">
                       {formatPercent(player.podiumRate, 1)}
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums text-[var(--cream)]">
+                    <td className="
+                      px-3 py-2 text-right text-(--cream) tabular-nums
+                    ">
                       {player.podiums}
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums text-[var(--cream)]/70">
+                    <td className="
+                      px-3 py-2 text-right text-(--cream)/70 tabular-nums
+                    ">
                       {player.games}
                     </td>
                   </DataRow>

@@ -11,25 +11,30 @@ interface Props {
 
 export default async function AdminPlayersPage({ searchParams }: Props) {
   const [players, params] = await Promise.all([listPlayersWithUsage(), searchParams])
-  const error = params.error
-  const inUseCount = params.count
+  const { error, count: inUseCount } = params
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-8">
-      <div className="space-y-8 max-w-3xl">
+      <div className="max-w-3xl space-y-8">
         <div>
-          <h1 className="font-cinzel text-xl tracking-wide text-[var(--gold)]">Players</h1>
-          <p className="mt-0.5 text-xs text-[var(--cream)]/50">{players.length} on roster</p>
+          <h1 className="font-cinzel text-xl tracking-wide text-(--gold)">Players</h1>
+          <p className="mt-0.5 text-xs text-(--cream)/50">{players.length} on roster</p>
         </div>
 
         {error === 'player-in-use' && (
-          <p className="rounded border border-amber-500/40 bg-amber-950/40 px-4 py-2.5 text-sm text-amber-300">
+          <p className="
+            rounded-sm border border-amber-500/40 bg-amber-950/40 px-4 py-2.5
+            text-sm text-amber-300
+          ">
             Cannot delete — this player appears in {inUseCount} game
             {inUseCount === '1' ? '' : 's'}. Remove those games first.
           </p>
         )}
         {error === 'name-required' && (
-          <p className="rounded border border-red-500/40 bg-red-950/40 px-4 py-2.5 text-sm text-red-300">
+          <p className="
+            rounded-sm border border-red-500/40 bg-red-950/40 px-4 py-2.5
+            text-sm text-red-300
+          ">
             Player name is required.
           </p>
         )}
@@ -42,42 +47,60 @@ export default async function AdminPlayersPage({ searchParams }: Props) {
             background: 'color-mix(in srgb, var(--navy-900) 80%, black)',
           }}
         >
-          <p className="font-cinzel text-xs tracking-widest text-[var(--gold)] uppercase mb-4">
+          <p className="
+            font-cinzel mb-4 text-xs tracking-widest text-(--gold) uppercase
+          ">
             Add Player
           </p>
-          <form action={createPlayerAction} className="flex items-end gap-3 flex-wrap">
-            <div className="flex flex-col gap-1.5 flex-1 min-w-40">
-              <label className="text-xs text-[var(--cream)]/50" htmlFor="new-name">
-                Name
+          <form action={createPlayerAction} className="
+            flex flex-wrap items-end gap-3
+          ">
+            <div className="flex min-w-40 flex-1 flex-col gap-1.5">
+              <label className="flex flex-col gap-1.5 text-xs text-(--cream)/50" htmlFor="new-name">
+                <span>Name</span>
+                <input
+                  id="new-name"
+                  name="name"
+                  type="text"
+                  required
+                  placeholder="Player name"
+                  className="
+                    rounded-sm border border-(--gold)/40 bg-(--navy-900) px-3
+                    py-2 text-sm text-(--cream) transition-colors
+                    placeholder:text-(--cream)/30
+                    focus:border-(--gold) focus:outline-none
+                  "
+                />
               </label>
-              <input
-                id="new-name"
-                name="name"
-                type="text"
-                required
-                placeholder="Player name"
-                className="rounded border border-[var(--gold)]/40 bg-[var(--navy-900)] px-3 py-2 text-sm text-[var(--cream)] placeholder:text-[var(--cream)]/30 focus:border-[var(--gold)] focus:outline-none transition-colors"
-              />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-[var(--cream)]/50" htmlFor="new-tier">
-                Tier
+              <label className="flex flex-col gap-1.5 text-xs text-(--cream)/50" htmlFor="new-tier">
+                <span>Tier</span>
+                <select
+                  id="new-tier"
+                  name="tier"
+                  className="
+                    rounded-sm border border-(--gold)/40 bg-(--navy-900) px-3
+                    py-2 text-sm text-(--cream) transition-colors
+                    focus:border-(--gold) focus:outline-none
+                  "
+                >
+                  {PLAYER_TIER_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
               </label>
-              <select
-                id="new-tier"
-                name="tier"
-                className="rounded border border-[var(--gold)]/40 bg-[var(--navy-900)] px-3 py-2 text-sm text-[var(--cream)] focus:border-[var(--gold)] focus:outline-none transition-colors"
-              >
-                {PLAYER_TIER_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
             </div>
             <button
               type="submit"
-              className="font-cinzel rounded border border-[var(--gold)] bg-[var(--gold)] px-4 py-2 text-xs font-semibold tracking-widest text-[var(--navy-900)] uppercase hover:bg-[var(--cream)] transition-colors"
+              className="
+                font-cinzel rounded-sm border border-(--gold) bg-(--gold) px-4
+                py-2 text-xs font-semibold tracking-widest text-(--navy-900)
+                uppercase transition-colors
+                hover:bg-(--cream)
+              "
             >
               Add
             </button>
@@ -87,7 +110,7 @@ export default async function AdminPlayersPage({ searchParams }: Props) {
         {/* Existing players */}
         {players.length > 0 && (
           <div
-            className="rounded-lg border overflow-hidden"
+            className="overflow-hidden rounded-lg border"
             style={{ borderColor: 'color-mix(in srgb, var(--gold) 20%, transparent)' }}
           >
             {players.map((player, idx) => (
@@ -105,19 +128,30 @@ export default async function AdminPlayersPage({ searchParams }: Props) {
                       : 'transparent',
                 }}
               >
-                <form action={updatePlayerAction} className="flex items-center gap-3 flex-1 min-w-0">
+                <form action={updatePlayerAction} className="
+                  flex min-w-0 flex-1 items-center gap-3
+                ">
                   <input type="hidden" name="id" value={player.id} />
                   <input
                     name="name"
                     type="text"
                     defaultValue={player.name}
                     required
-                    className="flex-1 min-w-0 rounded border border-[var(--gold)]/30 bg-transparent px-2 py-1.5 text-sm text-[var(--cream)] focus:border-[var(--gold)] focus:outline-none transition-colors"
+                    className="
+                      min-w-0 flex-1 rounded-sm border border-(--gold)/30
+                      bg-transparent px-2 py-1.5 text-sm text-(--cream)
+                      transition-colors
+                      focus:border-(--gold) focus:outline-none
+                    "
                   />
                   <select
                     name="tier"
                     defaultValue={player.tier}
-                    className="rounded border border-[var(--gold)]/30 bg-[var(--navy-900)] px-2 py-1.5 text-xs text-[var(--cream)] focus:border-[var(--gold)] focus:outline-none transition-colors"
+                    className="
+                      rounded-sm border border-(--gold)/30 bg-(--navy-900) px-2
+                      py-1.5 text-xs text-(--cream) transition-colors
+                      focus:border-(--gold) focus:outline-none
+                    "
                   >
                     {PLAYER_TIER_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -125,12 +159,18 @@ export default async function AdminPlayersPage({ searchParams }: Props) {
                       </option>
                     ))}
                   </select>
-                  <span className="text-xs text-[var(--cream)]/30 tabular-nums shrink-0">
+                  <span className="
+                    shrink-0 text-xs text-(--cream)/30 tabular-nums
+                  ">
                     {player.gameCount} {player.gameCount === 1 ? 'game' : 'games'}
                   </span>
                   <button
                     type="submit"
-                    className="font-cinzel text-xs tracking-widest text-[var(--gold)]/60 uppercase hover:text-[var(--gold)] transition-colors shrink-0"
+                    className="
+                      font-cinzel shrink-0 text-xs tracking-widest
+                      text-(--gold)/60 uppercase transition-colors
+                      hover:text-(--gold)
+                    "
                   >
                     Save
                   </button>
@@ -140,7 +180,12 @@ export default async function AdminPlayersPage({ searchParams }: Props) {
                   formAction={deletePlayerAction}
                   hiddenFields={{ id: String(player.id) }}
                   confirmMessage={`Delete player "${player.name}"?`}
-                  className="font-cinzel text-xs tracking-widest text-red-500/50 uppercase hover:text-red-400 transition-colors"
+                  label="Delete"
+                  className="
+                    font-cinzel text-xs tracking-widest text-red-500/50
+                    uppercase transition-colors
+                    hover:text-red-400
+                  "
                 />
               </div>
             ))}

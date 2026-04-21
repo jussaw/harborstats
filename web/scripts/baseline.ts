@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import postgres from 'postgres'
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'

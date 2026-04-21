@@ -57,17 +57,13 @@ describe('stats integration', () => {
     const alice = await createTestPlayer({ name: 'Alice' });
     const bob = await createTestPlayer({ name: 'Bob' });
 
-    for (const score of [7, 7, 7, 8]) {
-      await createTestGame({
+    await Promise.all([7, 7, 7, 8].map((score) => createTestGame({
         players: [{ playerId: alice.id, score, isWinner: true }],
-      });
-    }
+      })));
 
-    for (const score of [6, 7, 8, 9]) {
-      await createTestGame({
+    await Promise.all([6, 7, 8, 9].map((score) => createTestGame({
         players: [{ playerId: bob.id, score, isWinner: true }],
-      });
-    }
+      })));
 
     const scoreStats = await getPlayerScoreStats();
     const aliceStats = scoreStats.find((player) => player.playerId === alice.id);

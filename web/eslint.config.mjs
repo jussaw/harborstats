@@ -34,6 +34,7 @@ const eslintConfig = defineConfig([
     settings: {
       'better-tailwindcss': {
         entryPoint: 'app/globals.css',
+        detectComponentClasses: true,
       },
     },
     rules: betterTailwind.configs.recommended.rules,
@@ -52,6 +53,24 @@ const eslintConfig = defineConfig([
         'error',
         { namedComponents: 'function-declaration' },
       ],
+    },
+  },
+  {
+    files: ['playwright.config.ts', 'vitest*.ts', 'drizzle.config.ts'],
+    rules: {
+      'import-x/no-extraneous-dependencies': 'off',
+    },
+  },
+  {
+    files: ['scripts/**/*.ts', 'tests/helpers/prepare-test-db.ts'],
+    rules: {
+      'no-console': 'off',
+    },
+  },
+  {
+    files: ['app/admin/ConfirmDeleteButton.tsx'],
+    rules: {
+      'no-alert': 'off',
     },
   },
 

@@ -108,7 +108,7 @@ describe('GameForm', () => {
       onSuccess,
     )
 
-    const playedAtInput = screen.getByLabelText('Date & Time') as HTMLInputElement
+    const playedAtInput = screen.getByLabelText('Date & Time')
     const localPlayedAt = playedAtInput.value
 
     submitGameForm()
@@ -116,7 +116,13 @@ describe('GameForm', () => {
     await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
     expect(onSuccess).not.toHaveBeenCalled()
 
-    const formData = action.mock.calls[0][0] as FormData
+    const formData = action.mock.calls[0]?.[0]
+    expect(formData).toBeInstanceOf(FormData)
+
+    if (!(formData instanceof FormData)) {
+      throw new Error('Expected GameForm to submit a FormData instance')
+    }
+
     expect(formData.get('player_id_0')).toBe('1')
     expect(formData.get('score_0')).toBe('12')
     expect(formData.get('is_winner_0')).toBe('1')

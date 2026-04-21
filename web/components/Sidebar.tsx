@@ -42,18 +42,28 @@ function NavLink({ href, Icon, label, active, collapsed, onClick }: NavLinkProps
       href={href}
       onClick={onClick}
       title={collapsed ? label : undefined}
-      className={`flex items-center gap-3 rounded-md px-2 py-2 text-xs transition-colors ${
+      className={`
+        flex items-center gap-3 rounded-md p-2 text-xs transition-colors
+        ${
         collapsed ? 'sm:justify-center' : ''
-      } ${
+      }
+        ${
         active
-          ? 'bg-[var(--gold)]/10 text-[var(--gold)]'
-          : 'text-[var(--cream)]/60 hover:bg-[var(--navy-800)]/50 hover:text-[var(--cream)]'
-      }`}
+          ? 'bg-(--gold)/10 text-(--gold)'
+          : `
+            text-(--cream)/60
+            hover:bg-(--navy-800)/50 hover:text-(--cream)
+          `
+      }
+      `}
     >
-      <Icon className="h-4 w-4 shrink-0" />
+      <Icon className="size-4 shrink-0" />
       <span
         style={cinzelStyle}
-        className={`truncate tracking-widest uppercase ${collapsed ? 'sm:hidden' : ''}`}
+        className={`
+          truncate tracking-widest uppercase
+          ${collapsed ? 'sm:hidden' : ''}
+        `}
       >
         {label}
       </span>
@@ -77,28 +87,41 @@ export function Sidebar({
     <div className="flex h-full flex-col">
       {/* Header: brand + collapse toggle */}
       <div
-        className={`flex items-center border-b border-[var(--gold)]/15 px-3 py-4 ${collapsed ? 'sm:justify-center' : 'justify-between'}`}
+        className={`
+          flex items-center border-b border-(--gold)/15 px-3 py-4
+          ${collapsed ? `sm:justify-center` : `justify-between`}
+        `}
       >
         <Link
           href="/"
           onClick={onNavigate}
           style={cinzelStyle}
-          className={`text-sm tracking-[0.2em] text-[var(--gold)] uppercase ${collapsed ? 'sm:hidden' : ''}`}
+          className={`
+            text-sm tracking-[0.2em] text-(--gold) uppercase
+            ${collapsed ? `sm:hidden` : ''}
+          `}
         >
           HarborStats
         </Link>
         <button
           type="button"
           onClick={onToggleCollapse}
-          className="hidden sm:flex items-center justify-center rounded p-1 text-[var(--cream)]/40 hover:text-[var(--gold)] transition-colors"
+          className="
+            hidden items-center justify-center rounded-sm p-1 text-(--cream)/40
+            transition-colors
+            hover:text-(--gold)
+            sm:flex
+          "
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
-          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          {collapsed ? <ChevronRight className="size-4" /> : <ChevronLeft className="
+            size-4
+          " />}
         </button>
       </div>
 
       {/* Nav links */}
-      <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
+      <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-3">
         <NavLink
           href="/"
           Icon={Home}
@@ -136,7 +159,10 @@ export function Sidebar({
           <div className="pt-3">
             <p
               style={cinzelStyle}
-              className={`px-2 pb-1 text-xs tracking-widest text-[var(--cream)]/30 uppercase ${collapsed ? 'sm:hidden' : ''}`}
+              className={`
+                px-2 pb-1 text-xs tracking-widest text-(--cream)/30 uppercase
+                ${collapsed ? `sm:hidden` : ''}
+              `}
             >
               Admin
             </p>
@@ -169,12 +195,20 @@ export function Sidebar({
                 <button
                   type="submit"
                   title={collapsed ? 'Logout' : undefined}
-                  className={`flex w-full items-center gap-3 rounded-md px-2 py-2 text-xs text-[var(--cream)]/40 hover:bg-red-950/30 hover:text-red-400 transition-colors ${collapsed ? 'sm:justify-center' : ''}`}
+                  className={`
+                    flex w-full items-center gap-3 rounded-md p-2 text-xs
+                    text-(--cream)/40 transition-colors
+                    hover:bg-red-950/30 hover:text-red-400
+                    ${collapsed ? `sm:justify-center` : ''}
+                  `}
                 >
-                  <LogOut className="h-4 w-4 shrink-0" />
+                  <LogOut className="size-4 shrink-0" />
                   <span
                     style={cinzelStyle}
-                    className={`tracking-widest uppercase ${collapsed ? 'sm:hidden' : ''}`}
+                    className={`
+                      tracking-widest uppercase
+                      ${collapsed ? `sm:hidden` : ''}
+                    `}
                   >
                     Logout
                   </span>

@@ -17,7 +17,7 @@ vi.mock('@/app/actions', () => ({
 }))
 
 vi.mock('@/components/GameForm', () => ({
-  GameForm: ({ onSuccess }: { onSuccess?: () => void }) => (
+  GameForm: ({ onSuccess }: { onSuccess: () => void }) => (
     <button type="button" onClick={() => onSuccess?.()}>
       Complete game
     </button>
@@ -36,7 +36,7 @@ describe('NewGameButton', () => {
   it('opens and closes the dialog', async () => {
     const user = userEvent.setup()
 
-    render(<NewGameButton players={players} className="trigger" />)
+    render(<NewGameButton players={players} className="text-sm" />)
 
     const openButton = screen.getByRole('button', { name: /\+ new game/i })
     await user.click(openButton)
@@ -52,7 +52,7 @@ describe('NewGameButton', () => {
   it('closes the dialog and refreshes after a successful submit', async () => {
     const user = userEvent.setup()
 
-    render(<NewGameButton players={players} className="trigger" />)
+    render(<NewGameButton players={players} className="text-sm" />)
 
     await user.click(screen.getByRole('button', { name: /\+ new game/i }))
     const dialog = screen.getByRole('dialog')

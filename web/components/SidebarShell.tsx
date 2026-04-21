@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { Menu } from 'lucide-react'
 import Link from 'next/link'
@@ -18,18 +18,16 @@ interface Props {
 
 export function SidebarShell({ isAdmin, logoutAction, children }: Props) {
   const pathname = usePathname()
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return window.localStorage.getItem('hs_sidebar_collapsed') === 'true'
+  })
   const [mobileOpen, setMobileOpen] = useState(false)
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setCollapsed(localStorage.getItem('hs_sidebar_collapsed') === 'true')
-  }, [])
 
   const toggleCollapsed = useCallback(() => {
     setCollapsed((prev) => {
       const next = !prev
-      localStorage.setItem('hs_sidebar_collapsed', String(next))
+      window.localStorage.setItem('hs_sidebar_collapsed', String(next))
       return next
     })
   }, [])
@@ -43,7 +41,10 @@ export function SidebarShell({ isAdmin, logoutAction, children }: Props) {
       {/* Mobile backdrop */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-20 bg-black/60 sm:hidden"
+          className="
+            fixed inset-0 z-20 bg-black/60
+            sm:hidden
+          "
           onClick={closeMobile}
           aria-hidden="true"
         />
@@ -71,21 +72,34 @@ export function SidebarShell({ isAdmin, logoutAction, children }: Props) {
       </aside>
 
       {/* Main content */}
-      <div className={collapsed ? 'flex-1 sm:pl-16' : 'flex-1 sm:pl-60'}>
+      <div className={collapsed ? `
+        flex-1
+        sm:pl-16
+      ` : `
+        flex-1
+        sm:pl-60
+      `}>
         {/* Mobile header */}
-        <div className="flex h-12 items-center border-b border-[var(--gold)]/15 bg-[var(--navy-900)] px-4 sm:hidden">
+        <div className="
+          flex h-12 items-center border-b border-(--gold)/15 bg-(--navy-900)
+          px-4
+          sm:hidden
+        ">
           <button
             type="button"
             onClick={() => setMobileOpen(true)}
-            className="text-[var(--cream)]/60 hover:text-[var(--gold)] transition-colors"
+            className="
+              text-(--cream)/60 transition-colors
+              hover:text-(--gold)
+            "
             aria-label="Open navigation"
           >
-            <Menu className="h-5 w-5" />
+            <Menu className="size-5" />
           </button>
           <Link
             href="/"
             style={cinzelStyle}
-            className="ml-3 text-sm tracking-[0.2em] text-[var(--gold)] uppercase"
+            className="ml-3 text-sm tracking-[0.2em] text-(--gold) uppercase"
           >
             HarborStats
           </Link>

@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import postgres from 'postgres'
 
 const { DATABASE_URL } = process.env

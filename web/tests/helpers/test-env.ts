@@ -1,6 +1,6 @@
 const LOCALHOST = '127.0.0.1'
 
-export const TEST_BASE_URL = process.env.TEST_BASE_URL ?? `http://${LOCALHOST}:3000`
+export const TEST_BASE_URL = process.env.TEST_BASE_URL ?? `http://${LOCALHOST}:3100`
 
 export const TEST_ENV = {
   DATABASE_URL: process.env.DATABASE_URL ?? `postgres://postgres:postgres@${LOCALHOST}:5432/harborstats_test`,
@@ -13,7 +13,9 @@ export const TEST_ENV = {
 
 export function applyTestEnv(env = process.env): typeof TEST_ENV {
   Object.entries(TEST_ENV).forEach(([key, value]) => {
-    if (!env[key]) env[key] = value
+    if (!env[key]) {
+      Reflect.set(env, key, value)
+    }
   })
   return TEST_ENV
 }
@@ -29,6 +31,6 @@ export function getAdminDatabaseUrl(): string {
 }
 
 export function getTestDatabaseName(): string {
-  const pathname = new URL(getTestDatabaseUrl()).pathname
+  const { pathname } = new URL(getTestDatabaseUrl())
   return pathname.startsWith('/') ? pathname.slice(1) : pathname
 }

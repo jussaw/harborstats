@@ -28,17 +28,20 @@ export default async function EditGamePage({ params }: Props) {
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-8">
-      <div className="space-y-6 max-w-2xl">
+      <div className="max-w-2xl space-y-6">
         <div className="flex items-center gap-3">
           <Link
             href="/admin/games"
-            className="text-xs text-[var(--cream)]/40 hover:text-[var(--cream)]/70 transition-colors"
+            className="
+              text-xs text-(--cream)/40 transition-colors
+              hover:text-(--cream)/70
+            "
           >
             ← Games
           </Link>
-          <span className="text-[var(--cream)]/20">/</span>
-          <h1 className="font-cinzel text-xl tracking-wide text-[var(--gold)]">
-            Edit Game <span className="text-[var(--gold)]/50">#{game.id}</span>
+          <span className="text-(--cream)/20">/</span>
+          <h1 className="font-cinzel text-xl tracking-wide text-(--gold)">
+            Edit Game <span className="text-(--gold)/50">#{game.id}</span>
           </h1>
         </div>
         <EditGameForm gameId={game.id} players={players} initial={initial} />

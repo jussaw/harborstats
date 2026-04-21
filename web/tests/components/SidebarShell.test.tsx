@@ -75,7 +75,7 @@ describe('SidebarShell', () => {
     const gamesLink = screen.getByRole('link', { name: 'Games' })
 
     expect(gamesLink).toHaveAttribute('href', '/games')
-    expect(gamesLink).toHaveClass('bg-[var(--gold)]/10')
+    expect(gamesLink).toHaveClass('bg-(--gold)/10')
   })
 
   it('shows the public Players link and marks it active on /players', () => {
@@ -90,7 +90,7 @@ describe('SidebarShell', () => {
     const playersLink = screen.getByRole('link', { name: 'Players' })
 
     expect(playersLink).toHaveAttribute('href', '/players')
-    expect(playersLink).toHaveClass('bg-[var(--gold)]/10')
+    expect(playersLink).toHaveClass('bg-(--gold)/10')
   })
 
   it('marks the Players link active on /players/[id]', () => {
@@ -102,6 +102,6 @@ describe('SidebarShell', () => {
       </SidebarShell>,
     )
 
-    expect(screen.getByRole('link', { name: 'Players' })).toHaveClass('bg-[var(--gold)]/10')
+    expect(screen.getByRole('link', { name: 'Players' })).toHaveClass('bg-(--gold)/10')
   })
 })

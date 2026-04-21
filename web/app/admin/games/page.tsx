@@ -16,20 +16,25 @@ export default async function AdminGamesPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="font-cinzel text-xl tracking-wide text-[var(--gold)]">Games</h1>
-            <p className="mt-0.5 text-xs text-[var(--cream)]/50">{games.length} recorded</p>
+            <h1 className="font-cinzel text-xl tracking-wide text-(--gold)">Games</h1>
+            <p className="mt-0.5 text-xs text-(--cream)/50">{games.length} recorded</p>
           </div>
           <NewGameButton
             players={players}
-            className="font-cinzel rounded border border-[var(--gold)] bg-[var(--gold)] px-4 py-2 text-xs font-semibold tracking-widest text-[var(--navy-900)] uppercase hover:bg-[var(--cream)] transition-colors"
+            className="
+              font-cinzel rounded-sm border border-(--gold) bg-(--gold) px-4
+              py-2 text-xs font-semibold tracking-widest text-(--navy-900)
+              uppercase transition-colors
+              hover:bg-(--cream)
+            "
           />
         </div>
 
         {games.length === 0 ? (
-          <p className="py-16 text-center text-sm text-[var(--cream)]/40">No games recorded yet.</p>
+          <p className="py-16 text-center text-sm text-(--cream)/40">No games recorded yet.</p>
         ) : (
           <div
-            className="rounded-lg border overflow-hidden"
+            className="overflow-hidden rounded-lg border"
             style={{ borderColor: 'color-mix(in srgb, var(--gold) 20%, transparent)' }}
           >
             {games.map((game, idx) => (
@@ -47,11 +52,15 @@ export default async function AdminGamesPage() {
                       : 'transparent',
                 }}
               >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline gap-3 flex-wrap">
-                    <FormattedDate iso={game.playedAt.toISOString()} className="text-xs text-[var(--cream)]/60" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-baseline gap-3">
+                    <FormattedDate iso={game.playedAt.toISOString()} className="
+                      text-xs text-(--cream)/60
+                    " />
                     {game.notes && (
-                      <span className="text-xs text-[var(--cream)]/40 italic truncate">
+                      <span className="
+                        truncate text-xs text-(--cream)/40 italic
+                      ">
                         {game.notes}
                       </span>
                     )}
@@ -62,12 +71,12 @@ export default async function AdminGamesPage() {
                         {p.isWinner && <span className="mr-1">⭐</span>}
                         <span
                           className={
-                            p.isWinner ? 'text-[var(--gold)]' : 'text-[var(--cream)]/70'
+                            p.isWinner ? 'text-(--gold)' : `text-(--cream)/70`
                           }
                         >
                           {p.playerName}
                         </span>
-                        <span className="ml-1 text-[var(--cream)]/40 tabular-nums">
+                        <span className="ml-1 text-(--cream)/40 tabular-nums">
                           {p.score}
                         </span>
                       </span>
@@ -75,10 +84,14 @@ export default async function AdminGamesPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 shrink-0">
+                <div className="flex shrink-0 items-center gap-3">
                   <Link
                     href={`/admin/games/${game.id}/edit`}
-                    className="font-cinzel text-xs tracking-widest text-[var(--gold)]/70 uppercase hover:text-[var(--gold)] transition-colors"
+                    className="
+                      font-cinzel text-xs tracking-widest text-(--gold)/70
+                      uppercase transition-colors
+                      hover:text-(--gold)
+                    "
                   >
                     Edit
                   </Link>
@@ -86,6 +99,12 @@ export default async function AdminGamesPage() {
                     formAction={deleteGameAction}
                     hiddenFields={{ game_id: String(game.id) }}
                     confirmMessage={`Delete game #${game.id}? This cannot be undone.`}
+                    label="Delete"
+                    className="
+                      font-cinzel text-xs tracking-widest text-red-500/60
+                      uppercase transition-colors
+                      hover:text-red-400
+                    "
                   />
                 </div>
               </div>

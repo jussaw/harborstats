@@ -21,7 +21,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="en" className={cinzel.variable}>
-      <body className="min-h-screen bg-[var(--navy-800)]">
+      <body className="min-h-screen bg-(--navy-800)">
         <SidebarShell isAdmin={isAdmin} logoutAction={logoutAction}>
           {children}
         </SidebarShell>

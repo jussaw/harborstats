@@ -71,10 +71,14 @@ describe('players lib', () => {
 
     expect(playerId).toBeDefined();
 
-    await renamePlayer(playerId!, 'Mina Harbor');
-    await updatePlayerTier(playerId!, PlayerTier.Standard);
+    if (playerId === undefined) {
+      throw new Error('Expected createPlayer to persist a player id')
+    }
 
-    await expect(getPlayerById(playerId!)).resolves.toEqual(
+    await renamePlayer(playerId, 'Mina Harbor');
+    await updatePlayerTier(playerId, PlayerTier.Standard);
+
+    await expect(getPlayerById(playerId)).resolves.toEqual(
       expect.objectContaining({
         id: playerId,
         name: 'Mina Harbor',

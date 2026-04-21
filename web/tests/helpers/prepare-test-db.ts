@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import { prepareTestDatabase } from './db-admin'
 
 async function main(): Promise<void> {

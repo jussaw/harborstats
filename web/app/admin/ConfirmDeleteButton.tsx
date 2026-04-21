@@ -4,22 +4,22 @@ interface Props {
   formAction: (formData: FormData) => Promise<void>
   hiddenFields: Record<string, string>
   confirmMessage: string
-  label?: string
-  className?: string
+  label: string
+  className: string
 }
 
 export function ConfirmDeleteButton({
   formAction,
   hiddenFields,
   confirmMessage,
-  label = 'Delete',
-  className = 'font-cinzel text-xs tracking-widest text-red-500/60 uppercase hover:text-red-400 transition-colors',
+  label,
+  className,
 }: Props) {
   return (
     <form
       action={formAction}
       onSubmit={(e) => {
-        if (!confirm(confirmMessage)) e.preventDefault()
+        if (!window.confirm(confirmMessage)) e.preventDefault()
       }}
       className="flex items-center"
     >

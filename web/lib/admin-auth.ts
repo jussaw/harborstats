@@ -29,7 +29,7 @@ function getSessionSecret(): string {
 
 function hexToBytes(hex: string): ArrayBuffer {
   const bytes = new Uint8Array((hex.match(/.{2}/g) ?? []).map((b) => parseInt(b, 16)))
-  return bytes.buffer as ArrayBuffer
+  return bytes.buffer
 }
 
 export async function signSession(): Promise<string> {

@@ -23,17 +23,22 @@ function getAlignmentClass(align: Column['align']) {
 
 export function StatsLeaderboardTable({ columns, children }: Props) {
   return (
-    <div className="overflow-hidden rounded-xl border border-[var(--gold)]/20">
+    <div className="overflow-hidden rounded-xl border border-(--gold)/20">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-[var(--gold)]/20 bg-[var(--navy-900)]/80">
+            <tr className="border-b border-(--gold)/20 bg-(--navy-900)/80">
               {columns.map((column) => (
                 <th
                   key={column.label}
                   scope="col"
                   style={cinzelStyle}
-                  className={`px-3 py-2 text-xs tracking-widest text-[var(--cream)]/50 uppercase ${getAlignmentClass(column.align)} ${column.widthClass ?? ''}`}
+                  className={`
+                    px-3 py-2 text-xs tracking-widest text-(--cream)/50
+                    uppercase
+                    ${getAlignmentClass(column.align)}
+                    ${column.widthClass ?? ''}
+                  `}
                 >
                   {column.label}
                 </th>

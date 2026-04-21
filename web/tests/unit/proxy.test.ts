@@ -1,13 +1,12 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { NextRequest } from 'next/server';
+import { verifySession } from '@/lib/admin-auth';
+import { proxy } from '@/proxy';
 
 vi.mock('@/lib/admin-auth', () => ({
   COOKIE_NAME: 'hs_admin',
   verifySession: vi.fn(),
 }));
-
-import { verifySession } from '@/lib/admin-auth';
-import { proxy } from '@/proxy';
 
 describe('proxy', () => {
   const verifySessionMock = vi.mocked(verifySession);

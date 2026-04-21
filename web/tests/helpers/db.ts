@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { gamePlayers, games, players, appSettings } from '@/db/schema'
+import { gamePlayers, games, players } from '@/db/schema'
 import { PlayerTier } from '@/lib/player-tier'
 
 export const DEFAULT_PLAYED_AT = new Date('2026-01-01T12:00:00.000Z')
@@ -18,10 +18,12 @@ export async function createTestPlayer(input?: {
   name?: string
   tier?: PlayerTier
 }) {
+  const nextPlayerNumber = playerCounter
+  playerCounter += 1
   const [player] = await db
     .insert(players)
     .values({
-      name: input?.name ?? `Player ${playerCounter++}`,
+      name: input?.name ?? `Player ${nextPlayerNumber}`,
       tier: input?.tier ?? PlayerTier.Standard,
     })
     .returning()
@@ -33,7 +35,7 @@ export async function createTestGame(input: {
   playedAt?: Date
   notes?: string
   submittedFromIp?: string | null
-  players: Array<{ playerId: number; score: number; isWinner: boolean }>
+  players: { playerId: number; score: number; isWinner: boolean }[]
 }) {
   const [game] = await db
     .insert(games)

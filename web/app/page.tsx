@@ -11,15 +11,19 @@ export default async function HomePage() {
   return (
     <main className="mx-auto max-w-2xl px-4 py-12">
       <div className="mb-8 flex items-center justify-between">
-        <h1 className="font-cinzel text-xl text-[var(--gold)] tracking-wide">Recent Games</h1>
+        <h1 className="font-cinzel text-xl tracking-wide text-(--gold)">Recent Games</h1>
         <NewGameButton
           players={players}
-          className="font-cinzel rounded border border-[var(--gold)] bg-[var(--gold)] px-4 py-2 text-sm font-semibold text-[var(--navy-900)] hover:bg-[var(--cream)] transition-colors"
+          className="
+            font-cinzel rounded-sm border border-(--gold) bg-(--gold) px-4 py-2
+            text-sm font-semibold text-(--navy-900) transition-colors
+            hover:bg-(--cream)
+          "
         />
       </div>
 
       {games.length === 0 ? (
-        <p className="text-[var(--cream)] opacity-60 text-center py-16">
+        <p className="py-16 text-center text-(--cream) opacity-60">
           No games yet — record your first one!
         </p>
       ) : (
@@ -27,12 +31,18 @@ export default async function HomePage() {
           {games.map((game) => (
             <article
               key={game.id}
-              className="rounded-lg border border-[var(--gold)]/30 bg-[var(--navy-900)]/60 p-4"
+              className="
+                rounded-lg border border-(--gold)/30 bg-(--navy-900)/60 p-4
+              "
             >
               <div className="mb-3 flex items-start justify-between gap-2">
-                <FormattedDate iso={game.playedAt.toISOString()} className="text-xs text-[var(--cream)] opacity-60" />
+                <FormattedDate iso={game.playedAt.toISOString()} className="
+                  text-xs text-(--cream) opacity-60
+                " />
                 {game.notes && (
-                  <p className="text-xs text-[var(--cream)] opacity-50 italic max-w-xs text-right">
+                  <p className="
+                    max-w-xs text-right text-xs text-(--cream) italic opacity-50
+                  ">
                     {game.notes}
                   </p>
                 )}
@@ -40,14 +50,20 @@ export default async function HomePage() {
 
               <ul className="space-y-1">
                 {[...game.players].sort((a, b) => b.score - a.score).map((p) => (
-                  <li key={p.playerName} className="flex items-center gap-2 text-sm">
+                  <li key={p.playerName} className="
+                    flex items-center gap-2 text-sm
+                  ">
                     <span className="w-4 text-center">
                       {p.isWinner ? '⭐' : ''}
                     </span>
-                    <span className={p.isWinner ? 'text-[var(--gold)] font-semibold font-cinzel' : 'text-[var(--cream)]'}>
+                    <span className={p.isWinner ? `
+                      font-cinzel font-semibold text-(--gold)
+                    ` : `text-(--cream)`}>
                       {p.playerName}
                     </span>
-                    <span className="ml-auto text-[var(--cream)] opacity-70 tabular-nums">
+                    <span className="
+                      ml-auto text-(--cream) tabular-nums opacity-70
+                    ">
                       {p.score}
                     </span>
                   </li>

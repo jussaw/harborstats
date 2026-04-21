@@ -1,12 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { cookies } from 'next/headers';
+import { isAdminSession, signSession, verifyPassword, verifySession, COOKIE_NAME } from '@/lib/admin-auth';
 
 vi.mock('next/headers', () => ({
   cookies: vi.fn(),
 }));
-
-import { cookies } from 'next/headers';
-
-import { isAdminSession, signSession, verifyPassword, verifySession, COOKIE_NAME } from '@/lib/admin-auth';
 
 describe('admin auth helpers', () => {
   beforeEach(() => {

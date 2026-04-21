@@ -82,7 +82,11 @@ function PageLink({
     <Link
       href={href}
       aria-label={label}
-      className="rounded border border-[var(--gold)]/30 px-3 py-1.5 text-xs text-[var(--cream)]/70 transition-colors hover:border-[var(--gold)] hover:text-[var(--gold)]"
+      className="
+        rounded-sm border border-(--gold)/30 px-3 py-1.5 text-xs
+        text-(--cream)/70 transition-colors
+        hover:border-(--gold) hover:text-(--gold)
+      "
     >
       {content}
     </Link>
@@ -95,17 +99,25 @@ export function GamesPagination({ page, pageSize, totalPages, filters }: Props) 
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--cream)]/60">
-        <span className="tracking-widest uppercase text-[var(--cream)]/50">Show per page</span>
+      <div className="
+        flex flex-wrap items-center gap-2 text-xs text-(--cream)/60
+      ">
+        <span className="tracking-widest text-(--cream)/50 uppercase">Show per page</span>
         {GAMES_PAGE_SIZES.map((size) => (
           <Link
             key={size}
             href={buildGamesHref(1, size, filters)}
-            className={`rounded border px-3 py-1.5 transition-colors ${
+            className={`
+              rounded-sm border px-3 py-1.5 transition-colors
+              ${
               size === pageSize
-                ? 'border-[var(--gold)] bg-[var(--gold)]/10 text-[var(--gold)]'
-                : 'border-[var(--gold)]/30 text-[var(--cream)]/70 hover:border-[var(--gold)] hover:text-[var(--gold)]'
-            }`}
+                ? 'border-(--gold) bg-(--gold)/10 text-(--gold)'
+                : `
+                  border-(--gold)/30 text-(--cream)/70
+                  hover:border-(--gold) hover:text-(--gold)
+                `
+            }
+            `}
           >
             {size}
           </Link>
@@ -113,7 +125,10 @@ export function GamesPagination({ page, pageSize, totalPages, filters }: Props) 
       </div>
 
       {showPager && (
-        <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
+        <div className="
+          flex flex-wrap items-center gap-2
+          sm:flex-nowrap
+        ">
           {page > 1 ? (
             <PageLink
               href={buildGamesHref(page - 1, pageSize, filters)}
@@ -124,7 +139,10 @@ export function GamesPagination({ page, pageSize, totalPages, filters }: Props) 
             <span
               aria-disabled="true"
               aria-label="Previous"
-              className="rounded border border-[var(--gold)]/15 px-3 py-1.5 text-xs text-[var(--cream)]/30"
+              className="
+                rounded-sm border border-(--gold)/15 px-3 py-1.5 text-xs
+                text-(--cream)/30
+              "
             >
               <span aria-hidden="true">←</span>
             </span>
@@ -142,7 +160,10 @@ export function GamesPagination({ page, pageSize, totalPages, filters }: Props) 
                     data-testid="games-pagination-slot"
                     data-slot-type="placeholder"
                     aria-hidden="true"
-                    className="min-w-10 rounded border border-transparent px-3 py-1.5 text-xs invisible"
+                    className="
+                      invisible min-w-10 rounded-sm border border-transparent
+                      px-3 py-1.5 text-xs
+                    "
                   >
                     00
                   </span>
@@ -156,7 +177,10 @@ export function GamesPagination({ page, pageSize, totalPages, filters }: Props) 
                     data-testid="games-pagination-slot"
                     data-slot-type="ellipsis"
                     aria-hidden="true"
-                    className="flex min-w-10 items-center justify-center px-3 py-1.5 text-xs text-[var(--cream)]/30"
+                    className="
+                      flex min-w-10 items-center justify-center px-3 py-1.5
+                      text-xs text-(--cream)/30
+                    "
                   >
                     ...
                   </span>
@@ -173,7 +197,10 @@ export function GamesPagination({ page, pageSize, totalPages, filters }: Props) 
                   {slot.value === page ? (
                     <span
                       aria-current="page"
-                      className="w-full rounded border border-[var(--gold)] bg-[var(--gold)]/10 px-3 py-1.5 text-center text-xs text-[var(--gold)]"
+                      className="
+                        w-full rounded-sm border border-(--gold) bg-(--gold)/10
+                        px-3 py-1.5 text-center text-xs text-(--gold)
+                      "
                     >
                       {slot.value}
                     </span>
@@ -199,7 +226,10 @@ export function GamesPagination({ page, pageSize, totalPages, filters }: Props) 
             <span
               aria-disabled="true"
               aria-label="Next"
-              className="rounded border border-[var(--gold)]/15 px-3 py-1.5 text-xs text-[var(--cream)]/30"
+              className="
+                rounded-sm border border-(--gold)/15 px-3 py-1.5 text-xs
+                text-(--cream)/30
+              "
             >
               <span aria-hidden="true">→</span>
             </span>

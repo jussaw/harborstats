@@ -7,10 +7,12 @@
   --cream: #f4ecd4;
 }
 
-.harbor-bg {
-  background-color: #0e3a4a;
-}
+@layer components {
+  .harbor-bg {
+    background-color: #0e3a4a;
+  }
 
-.font-cinzel {
-  font-family: var(--font-cinzel), Georgia, serif;
+  .font-cinzel {
+    font-family: var(--font-cinzel), Georgia, serif;
+  }
 }

@@ -104,13 +104,13 @@ describe('GamesPagination', () => {
     expect(getPaginationStrip().querySelectorAll('[data-slot-type="placeholder"]')).toHaveLength(1)
     expect(getPaginationStrip().querySelectorAll('[data-slot-type="ellipsis"]')).toHaveLength(0)
 
-    for (const label of expectedLinks) {
+    expectedLinks.forEach((label) => {
       if (label === currentPage) {
         expect(screen.getByText(label)).toHaveAttribute('aria-current', 'page')
       } else {
         expect(screen.getByRole('link', { name: label })).toHaveAttribute('href', `/games?page=${label}&pageSize=20`)
       }
-    }
+    })
   })
 
   it.each([
@@ -147,12 +147,12 @@ describe('GamesPagination', () => {
     expect(getPaginationStrip().querySelectorAll('[data-slot-type="ellipsis"]')).toHaveLength(expectedEllipses)
     expect(getPaginationStrip().querySelectorAll('[data-slot-type="placeholder"]')).toHaveLength(0)
 
-    for (const label of expectedLinks) {
+    expectedLinks.forEach((label) => {
       if (label === expectedCurrentPage) {
         expect(screen.getByText(label)).toHaveAttribute('aria-current', 'page')
       } else {
         expect(screen.getByRole('link', { name: label })).toHaveAttribute('href', `/games?page=${label}&pageSize=20`)
       }
-    }
+    })
   })
 })
