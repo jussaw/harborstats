@@ -1,12 +1,61 @@
-// Stats query functions are appended by feature agents.
-
-import { count, eq, sql } from 'drizzle-orm'
-import { gamePlayers, players } from '@/db/schema'
+import { count, desc, eq, sql } from 'drizzle-orm'
+import { gamePlayers, games, players } from '@/db/schema'
 import { parsePlayerTier, PlayerTier, type PlayerTier as PlayerTierType } from '@/lib/player-tier'
 import { db } from './db'
 
 function round1(value: number): number {
   return Math.round(value * 10) / 10
+}
+
+function startOfUtcDay(date: Date): Date {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
+}
+
+function getUtcDayDifference(laterDate: Date, earlierDate: Date): number {
+  const millisecondsPerDay = 24 * 60 * 60 * 1000
+  return Math.floor((startOfUtcDay(laterDate).getTime() - startOfUtcDay(earlierDate).getTime()) / millisecondsPerDay)
+}
+
+function getIsoWeekStart(date: Date): Date {
+  const start = startOfUtcDay(date)
+  const day = start.getUTCDay()
+  const offset = day === 0 ? 6 : day - 1
+  start.setUTCDate(start.getUTCDate() - offset)
+  return start
+}
+
+function getUtcMonthStart(date: Date): Date {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1))
+}
+
+function addUtcDays(date: Date, days: number): Date {
+  const next = new Date(date)
+  next.setUTCDate(next.getUTCDate() + days)
+  return next
+}
+
+function addUtcMonths(date: Date, months: number): Date {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, 1))
+}
+
+function formatShortUtcDate(date: Date): string {
+  return date.toLocaleDateString('en-US', {
+    timeZone: 'UTC',
+    month: 'short',
+    day: 'numeric',
+  })
+}
+
+function formatShortUtcMonth(date: Date): string {
+  return date.toLocaleDateString('en-US', {
+    timeZone: 'UTC',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
+function toUtcDateKey(date: Date): string {
+  return date.toISOString().slice(0, 10)
 }
 
 interface PlayerIdentity {
@@ -85,20 +134,20 @@ async function getGameSizeAggregateData(): Promise<GameSizeAggregateData> {
     ]),
   )
 
-  const tierStats = new Map<PlayerTier, TierShowdownAccumulator>([
-    [PlayerTier.Premium, {
+  const tierStats: Record<PlayerTier, TierShowdownAccumulator> = {
+    [PlayerTier.Premium]: {
       tier: PlayerTier.Premium,
       players: playerRows.filter((player) => parsePlayerTier(player.tier) === PlayerTier.Premium).length,
       appearances: 0,
       wins: 0,
-    }],
-    [PlayerTier.Standard, {
+    },
+    [PlayerTier.Standard]: {
       tier: PlayerTier.Standard,
       players: playerRows.filter((player) => parsePlayerTier(player.tier) === PlayerTier.Standard).length,
       appearances: 0,
       wins: 0,
-    }],
-  ])
+    },
+  }
 
   const gameSizeBuckets = new Map<string, PlayerGameSizeAccumulator>()
   const participantsByGameId = new Map<number, typeof participantRows>()
@@ -128,7 +177,7 @@ async function getGameSizeAggregateData(): Promise<GameSizeAggregateData> {
       expectedWins.wins += participant.isWinner ? 1 : 0
       expectedWins.expectedWins += expectedWinShare
 
-      const tier = tierStats.get(player.tier)
+      const tier = tierStats[player.tier]
       if (tier) {
         tier.appearances += 1
         tier.wins += participant.isWinner ? 1 : 0
@@ -183,7 +232,7 @@ async function getGameSizeAggregateData(): Promise<GameSizeAggregateData> {
           || b.expectedWins - a.expectedWins
           || a.name.localeCompare(b.name),
       ),
-    tierShowdownStats: [...tierStats.values()]
+    tierShowdownStats: Object.values(tierStats)
       .map((tier) => ({
         tier: tier.tier,
         players: tier.players,
@@ -294,15 +343,15 @@ export async function getPlayerPodiumRates(): Promise<PlayerPodiumRate[]> {
 
   return (result as Record<string, unknown>[])
     .map((row) => {
-      const games = row.games as number
+      const gameCount = row.games as number
       const podiums = row.podiums as number
       return {
         playerId: row.playerId as number,
         name: row.name as string,
         tier: parsePlayerTier(row.tier as string),
-        games,
+        games: gameCount,
         podiums,
-        podiumRate: games > 0 ? podiums / games : 0,
+        podiumRate: gameCount > 0 ? podiums / gameCount : 0,
       }
     })
     .sort((a, b) => b.podiumRate - a.podiumRate || b.podiums - a.podiums)
@@ -350,7 +399,7 @@ export async function getPlayerFinishBreakdowns(): Promise<PlayerFinishBreakdown
 
   return (result as Record<string, unknown>[])
     .map((row) => {
-      const games = row.games as number
+      const gameCount = row.games as number
       const firsts = row.firsts as number
       const seconds = row.seconds as number
       const thirds = row.thirds as number
@@ -360,15 +409,15 @@ export async function getPlayerFinishBreakdowns(): Promise<PlayerFinishBreakdown
         playerId: row.playerId as number,
         name: row.name as string,
         tier: parsePlayerTier(row.tier as string),
-        games,
+        games: gameCount,
         firsts,
         seconds,
         thirds,
         lasts,
-        firstRate: games > 0 ? firsts / games : 0,
-        secondRate: games > 0 ? seconds / games : 0,
-        thirdRate: games > 0 ? thirds / games : 0,
-        lastRate: games > 0 ? lasts / games : 0,
+        firstRate: gameCount > 0 ? firsts / gameCount : 0,
+        secondRate: gameCount > 0 ? seconds / gameCount : 0,
+        thirdRate: gameCount > 0 ? thirds / gameCount : 0,
+        lastRate: gameCount > 0 ? lasts / gameCount : 0,
       }
     })
     .sort(
@@ -528,4 +577,159 @@ export interface PlayerExpectedVsActualWins {
 export async function getPlayerExpectedVsActualWins(): Promise<PlayerExpectedVsActualWins[]> {
   const data = await getGameSizeAggregateData()
   return data.playerExpectedVsActualWins
+}
+
+export interface RecentActivitySummary {
+  totalGames: number
+  latestPlayedAt: Date | null
+  daysSinceLastGame: number | null
+}
+
+export async function getRecentActivitySummary(): Promise<RecentActivitySummary> {
+  const [latestGame] = await db
+    .select({
+      playedAt: games.playedAt,
+    })
+    .from(games)
+    .orderBy(desc(games.playedAt), desc(games.id))
+    .limit(1)
+
+  const [{ totalGames }] = await db
+    .select({
+      totalGames: count(),
+    })
+    .from(games)
+
+  if (!latestGame) {
+    return {
+      totalGames,
+      latestPlayedAt: null,
+      daysSinceLastGame: null,
+    }
+  }
+
+  return {
+    totalGames,
+    latestPlayedAt: latestGame.playedAt,
+    daysSinceLastGame: getUtcDayDifference(new Date(Date.now()), latestGame.playedAt),
+  }
+}
+
+export interface ActivityBucket {
+  bucketStart: Date
+  label: string
+  gameCount: number
+}
+
+export interface GamesOverTimeSeries {
+  weekly: ActivityBucket[]
+  monthly: ActivityBucket[]
+  totalGames: number
+}
+
+function buildActivityBuckets(
+  playedAtDates: Date[],
+  getBucketStart: (date: Date) => Date,
+  getNextBucketStart: (date: Date) => Date,
+  formatLabel: (date: Date) => string,
+): ActivityBucket[] {
+  if (playedAtDates.length === 0) {
+    return []
+  }
+
+  const countsByBucket = new Map<string, number>()
+
+  playedAtDates.forEach((playedAt) => {
+    const bucketStart = getBucketStart(playedAt)
+    const bucketKey = toUtcDateKey(bucketStart)
+    countsByBucket.set(bucketKey, (countsByBucket.get(bucketKey) ?? 0) + 1)
+  })
+
+  const firstBucket = getBucketStart(playedAtDates[0])
+  const lastBucket = getBucketStart(playedAtDates[playedAtDates.length - 1])
+  const buckets: ActivityBucket[] = []
+
+  for (
+    let bucketStart = firstBucket;
+    bucketStart.getTime() <= lastBucket.getTime();
+    bucketStart = getNextBucketStart(bucketStart)
+  ) {
+    const bucketKey = toUtcDateKey(bucketStart)
+
+    buckets.push({
+      bucketStart,
+      label: formatLabel(bucketStart),
+      gameCount: countsByBucket.get(bucketKey) ?? 0,
+    })
+  }
+
+  return buckets
+}
+
+export async function getGamesOverTimeSeries(): Promise<GamesOverTimeSeries> {
+  const gameRows = await db
+    .select({
+      playedAt: games.playedAt,
+    })
+    .from(games)
+    .orderBy(games.playedAt, games.id)
+
+  const playedAtDates = gameRows.map((game) => game.playedAt)
+
+  return {
+    weekly: buildActivityBuckets(
+      playedAtDates,
+      getIsoWeekStart,
+      (date) => addUtcDays(date, 7),
+      formatShortUtcDate,
+    ),
+    monthly: buildActivityBuckets(
+      playedAtDates,
+      getUtcMonthStart,
+      (date) => addUtcMonths(date, 1),
+      formatShortUtcMonth,
+    ),
+    totalGames: playedAtDates.length,
+  }
+}
+
+export interface PlayerParticipationRate {
+  playerId: number
+  name: string
+  tier: PlayerTierType
+  gamesPlayed: number
+  totalGames: number
+  participationRate: number
+}
+
+export async function getPlayerParticipationRates(): Promise<PlayerParticipationRate[]> {
+  const [rows, [{ totalGames }]] = await Promise.all([
+    db
+      .select({
+        playerId: players.id,
+        name: players.name,
+        tier: players.tier,
+        gamesPlayed: count(gamePlayers.id),
+      })
+      .from(players)
+      .leftJoin(gamePlayers, eq(gamePlayers.playerId, players.id))
+      .groupBy(players.id)
+      .orderBy(players.name),
+    db
+      .select({
+        totalGames: count(),
+      })
+      .from(games),
+  ])
+
+  return rows
+    .map((row) => ({
+      playerId: row.playerId,
+      name: row.name,
+      tier: parsePlayerTier(row.tier),
+      gamesPlayed: row.gamesPlayed,
+      totalGames,
+      participationRate: totalGames > 0 ? row.gamesPlayed / totalGames : 0,
+    }))
+    .sort((a, b) => b.participationRate - a.participationRate || a.name.localeCompare(b.name))
 }

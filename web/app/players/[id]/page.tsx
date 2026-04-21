@@ -6,6 +6,7 @@ import {
   getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
   getPlayerMarginStats,
+  getPlayerParticipationRates,
   getPlayerPodiumRates,
   getPlayerScoreStats,
   getPlayerWinRateByGameSize,
@@ -34,6 +35,7 @@ export default async function PlayerProfilePage({ params }: Props) {
     podiumRates,
     finishBreakdowns,
     marginStats,
+    participationRates,
     winRateByGameSize,
     expectedVsActualWins,
   ] = await Promise.all([
@@ -42,6 +44,7 @@ export default async function PlayerProfilePage({ params }: Props) {
     getPlayerPodiumRates(),
     getPlayerFinishBreakdowns(),
     getPlayerMarginStats(),
+    getPlayerParticipationRates(),
     getPlayerWinRateByGameSize(),
     getPlayerExpectedVsActualWins(),
   ])
@@ -57,6 +60,7 @@ export default async function PlayerProfilePage({ params }: Props) {
       podiumRates={podiumRates}
       finishBreakdowns={finishBreakdowns}
       marginStats={marginStats}
+      participationRates={participationRates}
       winRateByGameSize={winRateByGameSize}
       expectedVsActualWins={expectedVsActualWins}
     />

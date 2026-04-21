@@ -5,8 +5,10 @@ import StatsPage from '@/app/stats/page'
 import { PlayerTier } from '@/lib/player-tier'
 import { getSettings } from '@/lib/settings'
 import {
+  getGamesOverTimeSeries,
   getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
+  getPlayerParticipationRates,
   getPlayerPodiumRates,
   getPlayerScoreStats,
   getTierShowdownStats,
@@ -14,9 +16,11 @@ import {
 } from '@/lib/stats'
 
 vi.mock('@/lib/stats', () => ({
+  getGamesOverTimeSeries: vi.fn(),
   getPlayerExpectedVsActualWins: vi.fn(),
   getPlayerWinRates: vi.fn(),
   getPlayerScoreStats: vi.fn(),
+  getPlayerParticipationRates: vi.fn(),
   getPlayerPodiumRates: vi.fn(),
   getPlayerFinishBreakdowns: vi.fn(),
   getTierShowdownStats: vi.fn(),
@@ -148,6 +152,35 @@ describe('StatsPage', () => {
         winDelta: -0.5,
       },
     ])
+    vi.mocked(getGamesOverTimeSeries).mockResolvedValue({
+      totalGames: 9,
+      weekly: [
+        { bucketStart: new Date('2026-04-07T00:00:00.000Z'), label: 'Apr 7', gameCount: 2 },
+        { bucketStart: new Date('2026-04-14T00:00:00.000Z'), label: 'Apr 14', gameCount: 3 },
+      ],
+      monthly: [
+        { bucketStart: new Date('2026-03-01T00:00:00.000Z'), label: 'Mar 2026', gameCount: 4 },
+        { bucketStart: new Date('2026-04-01T00:00:00.000Z'), label: 'Apr 2026', gameCount: 5 },
+      ],
+    })
+    vi.mocked(getPlayerParticipationRates).mockResolvedValue([
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+        gamesPlayed: 8,
+        totalGames: 9,
+        participationRate: 8 / 9,
+      },
+      {
+        playerId: 2,
+        name: 'Bea',
+        tier: PlayerTier.Standard,
+        gamesPlayed: 6,
+        totalGames: 9,
+        participationRate: 2 / 3,
+      },
+    ])
     vi.mocked(getSettings).mockResolvedValue({ winRateMinGames: 3 })
 
     const element = await StatsPage()
@@ -169,6 +202,8 @@ describe('StatsPage', () => {
     const expectedVsActualWinsIndex = markup.indexOf('id="expected-vs-actual-wins"')
     const tierShowdownIndex = markup.indexOf('id="tier-showdown"')
     const finishBreakdownIndex = markup.indexOf('id="finish-breakdown"')
+    const gamesOverTimeIndex = markup.indexOf('id="games-over-time"')
+    const participationRateIndex = markup.indexOf('id="participation-rate"')
 
     expect(totalWinsIndex).toBeGreaterThan(-1)
     expect(winRateIndex).toBeGreaterThan(totalWinsIndex)
@@ -178,6 +213,8 @@ describe('StatsPage', () => {
     expect(expectedVsActualWinsIndex).toBeGreaterThan(podiumRateIndex)
     expect(tierShowdownIndex).toBeGreaterThan(expectedVsActualWinsIndex)
     expect(finishBreakdownIndex).toBeGreaterThan(tierShowdownIndex)
+    expect(gamesOverTimeIndex).toBeGreaterThan(finishBreakdownIndex)
+    expect(participationRateIndex).toBeGreaterThan(gamesOverTimeIndex)
     expect(markup).toContain('Finish Breakdown')
     expect(markup).toContain('>1st<')
     expect(markup).toContain('>2nd<')
@@ -188,6 +225,13 @@ describe('StatsPage', () => {
     expect(markup).toContain('>Appearances<')
     expect(markup).toContain('>Players<')
     expect(markup).toContain('Expected vs Actual Wins')
+    expect(markup).not.toContain('Days Since Last Game')
+    expect(markup).toContain('Games Over Time')
+    expect(markup).toContain('Week')
+    expect(markup).toContain('Month')
+    expect(markup).toContain('Participation Rate')
+    expect(markup).toContain('88.9%')
+    expect(markup).toContain('66.7%')
     expect(markup).toContain('+1.2')
     expect(markup).toContain('-0.5')
 
@@ -198,6 +242,8 @@ describe('StatsPage', () => {
     expect(totalWinsSection).not.toContain('lg:col-span-2')
     expect(winRateSection).not.toContain('lg:col-span-2')
     expect(expectedVsActualSection).not.toContain('lg:col-span-2')
+    expect(markup.slice(gamesOverTimeIndex, gamesOverTimeIndex + 160)).toContain('lg:col-span-2')
+    expect(markup.slice(participationRateIndex, participationRateIndex + 160)).toContain('lg:col-span-2')
   })
 
   it('renders card empty states when no stats are available', async () => {
@@ -207,6 +253,12 @@ describe('StatsPage', () => {
     vi.mocked(getPlayerFinishBreakdowns).mockResolvedValue([])
     vi.mocked(getTierShowdownStats).mockResolvedValue([])
     vi.mocked(getPlayerExpectedVsActualWins).mockResolvedValue([])
+    vi.mocked(getGamesOverTimeSeries).mockResolvedValue({
+      totalGames: 0,
+      weekly: [],
+      monthly: [],
+    })
+    vi.mocked(getPlayerParticipationRates).mockResolvedValue([])
     vi.mocked(getSettings).mockResolvedValue({ winRateMinGames: 2 })
 
     const element = await StatsPage()
@@ -216,6 +268,9 @@ describe('StatsPage', () => {
     expect(markup).not.toContain('href="#total-wins"')
     expect(markup).toContain('No wins recorded yet.')
     expect(markup).toContain('No players have played 2+ games yet.')
-    expect(markup.match(/No games recorded yet\./g)).toHaveLength(6)
+    expect(markup).not.toContain('Days Since Last Game')
+    expect(markup).toContain('Games Over Time')
+    expect(markup).toContain('Participation Rate')
+    expect(markup.match(/No games recorded yet\./g)).toHaveLength(8)
   })
 })

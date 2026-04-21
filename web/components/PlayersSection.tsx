@@ -8,6 +8,7 @@ import type {
   PlayerExpectedVsActualWins,
   PlayerFinishBreakdown,
   PlayerMarginStats,
+  PlayerParticipationRate,
   PlayerPodiumRate,
   PlayerScoreStats,
   PlayerWinRateByGameSize,
@@ -26,6 +27,7 @@ interface Props {
   podiumRates: PlayerPodiumRate[]
   finishBreakdowns: PlayerFinishBreakdown[]
   marginStats: PlayerMarginStats[]
+  participationRates: PlayerParticipationRate[]
   winRateByGameSize: PlayerWinRateByGameSize[]
   expectedVsActualWins: PlayerExpectedVsActualWins[]
 }
@@ -64,8 +66,7 @@ function PlayersList({ players, selectedPlayerId }: PlayersListProps) {
               href={`/players/${player.id}`}
               aria-current={active ? 'page' : undefined}
               className={`
-                block rounded-xl border p-3 text-sm
-                transition-colors
+                block rounded-xl border p-3 text-sm transition-colors
                 ${
                 active
                   ? `border-(--gold)/45 bg-(--gold)/10 text-(--gold)`
@@ -230,6 +231,7 @@ function PlayerDetail({
   podiumRates,
   finishBreakdowns,
   marginStats,
+  participationRates,
   winRateByGameSize,
   expectedVsActualWins,
 }: {
@@ -238,6 +240,7 @@ function PlayerDetail({
   podiumRates: PlayerPodiumRate[]
   finishBreakdowns: PlayerFinishBreakdown[]
   marginStats: PlayerMarginStats[]
+  participationRates: PlayerParticipationRate[]
   winRateByGameSize: PlayerWinRateByGameSize[]
   expectedVsActualWins: PlayerExpectedVsActualWins[]
 }) {
@@ -245,6 +248,7 @@ function PlayerDetail({
   const podiumStat = podiumRates.find((candidate) => candidate.playerId === player.id) ?? null
   const finishBreakdown = finishBreakdowns.find((candidate) => candidate.playerId === player.id) ?? null
   const marginStat = marginStats.find((candidate) => candidate.playerId === player.id) ?? null
+  const participationStat = participationRates.find((candidate) => candidate.playerId === player.id) ?? null
   const opponentCountStats = winRateByGameSize
     .filter((candidate) => candidate.playerId === player.id)
     .sort((a, b) => a.playerCount - b.playerCount)
@@ -253,6 +257,7 @@ function PlayerDetail({
   const hasGames = scoreStat !== null && scoreStat.games > 0
   const podiumHasGames = podiumStat !== null && podiumStat.games > 0
   const expectedVsActualHasGames = expectedVsActualStat !== null && expectedVsActualStat.games > 0
+  const hasParticipationData = participationStat !== null && participationStat.totalGames > 0
   const victoryMarginValue = marginStat?.averageVictoryMargin ?? null
   const defeatMarginValue = marginStat?.averageDefeatMargin ?? null
 
@@ -288,6 +293,19 @@ function PlayerDetail({
                   podiumStat.games,
                   'game',
                 )}`
+              : null
+          }
+        />
+        <ProfileMetricCard
+          id="player-participation-rate"
+          title="Participation Rate"
+          description="Share of all recorded games this player has appeared in."
+          value={hasParticipationData ? formatPercent(participationStat.participationRate, 1) : null}
+          detail={
+            hasParticipationData
+              ? `${participationStat.gamesPlayed} appearance${
+                  participationStat.gamesPlayed === 1 ? '' : 's'
+                } in ${participationStat.totalGames} total games`
               : null
           }
         />
@@ -357,6 +375,7 @@ export function PlayersSection({
   podiumRates,
   finishBreakdowns,
   marginStats,
+  participationRates,
   winRateByGameSize,
   expectedVsActualWins,
 }: Props) {
@@ -409,6 +428,7 @@ export function PlayersSection({
                 podiumRates={podiumRates}
                 finishBreakdowns={finishBreakdowns}
                 marginStats={marginStats}
+                participationRates={participationRates}
                 winRateByGameSize={winRateByGameSize}
                 expectedVsActualWins={expectedVsActualWins}
               />
@@ -432,6 +452,7 @@ export function PlayersSection({
               podiumRates={podiumRates}
               finishBreakdowns={finishBreakdowns}
               marginStats={marginStats}
+              participationRates={participationRates}
               winRateByGameSize={winRateByGameSize}
               expectedVsActualWins={expectedVsActualWins}
             />

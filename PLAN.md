@@ -74,13 +74,13 @@ Placement tags: `[H]` home page · `[S]` new `/stats` landing · `[P]` per-playe
 ## 2. Activity (over time)
 
 ### 2.1 Days since last game tile `[H]` `[S]`
-- [ ] Show how many days have passed since the most recent recorded game.
+- [x] Show how many days have passed since the most recent recorded game.
 
 ### 2.2 Games per week / month line chart `[S]`
-- [ ] Plot game frequency over time as a line chart bucketed by week or month.
+- [x] Plot game frequency over time as a line chart bucketed by week or month.
 
 ### 2.3 Participation rate per player `[S]` `[P]`
-- [ ] Show what percentage of all games each player has appeared in.
+- [x] Show what percentage of all games each player has appeared in.
 - **Needs:** total game count (extend query from 2.2)
 
 ### 2.4 Player attendance over time `[S]`

@@ -1,12 +1,15 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import {
+  getGamesOverTimeSeries,
   getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
   getPlayerMarginStats,
   getPlayerPodiumRates,
+  getPlayerParticipationRates,
   getPlayerScoreStats,
   getPlayerWinRateByGameSize,
   getPlayerWinRates,
+  getRecentActivitySummary,
   getTierShowdownStats,
 } from '@/lib/stats';
 import { PlayerTier } from '@/lib/player-tier';
@@ -516,5 +519,182 @@ describe('stats integration', () => {
         winRate: 0.25,
       }),
     ]);
+  });
+
+  test('getRecentActivitySummary returns null activity when no games exist', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(new Date('2026-04-21T12:00:00.000Z').getTime());
+
+    await createTestPlayer({ name: 'Alice' });
+
+    await expect(getRecentActivitySummary()).resolves.toEqual({
+      totalGames: 0,
+      latestPlayedAt: null,
+      daysSinceLastGame: null,
+    });
+  });
+
+  test('getRecentActivitySummary uses UTC calendar days and reports zero for same-day games', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(new Date('2026-04-21T23:59:59.000Z').getTime());
+
+    const alice = await createTestPlayer({ name: 'Alice' });
+    const bob = await createTestPlayer({ name: 'Bob' });
+
+    await createTestGame({
+      playedAt: new Date('2026-04-21T00:05:00.000Z'),
+      players: [
+        { playerId: alice.id, score: 10, isWinner: true },
+        { playerId: bob.id, score: 8, isWinner: false },
+      ],
+    });
+
+    const summary = await getRecentActivitySummary();
+
+    expect(summary.totalGames).toBe(1);
+    expect(summary.latestPlayedAt?.toISOString()).toBe('2026-04-21T00:05:00.000Z');
+    expect(summary.daysSinceLastGame).toBe(0);
+  });
+
+  test('getRecentActivitySummary counts multi-day gaps using UTC dates', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(new Date('2026-04-21T01:00:00.000Z').getTime());
+
+    const alice = await createTestPlayer({ name: 'Alice' });
+    const bob = await createTestPlayer({ name: 'Bob' });
+
+    await createTestGame({
+      playedAt: new Date('2026-04-18T23:59:59.000Z'),
+      players: [
+        { playerId: alice.id, score: 10, isWinner: true },
+        { playerId: bob.id, score: 7, isWinner: false },
+      ],
+    });
+
+    const summary = await getRecentActivitySummary();
+
+    expect(summary.totalGames).toBe(1);
+    expect(summary.latestPlayedAt?.toISOString()).toBe('2026-04-18T23:59:59.000Z');
+    expect(summary.daysSinceLastGame).toBe(3);
+  });
+
+  test('getGamesOverTimeSeries returns weekly and monthly buckets with zero-filled gaps', async () => {
+    const alice = await createTestPlayer({ name: 'Alice' });
+    const bob = await createTestPlayer({ name: 'Bob' });
+
+    await createTestGame({
+      playedAt: new Date('2026-01-05T12:00:00.000Z'),
+      players: [
+        { playerId: alice.id, score: 10, isWinner: true },
+        { playerId: bob.id, score: 7, isWinner: false },
+      ],
+    });
+    await createTestGame({
+      playedAt: new Date('2026-01-06T12:00:00.000Z'),
+      players: [
+        { playerId: bob.id, score: 11, isWinner: true },
+        { playerId: alice.id, score: 8, isWinner: false },
+      ],
+    });
+    await createTestGame({
+      playedAt: new Date('2026-01-20T12:00:00.000Z'),
+      players: [
+        { playerId: alice.id, score: 9, isWinner: true },
+        { playerId: bob.id, score: 4, isWinner: false },
+      ],
+    });
+    await createTestGame({
+      playedAt: new Date('2026-03-02T12:00:00.000Z'),
+      players: [
+        { playerId: bob.id, score: 9, isWinner: true },
+        { playerId: alice.id, score: 6, isWinner: false },
+      ],
+    });
+
+    const series = await getGamesOverTimeSeries();
+
+    expect(series.totalGames).toBe(4);
+    expect(series.weekly.map((bucket) => ({
+      bucketStart: bucket.bucketStart.toISOString().slice(0, 10),
+      gameCount: bucket.gameCount,
+    }))).toEqual([
+      { bucketStart: '2026-01-05', gameCount: 2 },
+      { bucketStart: '2026-01-12', gameCount: 0 },
+      { bucketStart: '2026-01-19', gameCount: 1 },
+      { bucketStart: '2026-01-26', gameCount: 0 },
+      { bucketStart: '2026-02-02', gameCount: 0 },
+      { bucketStart: '2026-02-09', gameCount: 0 },
+      { bucketStart: '2026-02-16', gameCount: 0 },
+      { bucketStart: '2026-02-23', gameCount: 0 },
+      { bucketStart: '2026-03-02', gameCount: 1 },
+    ]);
+    expect(series.monthly.map((bucket) => ({
+      bucketStart: bucket.bucketStart.toISOString().slice(0, 10),
+      gameCount: bucket.gameCount,
+    }))).toEqual([
+      { bucketStart: '2026-01-01', gameCount: 3 },
+      { bucketStart: '2026-02-01', gameCount: 0 },
+      { bucketStart: '2026-03-01', gameCount: 1 },
+    ]);
+    expect(series.weekly.every((bucket) => bucket.label.length > 0)).toBe(true);
+    expect(series.monthly.every((bucket) => bucket.label.length > 0)).toBe(true);
+  });
+
+  test('getPlayerParticipationRates includes zero-game players and sorts ties by player name', async () => {
+    const alice = await createTestPlayer({ name: 'Alice', tier: PlayerTier.Premium });
+    const bob = await createTestPlayer({ name: 'Bob', tier: PlayerTier.Standard });
+    const carol = await createTestPlayer({ name: 'Carol', tier: PlayerTier.Standard });
+    const dana = await createTestPlayer({ name: 'Dana', tier: PlayerTier.Standard });
+
+    await createTestGame({
+      players: [
+        { playerId: alice.id, score: 10, isWinner: true },
+        { playerId: bob.id, score: 6, isWinner: false },
+      ],
+    });
+    await createTestGame({
+      players: [
+        { playerId: alice.id, score: 8, isWinner: true },
+        { playerId: carol.id, score: 5, isWinner: false },
+      ],
+    });
+    await createTestGame({
+      players: [
+        { playerId: alice.id, score: 9, isWinner: true },
+      ],
+    });
+    await createTestGame({
+      players: [
+        { playerId: bob.id, score: 7, isWinner: true },
+        { playerId: carol.id, score: 4, isWinner: false },
+      ],
+    });
+
+    const participationRates = await getPlayerParticipationRates();
+
+    expect(participationRates.map((player) => player.name)).toEqual([
+      'Alice',
+      'Bob',
+      'Carol',
+      'Dana',
+    ]);
+    expect(participationRates.find((player) => player.playerId === alice.id)).toMatchObject({
+      tier: PlayerTier.Premium,
+      gamesPlayed: 3,
+      totalGames: 4,
+      participationRate: 0.75,
+    });
+    expect(participationRates.find((player) => player.playerId === bob.id)).toMatchObject({
+      gamesPlayed: 2,
+      totalGames: 4,
+      participationRate: 0.5,
+    });
+    expect(participationRates.find((player) => player.playerId === carol.id)).toMatchObject({
+      gamesPlayed: 2,
+      totalGames: 4,
+      participationRate: 0.5,
+    });
+    expect(participationRates.find((player) => player.playerId === dana.id)).toMatchObject({
+      gamesPlayed: 0,
+      totalGames: 4,
+      participationRate: 0,
+    });
   });
 });

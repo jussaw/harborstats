@@ -8,6 +8,7 @@ import {
   getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
   getPlayerMarginStats,
+  getPlayerParticipationRates,
   getPlayerPodiumRates,
   getPlayerScoreStats,
   getPlayerWinRateByGameSize,
@@ -23,6 +24,7 @@ vi.mock('@/lib/stats', () => ({
   getPlayerPodiumRates: vi.fn(),
   getPlayerFinishBreakdowns: vi.fn(),
   getPlayerMarginStats: vi.fn(),
+  getPlayerParticipationRates: vi.fn(),
   getPlayerWinRateByGameSize: vi.fn(),
 }))
 
@@ -177,6 +179,24 @@ describe('PlayersPage', () => {
         winDelta: -0.5,
       },
     ])
+    vi.mocked(getPlayerParticipationRates).mockResolvedValue([
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+        gamesPlayed: 5,
+        totalGames: 7,
+        participationRate: 5 / 7,
+      },
+      {
+        playerId: 2,
+        name: 'Bea',
+        tier: PlayerTier.Standard,
+        gamesPlayed: 4,
+        totalGames: 7,
+        participationRate: 4 / 7,
+      },
+    ])
 
     const element = await PlayersPage()
     const markup = renderToStaticMarkup(element)
@@ -193,6 +213,7 @@ describe('PlayersPage', () => {
     expect(markup).toContain('Average Score')
     expect(markup).toContain('Median Score')
     expect(markup).toContain('Podium Rate')
+    expect(markup).toContain('Participation Rate')
     expect(markup).toContain('Finish Breakdown')
     expect(markup).toContain('Win Rate by Opponent Count')
     expect(markup).toContain('Average Margin of Victory')
@@ -201,6 +222,7 @@ describe('PlayersPage', () => {
     expect(markup).toContain('9.4')
     expect(markup).toContain('9.0')
     expect(markup).toContain('80.0%')
+    expect(markup).toContain('71.4%')
     expect(markup).toContain('40.0% (2)')
     expect(markup).toContain('20.0% (1)')
     expect(markup).toContain('2p')
@@ -211,6 +233,7 @@ describe('PlayersPage', () => {
     expect(markup).toContain('1.7')
     expect(markup).toContain('Across 5 games')
     expect(markup).toContain('4 podiums in 5 games')
+    expect(markup).toContain('5 appearances in 7 total games')
     expect(markup).toContain('Across 2 wins')
     expect(markup).toContain('Across 3 losses')
   })
@@ -221,6 +244,7 @@ describe('PlayersPage', () => {
     vi.mocked(getPlayerPodiumRates).mockResolvedValue([])
     vi.mocked(getPlayerFinishBreakdowns).mockResolvedValue([])
     vi.mocked(getPlayerMarginStats).mockResolvedValue([])
+    vi.mocked(getPlayerParticipationRates).mockResolvedValue([])
     vi.mocked(getPlayerWinRateByGameSize).mockResolvedValue([])
     vi.mocked(getPlayerExpectedVsActualWins).mockResolvedValue([])
 

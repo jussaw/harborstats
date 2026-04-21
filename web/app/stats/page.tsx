@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import type { Metadata } from 'next'
+import { GamesOverTimeChart } from '@/components/GamesOverTimeChart'
 import { StatsCard } from '@/components/StatsCard'
 import { StatsLeaderboardTable } from '@/components/StatsLeaderboardTable'
 import { formatAverage, formatPercent, formatSignedNumber } from '@/lib/format'
@@ -7,8 +8,10 @@ import { PlayerTier } from '@/lib/player-tier'
 import { rankWithTies } from '@/lib/rank'
 import { getSettings } from '@/lib/settings'
 import {
+  getGamesOverTimeSeries,
   getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
+  getPlayerParticipationRates,
   getPlayerPodiumRates,
   getPlayerScoreStats,
   getTierShowdownStats,
@@ -76,6 +79,8 @@ export default async function StatsPage() {
     finishBreakdowns,
     tierShowdown,
     expectedVsActualWins,
+    gamesOverTimeSeries,
+    participationRates,
   ] = await Promise.all([
     getPlayerWinRates(),
     getSettings(),
@@ -84,6 +89,8 @@ export default async function StatsPage() {
     getPlayerFinishBreakdowns(),
     getTierShowdownStats(),
     getPlayerExpectedVsActualWins(),
+    getGamesOverTimeSeries(),
+    getPlayerParticipationRates(),
   ])
 
   const winRateQualified = winRates
@@ -100,6 +107,7 @@ export default async function StatsPage() {
   const finishBreakdownRanks = rankWithTies(finishBreakdowns, (player) => player.firstRate)
   const tierShowdownRanks = rankWithTies(tierShowdown, (row) => row.winRate)
   const expectedVsActualRanks = rankWithTies(expectedVsActualWins, (player) => player.winDelta)
+  const participationRateRanks = rankWithTies(participationRates, (player) => player.participationRate)
 
   const statsCards: StatsCardMeta[] = [
     {
@@ -158,6 +166,20 @@ export default async function StatsPage() {
       id: 'finish-breakdown',
       title: 'Finish Breakdown',
       description: 'Share of games each player finished first, second, third, or last.',
+      badge: undefined,
+      span: 'full',
+    },
+    {
+      id: 'games-over-time',
+      title: 'Games Over Time',
+      description: 'Game frequency plotted across weekly or monthly activity buckets.',
+      badge: undefined,
+      span: 'full',
+    },
+    {
+      id: 'participation-rate',
+      title: 'Participation Rate',
+      description: 'Share of all recorded games each player has appeared in.',
       badge: undefined,
       span: 'full',
     },
@@ -510,6 +532,49 @@ export default async function StatsPage() {
                   </DataRow>
                 ))}
               </StatsLeaderboardTable>
+            )}
+        </StatsCard>
+
+        <StatsCard {...cardById['games-over-time']}>
+            <GamesOverTimeChart
+              weekly={gamesOverTimeSeries.weekly}
+              monthly={gamesOverTimeSeries.monthly}
+              defaultView="week"
+            />
+        </StatsCard>
+
+        <StatsCard {...cardById['participation-rate']}>
+            {participationRates.some((player) => player.totalGames > 0) ? (
+              <StatsLeaderboardTable
+                columns={[
+                  { label: '#', align: 'center', widthClass: 'w-10' },
+                  { label: 'Player' },
+                  { label: 'Participation', align: 'right' },
+                  { label: 'Games Played', align: 'right' },
+                ]}
+              >
+                {participationRates.map((player, index) => (
+                  <DataRow key={player.playerId}>
+                    <RankCell rank={participationRateRanks[index]} />
+                    <td className="px-3 py-2 text-(--cream)">
+                      <PlayerName name={player.name} tier={player.tier} />
+                    </td>
+                    <td className="
+                      px-3 py-2 text-right font-semibold text-(--gold)
+                      tabular-nums
+                    ">
+                      {formatPercent(player.participationRate, 1)}
+                    </td>
+                    <td className="
+                      px-3 py-2 text-right text-(--cream)/70 tabular-nums
+                    ">
+                      {player.gamesPlayed}
+                    </td>
+                  </DataRow>
+                ))}
+              </StatsLeaderboardTable>
+            ) : (
+              <EmptyState>No games recorded yet.</EmptyState>
             )}
         </StatsCard>
       </div>
