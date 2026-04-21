@@ -51,14 +51,14 @@ Placement tags: `[H]` home page · `[S]` new `/stats` landing · `[P]` per-playe
 - [x] `[P]` Show player's podium rate on their profile page.
 
 ### 1.6 Finish-position breakdown `[S]` `[P]`
-- [ ] Show % of games each player finished 1st / 2nd / 3rd / last; needs a defined tie-breaking rule.
+- [x] Show % of games each player finished 1st / 2nd / 3rd / last; needs a defined tie-breaking rule.
 - **Needs:** finish position per game (extend query from 1.5)
 
 ### 1.7 Average margin of victory `[P]`
-- [ ] For games a player won, show their mean score gap over the runner-up.
+- [x] For games a player won, show their mean score gap over the runner-up.
 
 ### 1.8 Average margin of defeat `[P]`
-- [ ] For games a player lost, show their mean gap behind the winner.
+- [x] For games a player lost, show their mean gap behind the winner.
 - **Needs:** winner score per game (share query from 1.7)
 
 ### 1.9 Win rate by opponent count `[P]`

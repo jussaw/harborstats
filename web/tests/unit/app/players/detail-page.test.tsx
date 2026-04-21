@@ -4,7 +4,12 @@ import { describe, expect, it, vi } from 'vitest'
 import PlayerProfilePage, { generateMetadata } from '@/app/players/[id]/page'
 import { getPlayerById, getPlayers } from '@/lib/players'
 import { PlayerTier } from '@/lib/player-tier'
-import { getPlayerPodiumRates, getPlayerScoreStats } from '@/lib/stats'
+import {
+  getPlayerFinishBreakdowns,
+  getPlayerMarginStats,
+  getPlayerPodiumRates,
+  getPlayerScoreStats,
+} from '@/lib/stats'
 
 const { notFoundMock } = vi.hoisted(() => ({
   notFoundMock: vi.fn(() => {
@@ -24,6 +29,8 @@ vi.mock('@/lib/players', () => ({
 vi.mock('@/lib/stats', () => ({
   getPlayerScoreStats: vi.fn(),
   getPlayerPodiumRates: vi.fn(),
+  getPlayerFinishBreakdowns: vi.fn(),
+  getPlayerMarginStats: vi.fn(),
 }))
 
 describe('PlayerProfilePage', () => {
@@ -78,6 +85,56 @@ describe('PlayerProfilePage', () => {
         podiumRate: 0.5,
       },
     ])
+    vi.mocked(getPlayerFinishBreakdowns).mockResolvedValue([
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+        games: 5,
+        firsts: 2,
+        seconds: 1,
+        thirds: 1,
+        lasts: 1,
+        firstRate: 0.4,
+        secondRate: 0.2,
+        thirdRate: 0.2,
+        lastRate: 0.2,
+      },
+      {
+        playerId: 2,
+        name: 'Bea',
+        tier: PlayerTier.Standard,
+        games: 4,
+        firsts: 1,
+        seconds: 1,
+        thirds: 1,
+        lasts: 2,
+        firstRate: 0.25,
+        secondRate: 0.25,
+        thirdRate: 0.25,
+        lastRate: 0.5,
+      },
+    ])
+    vi.mocked(getPlayerMarginStats).mockResolvedValue([
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+        winGames: 2,
+        lossGames: 3,
+        averageVictoryMargin: 2.5,
+        averageDefeatMargin: 1.7,
+      },
+      {
+        playerId: 2,
+        name: 'Bea',
+        tier: PlayerTier.Standard,
+        winGames: 0,
+        lossGames: 4,
+        averageVictoryMargin: null,
+        averageDefeatMargin: 1.5,
+      },
+    ])
 
     const element = await PlayerProfilePage({ params: Promise.resolve({ id: '2' }) })
     const markup = renderToStaticMarkup(element)
@@ -89,11 +146,19 @@ describe('PlayerProfilePage', () => {
     expect(markup).toContain('Average Score')
     expect(markup).toContain('Median Score')
     expect(markup).toContain('Podium Rate')
+    expect(markup).toContain('Finish Breakdown')
+    expect(markup).toContain('Average Margin of Victory')
+    expect(markup).toContain('Average Margin of Defeat')
     expect(markup).toContain('8.7')
     expect(markup).toContain('8.5')
     expect(markup).toContain('50.0%')
+    expect(markup).toContain('25.0% (1)')
+    expect(markup).toContain('50.0% (2)')
     expect(markup).toContain('Across 4 games')
     expect(markup).toContain('2 podiums in 4 games')
+    expect(markup).toContain('1.5')
+    expect(markup).toContain('Across 4 losses')
+    expect(markup.match(/No games recorded yet\./g)).toHaveLength(2)
   })
 
   it('renders empty profile stat cards when the selected player has no recorded games', async () => {
@@ -139,6 +204,56 @@ describe('PlayerProfilePage', () => {
         podiumRate: 0,
       },
     ])
+    vi.mocked(getPlayerFinishBreakdowns).mockResolvedValue([
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+        games: 5,
+        firsts: 2,
+        seconds: 1,
+        thirds: 1,
+        lasts: 1,
+        firstRate: 0.4,
+        secondRate: 0.2,
+        thirdRate: 0.2,
+        lastRate: 0.2,
+      },
+      {
+        playerId: 2,
+        name: 'Bea',
+        tier: PlayerTier.Standard,
+        games: 0,
+        firsts: 0,
+        seconds: 0,
+        thirds: 0,
+        lasts: 0,
+        firstRate: 0,
+        secondRate: 0,
+        thirdRate: 0,
+        lastRate: 0,
+      },
+    ])
+    vi.mocked(getPlayerMarginStats).mockResolvedValue([
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+        winGames: 2,
+        lossGames: 3,
+        averageVictoryMargin: 2.5,
+        averageDefeatMargin: 1.7,
+      },
+      {
+        playerId: 2,
+        name: 'Bea',
+        tier: PlayerTier.Standard,
+        winGames: 0,
+        lossGames: 0,
+        averageVictoryMargin: null,
+        averageDefeatMargin: null,
+      },
+    ])
 
     const element = await PlayerProfilePage({ params: Promise.resolve({ id: '2' }) })
     const markup = renderToStaticMarkup(element)
@@ -146,7 +261,10 @@ describe('PlayerProfilePage', () => {
     expect(markup).toContain('Average Score')
     expect(markup).toContain('Median Score')
     expect(markup).toContain('Podium Rate')
-    expect(markup.match(/No games recorded yet\./g)).toHaveLength(6)
+    expect(markup).toContain('Finish Breakdown')
+    expect(markup).toContain('Average Margin of Victory')
+    expect(markup).toContain('Average Margin of Defeat')
+    expect(markup.match(/No games recorded yet\./g)).toHaveLength(12)
     expect(markup).not.toContain('0.0%')
   })
 

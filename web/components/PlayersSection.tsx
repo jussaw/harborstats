@@ -4,7 +4,12 @@ import { StatsCard } from '@/components/StatsCard'
 import { formatAverage, formatPercent } from '@/lib/format'
 import { PlayerTier } from '@/lib/player-tier'
 import type { Player } from '@/lib/players'
-import type { PlayerPodiumRate, PlayerScoreStats } from '@/lib/stats'
+import type {
+  PlayerFinishBreakdown,
+  PlayerMarginStats,
+  PlayerPodiumRate,
+  PlayerScoreStats,
+} from '@/lib/stats'
 import { PlayerProfileCard } from './PlayerProfileCard'
 
 const cinzelStyle = {
@@ -17,6 +22,8 @@ interface Props {
   mobileMode: 'list' | 'detail'
   scoreStats: PlayerScoreStats[]
   podiumRates: PlayerPodiumRate[]
+  finishBreakdowns: PlayerFinishBreakdown[]
+  marginStats: PlayerMarginStats[]
 }
 
 interface PlayersListProps {
@@ -135,20 +142,66 @@ function formatCount(value: number, singular: string, plural = `${singular}s`) {
   return `${value} ${value === 1 ? singular : plural}`
 }
 
+function ProfileFinishBreakdownCard({ breakdown }: { breakdown: PlayerFinishBreakdown | null }) {
+  return (
+    <StatsCard
+      id="player-finish-breakdown"
+      title="Finish Breakdown"
+      description="How often this player finished first, second, third, or last."
+      badge={undefined}
+      span="single"
+    >
+      {breakdown && breakdown.games > 0 ? (
+        <div className="space-y-3">
+          {[
+            { label: '1st', rate: breakdown.firstRate, count: breakdown.firsts },
+            { label: '2nd', rate: breakdown.secondRate, count: breakdown.seconds },
+            { label: '3rd', rate: breakdown.thirdRate, count: breakdown.thirds },
+            { label: 'Last', rate: breakdown.lastRate, count: breakdown.lasts },
+          ].map((row) => (
+            <div
+              key={row.label}
+              className="
+                flex items-center justify-between gap-3 text-sm
+                text-(--cream)/70
+              "
+            >
+              <span className="tracking-wide text-(--cream)">{row.label}</span>
+              <span className="text-(--gold) tabular-nums">
+                {formatPercent(row.rate, 1)} ({row.count})
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <EmptyMetricState />
+      )}
+    </StatsCard>
+  )
+}
+
 function PlayerDetail({
   player,
   scoreStats,
   podiumRates,
+  finishBreakdowns,
+  marginStats,
 }: {
   player: Player
   scoreStats: PlayerScoreStats[]
   podiumRates: PlayerPodiumRate[]
+  finishBreakdowns: PlayerFinishBreakdown[]
+  marginStats: PlayerMarginStats[]
 }) {
   const scoreStat = scoreStats.find((candidate) => candidate.playerId === player.id) ?? null
   const podiumStat = podiumRates.find((candidate) => candidate.playerId === player.id) ?? null
+  const finishBreakdown = finishBreakdowns.find((candidate) => candidate.playerId === player.id) ?? null
+  const marginStat = marginStats.find((candidate) => candidate.playerId === player.id) ?? null
 
   const hasGames = scoreStat !== null && scoreStat.games > 0
   const podiumHasGames = podiumStat !== null && podiumStat.games > 0
+  const victoryMarginValue = marginStat?.averageVictoryMargin ?? null
+  const defeatMarginValue = marginStat?.averageDefeatMargin ?? null
 
   return (
     <div className="space-y-5">
@@ -185,6 +238,29 @@ function PlayerDetail({
               : null
           }
         />
+        <ProfileFinishBreakdownCard breakdown={finishBreakdown} />
+        <ProfileMetricCard
+          id="player-average-margin-of-victory"
+          title="Average Margin of Victory"
+          description="Mean score gap over the best non-winner in games this player won."
+          value={victoryMarginValue !== null ? formatAverage(victoryMarginValue) : null}
+          detail={
+            marginStat !== null && victoryMarginValue !== null
+              ? `Across ${formatCount(marginStat.winGames, 'win')}`
+              : null
+          }
+        />
+        <ProfileMetricCard
+          id="player-average-margin-of-defeat"
+          title="Average Margin of Defeat"
+          description="Mean gap between this player and the best recorded winner in games they lost."
+          value={defeatMarginValue !== null ? formatAverage(defeatMarginValue) : null}
+          detail={
+            marginStat !== null && defeatMarginValue !== null
+              ? `Across ${formatCount(marginStat.lossGames, 'loss', 'losses')}`
+              : null
+          }
+        />
       </div>
     </div>
   )
@@ -209,6 +285,8 @@ export function PlayersSection({
   mobileMode,
   scoreStats,
   podiumRates,
+  finishBreakdowns,
+  marginStats,
 }: Props) {
   if (players.length === 0) {
     return (
@@ -257,6 +335,8 @@ export function PlayersSection({
                 player={selectedPlayer}
                 scoreStats={scoreStats}
                 podiumRates={podiumRates}
+                finishBreakdowns={finishBreakdowns}
+                marginStats={marginStats}
               />
             ) : null}
           </div>
@@ -276,6 +356,8 @@ export function PlayersSection({
               player={selectedPlayer}
               scoreStats={scoreStats}
               podiumRates={podiumRates}
+              finishBreakdowns={finishBreakdowns}
+              marginStats={marginStats}
             />
           ) : (
             <PlayersDetailEmptyState />

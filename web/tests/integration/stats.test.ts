@@ -1,5 +1,11 @@
 import { describe, expect, test } from 'vitest';
-import { getPlayerPodiumRates, getPlayerScoreStats, getPlayerWinRates } from '@/lib/stats';
+import {
+  getPlayerFinishBreakdowns,
+  getPlayerMarginStats,
+  getPlayerPodiumRates,
+  getPlayerScoreStats,
+  getPlayerWinRates,
+} from '@/lib/stats';
 import { PlayerTier } from '@/lib/player-tier';
 import { createTestGame, createTestPlayer } from '../helpers/db';
 
@@ -147,5 +153,219 @@ describe('stats integration', () => {
     expect(positions.get(bob.id)).toBeLessThan(positions.get(dana.id)!);
     expect(positions.get(dana.id)).toBeLessThan(positions.get(carol.id)!);
     expect(positions.get(carol.id)).toBeLessThan(positions.get(eve.id)!);
+  });
+
+  test('getPlayerFinishBreakdowns includes zero-game players and counts shared places with overlapping last-place stats', async () => {
+    const alice = await createTestPlayer({ name: 'Alice' });
+    const bob = await createTestPlayer({ name: 'Bob' });
+    const carol = await createTestPlayer({ name: 'Carol' });
+    const dana = await createTestPlayer({ name: 'Dana' });
+    const eve = await createTestPlayer({ name: 'Eve' });
+    const frank = await createTestPlayer({ name: 'Frank' });
+
+    await createTestGame({
+      players: [
+        { playerId: alice.id, score: 10, isWinner: true },
+        { playerId: bob.id, score: 8, isWinner: false },
+        { playerId: carol.id, score: 8, isWinner: false },
+        { playerId: dana.id, score: 1, isWinner: false },
+      ],
+    });
+
+    await createTestGame({
+      players: [
+        { playerId: alice.id, score: 9, isWinner: true },
+        { playerId: bob.id, score: 5, isWinner: false },
+        { playerId: carol.id, score: 5, isWinner: false },
+      ],
+    });
+
+    await createTestGame({
+      players: [
+        { playerId: bob.id, score: 7, isWinner: true },
+        { playerId: dana.id, score: 1, isWinner: false },
+      ],
+    });
+
+    await createTestGame({
+      players: [
+        { playerId: alice.id, score: 10, isWinner: true },
+        { playerId: bob.id, score: 10, isWinner: true },
+        { playerId: eve.id, score: 10, isWinner: true },
+        { playerId: carol.id, score: 4, isWinner: false },
+      ],
+    });
+
+    const finishBreakdowns = await getPlayerFinishBreakdowns();
+    const positions = new Map(finishBreakdowns.map((player, index) => [player.playerId, index]));
+
+    expect(finishBreakdowns.find((player) => player.playerId === alice.id)).toMatchObject({
+      games: 3,
+      firsts: 3,
+      seconds: 0,
+      thirds: 0,
+      lasts: 0,
+      firstRate: 1,
+      secondRate: 0,
+      thirdRate: 0,
+      lastRate: 0,
+    });
+
+    expect(finishBreakdowns.find((player) => player.playerId === bob.id)).toMatchObject({
+      games: 4,
+      firsts: 2,
+      seconds: 2,
+      thirds: 0,
+      lasts: 1,
+      firstRate: 0.5,
+      secondRate: 0.5,
+      thirdRate: 0,
+      lastRate: 0.25,
+    });
+
+    expect(finishBreakdowns.find((player) => player.playerId === carol.id)).toMatchObject({
+      games: 3,
+      firsts: 0,
+      seconds: 2,
+      thirds: 0,
+      lasts: 2,
+      firstRate: 0,
+      secondRate: 2 / 3,
+      thirdRate: 0,
+      lastRate: 2 / 3,
+    });
+
+    expect(finishBreakdowns.find((player) => player.playerId === dana.id)).toMatchObject({
+      games: 2,
+      firsts: 0,
+      seconds: 1,
+      thirds: 0,
+      lasts: 2,
+      firstRate: 0,
+      secondRate: 0.5,
+      thirdRate: 0,
+      lastRate: 1,
+    });
+
+    expect(finishBreakdowns.find((player) => player.playerId === eve.id)).toMatchObject({
+      games: 1,
+      firsts: 1,
+      seconds: 0,
+      thirds: 0,
+      lasts: 0,
+      firstRate: 1,
+      secondRate: 0,
+      thirdRate: 0,
+      lastRate: 0,
+    });
+
+    expect(finishBreakdowns.find((player) => player.playerId === frank.id)).toMatchObject({
+      games: 0,
+      firsts: 0,
+      seconds: 0,
+      thirds: 0,
+      lasts: 0,
+      firstRate: 0,
+      secondRate: 0,
+      thirdRate: 0,
+      lastRate: 0,
+    });
+
+    expect(positions.get(alice.id)).toBeLessThan(positions.get(eve.id)!);
+    expect(positions.get(eve.id)).toBeLessThan(positions.get(bob.id)!);
+    expect(positions.get(bob.id)).toBeLessThan(positions.get(carol.id)!);
+    expect(positions.get(carol.id)).toBeLessThan(positions.get(dana.id)!);
+    expect(positions.get(dana.id)).toBeLessThan(positions.get(frank.id)!);
+  });
+
+  test('getPlayerMarginStats uses recorded winners only and excludes tied-top games with no winner', async () => {
+    const alice = await createTestPlayer({ name: 'Alice' });
+    const bob = await createTestPlayer({ name: 'Bob' });
+    const carol = await createTestPlayer({ name: 'Carol' });
+    const dana = await createTestPlayer({ name: 'Dana' });
+    const eve = await createTestPlayer({ name: 'Eve' });
+    const frank = await createTestPlayer({ name: 'Frank' });
+
+    await createTestGame({
+      players: [
+        { playerId: alice.id, score: 10, isWinner: true },
+        { playerId: bob.id, score: 7, isWinner: false },
+        { playerId: carol.id, score: 5, isWinner: false },
+      ],
+    });
+
+    await createTestGame({
+      players: [
+        { playerId: alice.id, score: 9, isWinner: true },
+        { playerId: bob.id, score: 8, isWinner: false },
+        { playerId: dana.id, score: 8, isWinner: false },
+      ],
+    });
+
+    await createTestGame({
+      players: [
+        { playerId: bob.id, score: 11, isWinner: true },
+        { playerId: alice.id, score: 10, isWinner: false },
+      ],
+    });
+
+    await createTestGame({
+      players: [
+        { playerId: alice.id, score: 10, isWinner: false },
+        { playerId: bob.id, score: 10, isWinner: false },
+        { playerId: carol.id, score: 7, isWinner: false },
+      ],
+    });
+
+    await createTestGame({
+      players: [
+        { playerId: dana.id, score: 9, isWinner: true },
+        { playerId: eve.id, score: 9, isWinner: true },
+      ],
+    });
+
+    const marginStats = await getPlayerMarginStats();
+
+    expect(marginStats.find((player) => player.playerId === alice.id)).toMatchObject({
+      winGames: 2,
+      lossGames: 1,
+      averageVictoryMargin: 2,
+      averageDefeatMargin: 1,
+    });
+
+    expect(marginStats.find((player) => player.playerId === bob.id)).toMatchObject({
+      winGames: 1,
+      lossGames: 2,
+      averageVictoryMargin: 1,
+      averageDefeatMargin: 2,
+    });
+
+    expect(marginStats.find((player) => player.playerId === carol.id)).toMatchObject({
+      winGames: 0,
+      lossGames: 1,
+      averageVictoryMargin: null,
+      averageDefeatMargin: 5,
+    });
+
+    expect(marginStats.find((player) => player.playerId === dana.id)).toMatchObject({
+      winGames: 1,
+      lossGames: 1,
+      averageVictoryMargin: 0,
+      averageDefeatMargin: 1,
+    });
+
+    expect(marginStats.find((player) => player.playerId === eve.id)).toMatchObject({
+      winGames: 1,
+      lossGames: 0,
+      averageVictoryMargin: 0,
+      averageDefeatMargin: null,
+    });
+
+    expect(marginStats.find((player) => player.playerId === frank.id)).toMatchObject({
+      winGames: 0,
+      lossGames: 0,
+      averageVictoryMargin: null,
+      averageDefeatMargin: null,
+    });
   });
 });

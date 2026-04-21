@@ -2,7 +2,12 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { PlayersSection } from '@/components/PlayersSection'
 import { getPlayerById, getPlayers } from '@/lib/players'
-import { getPlayerPodiumRates, getPlayerScoreStats } from '@/lib/stats'
+import {
+  getPlayerFinishBreakdowns,
+  getPlayerMarginStats,
+  getPlayerPodiumRates,
+  getPlayerScoreStats,
+} from '@/lib/stats'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,10 +26,12 @@ export default async function PlayerProfilePage({ params }: Props) {
   const numericId = parseInt(id, 10)
   if (Number.isNaN(numericId)) notFound()
 
-  const [players, scoreStats, podiumRates] = await Promise.all([
+  const [players, scoreStats, podiumRates, finishBreakdowns, marginStats] = await Promise.all([
     getPlayers(),
     getPlayerScoreStats(),
     getPlayerPodiumRates(),
+    getPlayerFinishBreakdowns(),
+    getPlayerMarginStats(),
   ])
   const player = players.find((candidate) => candidate.id === numericId) ?? null
   if (!player) notFound()
@@ -36,6 +43,8 @@ export default async function PlayerProfilePage({ params }: Props) {
       mobileMode="detail"
       scoreStats={scoreStats}
       podiumRates={podiumRates}
+      finishBreakdowns={finishBreakdowns}
+      marginStats={marginStats}
     />
   )
 }

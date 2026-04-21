@@ -6,7 +6,12 @@ import { formatAverage, formatPercent } from '@/lib/format'
 import { PlayerTier } from '@/lib/player-tier'
 import { rankWithTies } from '@/lib/rank'
 import { getSettings } from '@/lib/settings'
-import { getPlayerPodiumRates, getPlayerScoreStats, getPlayerWinRates } from '@/lib/stats'
+import {
+  getPlayerFinishBreakdowns,
+  getPlayerPodiumRates,
+  getPlayerScoreStats,
+  getPlayerWinRates,
+} from '@/lib/stats'
 
 export const dynamic = 'force-dynamic'
 
@@ -66,11 +71,12 @@ function EmptyState({ children }: { children: ReactNode }) {
 }
 
 export default async function StatsPage() {
-  const [winRates, settings, scoreStats, podiumRates] = await Promise.all([
+  const [winRates, settings, scoreStats, podiumRates, finishBreakdowns] = await Promise.all([
     getPlayerWinRates(),
     getSettings(),
     getPlayerScoreStats(),
     getPlayerPodiumRates(),
+    getPlayerFinishBreakdowns(),
   ])
 
   const winRateQualified = winRates
@@ -84,6 +90,7 @@ export default async function StatsPage() {
   const avgScoreRanks = rankWithTies(scoreStats, (player) => player.avgScore)
   const medianScoreRanks = rankWithTies(medianSorted, (player) => player.medianScore)
   const podiumRateRanks = rankWithTies(podiumRates, (player) => player.podiumRate)
+  const finishBreakdownRanks = rankWithTies(finishBreakdowns, (player) => player.firstRate)
 
   const statsCards: StatsCardMeta[] = [
     {
@@ -123,6 +130,13 @@ export default async function StatsPage() {
       description: 'How often each player finishes first or second.',
       badge: undefined,
       span: 'single',
+    },
+    {
+      id: 'finish-breakdown',
+      title: 'Finish Breakdown',
+      description: 'Share of games each player finished first, second, third, or last.',
+      badge: undefined,
+      span: 'full',
     },
   ]
 
@@ -317,6 +331,59 @@ export default async function StatsPage() {
                       px-3 py-2 text-right text-(--cream) tabular-nums
                     ">
                       {player.podiums}
+                    </td>
+                    <td className="
+                      px-3 py-2 text-right text-(--cream)/70 tabular-nums
+                    ">
+                      {player.games}
+                    </td>
+                  </DataRow>
+                ))}
+              </StatsLeaderboardTable>
+            )}
+        </StatsCard>
+
+        <StatsCard {...cardById['finish-breakdown']}>
+            {finishBreakdowns.length === 0 ? (
+              <EmptyState>No games recorded yet.</EmptyState>
+            ) : (
+              <StatsLeaderboardTable
+                columns={[
+                  { label: '#', align: 'center', widthClass: 'w-10' },
+                  { label: 'Player' },
+                  { label: '1st', align: 'right' },
+                  { label: '2nd', align: 'right' },
+                  { label: '3rd', align: 'right' },
+                  { label: 'Last', align: 'right' },
+                  { label: 'Games', align: 'right' },
+                ]}
+              >
+                {finishBreakdowns.map((player, index) => (
+                  <DataRow key={player.playerId}>
+                    <RankCell rank={finishBreakdownRanks[index]} />
+                    <td className="px-3 py-2 text-(--cream)">
+                      <PlayerName name={player.name} tier={player.tier} />
+                    </td>
+                    <td className="
+                      px-3 py-2 text-right font-semibold text-(--gold)
+                      tabular-nums
+                    ">
+                      {formatPercent(player.firstRate, 1)}
+                    </td>
+                    <td className="
+                      px-3 py-2 text-right text-(--cream) tabular-nums
+                    ">
+                      {formatPercent(player.secondRate, 1)}
+                    </td>
+                    <td className="
+                      px-3 py-2 text-right text-(--cream) tabular-nums
+                    ">
+                      {formatPercent(player.thirdRate, 1)}
+                    </td>
+                    <td className="
+                      px-3 py-2 text-right text-(--cream) tabular-nums
+                    ">
+                      {formatPercent(player.lastRate, 1)}
                     </td>
                     <td className="
                       px-3 py-2 text-right text-(--cream)/70 tabular-nums

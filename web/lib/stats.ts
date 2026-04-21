@@ -5,6 +5,10 @@ import { gamePlayers, players } from '@/db/schema'
 import { parsePlayerTier, type PlayerTier } from '@/lib/player-tier'
 import { db } from './db'
 
+function round1(value: number): number {
+  return Math.round(value * 10) / 10
+}
+
 export interface PlayerWinRate {
   playerId: number
   name: string
@@ -59,8 +63,6 @@ export async function getPlayerScoreStats(): Promise<PlayerScoreStats[]> {
     .innerJoin(gamePlayers, eq(gamePlayers.playerId, players.id))
     .groupBy(players.id)
 
-  const round1 = (v: number) => Math.round(v * 10) / 10
-
   return rows
     .map((row) => ({
       ...row,
@@ -114,4 +116,183 @@ export async function getPlayerPodiumRates(): Promise<PlayerPodiumRate[]> {
       }
     })
     .sort((a, b) => b.podiumRate - a.podiumRate || b.podiums - a.podiums)
+}
+
+export interface PlayerFinishBreakdown {
+  playerId: number
+  name: string
+  tier: PlayerTier
+  games: number
+  firsts: number
+  seconds: number
+  thirds: number
+  lasts: number
+  firstRate: number
+  secondRate: number
+  thirdRate: number
+  lastRate: number
+}
+
+export async function getPlayerFinishBreakdowns(): Promise<PlayerFinishBreakdown[]> {
+  const result = await db.execute(sql`
+    WITH ranked AS (
+      SELECT
+        gp.player_id,
+        gp.game_id,
+        gp.score,
+        RANK() OVER (PARTITION BY gp.game_id ORDER BY gp.score DESC) AS finish_rank,
+        MIN(gp.score) OVER (PARTITION BY gp.game_id)                 AS lowest_score
+      FROM game_players gp
+    )
+    SELECT
+      p.id AS "playerId",
+      p.name,
+      p.tier,
+      COUNT(r.game_id)::integer                                    AS games,
+      SUM(CASE WHEN r.finish_rank = 1 THEN 1 ELSE 0 END)::integer  AS firsts,
+      SUM(CASE WHEN r.finish_rank = 2 THEN 1 ELSE 0 END)::integer  AS seconds,
+      SUM(CASE WHEN r.finish_rank = 3 THEN 1 ELSE 0 END)::integer  AS thirds,
+      SUM(CASE WHEN r.score = r.lowest_score THEN 1 ELSE 0 END)::integer AS lasts
+    FROM players p
+    LEFT JOIN ranked r ON r.player_id = p.id
+    GROUP BY p.id, p.name, p.tier
+  `)
+
+  return (result as Record<string, unknown>[])
+    .map((row) => {
+      const games = row.games as number
+      const firsts = row.firsts as number
+      const seconds = row.seconds as number
+      const thirds = row.thirds as number
+      const lasts = row.lasts as number
+
+      return {
+        playerId: row.playerId as number,
+        name: row.name as string,
+        tier: parsePlayerTier(row.tier as string),
+        games,
+        firsts,
+        seconds,
+        thirds,
+        lasts,
+        firstRate: games > 0 ? firsts / games : 0,
+        secondRate: games > 0 ? seconds / games : 0,
+        thirdRate: games > 0 ? thirds / games : 0,
+        lastRate: games > 0 ? lasts / games : 0,
+      }
+    })
+    .sort(
+      (a, b) => b.firstRate - a.firstRate
+        || b.firsts - a.firsts
+        || b.secondRate - a.secondRate
+        || b.thirdRate - a.thirdRate
+        || a.lastRate - b.lastRate
+        || b.games - a.games
+        || a.name.localeCompare(b.name),
+    )
+}
+
+export interface PlayerMarginStats {
+  playerId: number
+  name: string
+  tier: PlayerTier
+  winGames: number
+  lossGames: number
+  averageVictoryMargin: number | null
+  averageDefeatMargin: number | null
+}
+
+interface PlayerMarginAccumulator {
+  playerId: number
+  name: string
+  tier: PlayerTier
+  winGames: number
+  lossGames: number
+  victoryMarginTotal: number
+  defeatMarginTotal: number
+}
+
+export async function getPlayerMarginStats(): Promise<PlayerMarginStats[]> {
+  const [playerRows, participantRows] = await Promise.all([
+    db
+      .select({
+        playerId: players.id,
+        name: players.name,
+        tier: players.tier,
+      })
+      .from(players)
+      .orderBy(sql`CASE ${players.tier} WHEN 'premium' THEN 0 ELSE 1 END`, players.name),
+    db
+      .select({
+        gameId: gamePlayers.gameId,
+        playerId: gamePlayers.playerId,
+        score: gamePlayers.score,
+        isWinner: gamePlayers.isWinner,
+      })
+      .from(gamePlayers),
+  ])
+
+  const statsByPlayerId = new Map<number, PlayerMarginAccumulator>(
+    playerRows.map((player) => [
+      player.playerId,
+      {
+        playerId: player.playerId,
+        name: player.name,
+        tier: parsePlayerTier(player.tier),
+        winGames: 0,
+        lossGames: 0,
+        victoryMarginTotal: 0,
+        defeatMarginTotal: 0,
+      },
+    ]),
+  )
+
+  const participantsByGameId = new Map<number, typeof participantRows>()
+
+  participantRows.forEach((row) => {
+    const existing = participantsByGameId.get(row.gameId) ?? []
+    existing.push(row)
+    participantsByGameId.set(row.gameId, existing)
+  })
+
+  participantsByGameId.forEach((participants) => {
+    const winners = participants.filter((participant) => participant.isWinner)
+    if (winners.length === 0) {
+      return
+    }
+
+    const losers = participants.filter((participant) => !participant.isWinner)
+    const bestNonWinnerScore = losers.length > 0
+      ? Math.max(...losers.map((participant) => participant.score))
+      : null
+    const bestRecordedWinnerScore = Math.max(...winners.map((participant) => participant.score))
+
+    winners.forEach((winner) => {
+      const stats = statsByPlayerId.get(winner.playerId)
+      if (!stats) return
+
+      stats.winGames += 1
+      stats.victoryMarginTotal += bestNonWinnerScore === null ? 0 : winner.score - bestNonWinnerScore
+    })
+
+    losers.forEach((loser) => {
+      const stats = statsByPlayerId.get(loser.playerId)
+      if (!stats) return
+
+      stats.lossGames += 1
+      stats.defeatMarginTotal += bestRecordedWinnerScore - loser.score
+    })
+  })
+
+  return [...statsByPlayerId.values()].map((player) => ({
+    playerId: player.playerId,
+    name: player.name,
+    tier: player.tier,
+    winGames: player.winGames,
+    lossGames: player.lossGames,
+    averageVictoryMargin:
+      player.winGames > 0 ? round1(player.victoryMarginTotal / player.winGames) : null,
+    averageDefeatMargin:
+      player.lossGames > 0 ? round1(player.defeatMarginTotal / player.lossGames) : null,
+  }))
 }
