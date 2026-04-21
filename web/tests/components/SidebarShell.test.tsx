@@ -1,6 +1,9 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { act } from 'react'
+import { hydrateRoot } from 'react-dom/client'
+import { renderToString } from 'react-dom/server'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SidebarShell } from '@/components/SidebarShell'
 
 let mockPathname = '/admin/games'
@@ -10,6 +13,43 @@ vi.mock('next/navigation', () => ({
 }))
 
 describe('SidebarShell', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    document.body.innerHTML = ''
+  })
+
+  function renderServerMarkup(ui: React.ReactElement) {
+    const windowDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'window')
+    const documentDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'document')
+
+    Object.defineProperty(globalThis, 'window', {
+      value: undefined,
+      configurable: true,
+      writable: true,
+    })
+    Object.defineProperty(globalThis, 'document', {
+      value: undefined,
+      configurable: true,
+      writable: true,
+    })
+
+    try {
+      return renderToString(ui)
+    } finally {
+      if (windowDescriptor) {
+        Object.defineProperty(globalThis, 'window', windowDescriptor)
+      } else {
+        Reflect.deleteProperty(globalThis, 'window')
+      }
+
+      if (documentDescriptor) {
+        Object.defineProperty(globalThis, 'document', documentDescriptor)
+      } else {
+        Reflect.deleteProperty(globalThis, 'document')
+      }
+    }
+  }
+
   function getMobileBackdrop() {
     return (
       screen.getByRole('complementary').parentElement?.querySelector(
@@ -61,6 +101,46 @@ describe('SidebarShell', () => {
     )
 
     await waitFor(() => expect(screen.getByLabelText('Expand sidebar')).toBeInTheDocument())
+  })
+
+  it('hydrates without mismatch warnings when a collapsed preference is stored', async () => {
+    mockPathname = '/stats'
+    localStorage.setItem('hs_sidebar_collapsed', 'true')
+
+    const container = document.createElement('div')
+    container.innerHTML = renderServerMarkup(
+      <SidebarShell isAdmin logoutAction={vi.fn().mockResolvedValue(undefined)}>
+        <main>Dashboard</main>
+      </SidebarShell>,
+    )
+    document.body.appendChild(container)
+
+    const recoverableErrors: Error[] = []
+    let root: ReturnType<typeof hydrateRoot> | null = null
+
+    await act(async () => {
+      root = hydrateRoot(
+        container,
+        <SidebarShell isAdmin logoutAction={vi.fn().mockResolvedValue(undefined)}>
+          <main>Dashboard</main>
+        </SidebarShell>,
+        {
+          onRecoverableError(error) {
+            recoverableErrors.push(error)
+          },
+        },
+      )
+      await Promise.resolve()
+    })
+
+    await waitFor(() => expect(screen.getByLabelText('Expand sidebar')).toBeInTheDocument())
+
+    expect(recoverableErrors).toHaveLength(0)
+
+    await act(async () => {
+      root?.unmount()
+      await Promise.resolve()
+    })
   })
 
   it('shows the public Games link and marks it active on /games', () => {

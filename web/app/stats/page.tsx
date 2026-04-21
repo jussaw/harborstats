@@ -116,7 +116,7 @@ export default async function StatsPage() {
       title: 'Total Wins',
       description: 'All-time victory leaderboard with win rate alongside total finishes.',
       badge: undefined,
-      span: 'full',
+      span: 'single',
     },
     {
       id: 'win-rate',
@@ -126,7 +126,7 @@ export default async function StatsPage() {
         settings.winRateMinGames > 0
           ? `Min ${settings.winRateMinGames} game${settings.winRateMinGames === 1 ? '' : 's'}`
           : undefined,
-      span: 'full',
+      span: 'single',
     },
     {
       id: 'avg-score',
@@ -150,11 +150,11 @@ export default async function StatsPage() {
       span: 'single',
     },
     {
-      id: 'finish-breakdown',
-      title: 'Finish Breakdown',
-      description: 'Share of games each player finished first, second, third, or last.',
+      id: 'expected-vs-actual-wins',
+      title: 'Expected vs Actual Wins',
+      description: 'Actual wins versus the baseline 1/N expectation for each game played.',
       badge: undefined,
-      span: 'full',
+      span: 'single',
     },
     {
       id: 'tier-showdown',
@@ -164,9 +164,9 @@ export default async function StatsPage() {
       span: 'full',
     },
     {
-      id: 'expected-vs-actual-wins',
-      title: 'Expected vs Actual Wins',
-      description: 'Actual wins versus the baseline 1/N expectation for each game played.',
+      id: 'finish-breakdown',
+      title: 'Finish Breakdown',
+      description: 'Share of games each player finished first, second, third, or last.',
       badge: undefined,
       span: 'full',
     },
@@ -375,56 +375,46 @@ export default async function StatsPage() {
             )}
         </StatsCard>
 
-        <StatsCard {...cardById['finish-breakdown']}>
-            {finishBreakdowns.length === 0 ? (
-              <EmptyState>No games recorded yet.</EmptyState>
-            ) : (
+        <StatsCard {...cardById['expected-vs-actual-wins']}>
+            {expectedVsActualWins.some((player) => player.games > 0) ? (
               <StatsLeaderboardTable
                 columns={[
                   { label: '#', align: 'center', widthClass: 'w-10' },
                   { label: 'Player' },
-                  { label: '1st', align: 'right' },
-                  { label: '2nd', align: 'right' },
-                  { label: '3rd', align: 'right' },
-                  { label: 'Last', align: 'right' },
-                  { label: 'Games', align: 'right' },
+                  { label: 'Delta', align: 'right' },
+                  { label: 'Actual Wins', align: 'right' },
+                  { label: 'Expected Wins', align: 'right' },
                 ]}
               >
-                {finishBreakdowns.map((player, index) => (
+                {expectedVsActualWins.map((player, index) => (
                   <DataRow key={player.playerId}>
-                    <RankCell rank={finishBreakdownRanks[index]} />
+                    <RankCell rank={expectedVsActualRanks[index]} />
                     <td className="px-3 py-2 text-(--cream)">
                       <PlayerName name={player.name} tier={player.tier} />
                     </td>
-                    <td className="
-                      px-3 py-2 text-right font-semibold text-(--gold)
-                      tabular-nums
-                    ">
-                      {formatPercent(player.firstRate, 1)}
+                    <td className={`
+                      px-3 py-2 text-right font-semibold tabular-nums
+                      ${player.winDelta >= 0 ? 'text-(--gold)' : `
+                        text-(--cream)
+                      `}
+                    `}>
+                      {formatSignedNumber(player.winDelta)}
                     </td>
                     <td className="
                       px-3 py-2 text-right text-(--cream) tabular-nums
                     ">
-                      {formatPercent(player.secondRate, 1)}
-                    </td>
-                    <td className="
-                      px-3 py-2 text-right text-(--cream) tabular-nums
-                    ">
-                      {formatPercent(player.thirdRate, 1)}
-                    </td>
-                    <td className="
-                      px-3 py-2 text-right text-(--cream) tabular-nums
-                    ">
-                      {formatPercent(player.lastRate, 1)}
+                      {player.wins}
                     </td>
                     <td className="
                       px-3 py-2 text-right text-(--cream)/70 tabular-nums
                     ">
-                      {player.games}
+                      {formatAverage(player.expectedWins)}
                     </td>
                   </DataRow>
                 ))}
               </StatsLeaderboardTable>
+            ) : (
+              <EmptyState>No games recorded yet.</EmptyState>
             )}
         </StatsCard>
 
@@ -479,46 +469,56 @@ export default async function StatsPage() {
             )}
         </StatsCard>
 
-        <StatsCard {...cardById['expected-vs-actual-wins']}>
-            {expectedVsActualWins.some((player) => player.games > 0) ? (
+        <StatsCard {...cardById['finish-breakdown']}>
+            {finishBreakdowns.length === 0 ? (
+              <EmptyState>No games recorded yet.</EmptyState>
+            ) : (
               <StatsLeaderboardTable
                 columns={[
                   { label: '#', align: 'center', widthClass: 'w-10' },
                   { label: 'Player' },
-                  { label: 'Delta', align: 'right' },
-                  { label: 'Actual Wins', align: 'right' },
-                  { label: 'Expected Wins', align: 'right' },
+                  { label: '1st', align: 'right' },
+                  { label: '2nd', align: 'right' },
+                  { label: '3rd', align: 'right' },
+                  { label: 'Last', align: 'right' },
+                  { label: 'Games', align: 'right' },
                 ]}
               >
-                {expectedVsActualWins.map((player, index) => (
+                {finishBreakdowns.map((player, index) => (
                   <DataRow key={player.playerId}>
-                    <RankCell rank={expectedVsActualRanks[index]} />
+                    <RankCell rank={finishBreakdownRanks[index]} />
                     <td className="px-3 py-2 text-(--cream)">
                       <PlayerName name={player.name} tier={player.tier} />
                     </td>
-                    <td className={`
-                      px-3 py-2 text-right font-semibold tabular-nums
-                      ${player.winDelta >= 0 ? 'text-(--gold)' : `
-                        text-(--cream)
-                      `}
-                    `}>
-                      {formatSignedNumber(player.winDelta)}
+                    <td className="
+                      px-3 py-2 text-right font-semibold text-(--gold)
+                      tabular-nums
+                    ">
+                      {formatPercent(player.firstRate, 1)}
                     </td>
                     <td className="
                       px-3 py-2 text-right text-(--cream) tabular-nums
                     ">
-                      {player.wins}
+                      {formatPercent(player.secondRate, 1)}
+                    </td>
+                    <td className="
+                      px-3 py-2 text-right text-(--cream) tabular-nums
+                    ">
+                      {formatPercent(player.thirdRate, 1)}
+                    </td>
+                    <td className="
+                      px-3 py-2 text-right text-(--cream) tabular-nums
+                    ">
+                      {formatPercent(player.lastRate, 1)}
                     </td>
                     <td className="
                       px-3 py-2 text-right text-(--cream)/70 tabular-nums
                     ">
-                      {formatAverage(player.expectedWins)}
+                      {player.games}
                     </td>
                   </DataRow>
                 ))}
               </StatsLeaderboardTable>
-            ) : (
-              <EmptyState>No games recorded yet.</EmptyState>
             )}
         </StatsCard>
       </div>

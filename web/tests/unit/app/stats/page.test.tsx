@@ -168,18 +168,18 @@ describe('StatsPage', () => {
     const avgScoreIndex = markup.indexOf('id="avg-score"')
     const medianScoreIndex = markup.indexOf('id="median-score"')
     const podiumRateIndex = markup.indexOf('id="podium-rate"')
-    const finishBreakdownIndex = markup.indexOf('id="finish-breakdown"')
-    const tierShowdownIndex = markup.indexOf('id="tier-showdown"')
     const expectedVsActualWinsIndex = markup.indexOf('id="expected-vs-actual-wins"')
+    const tierShowdownIndex = markup.indexOf('id="tier-showdown"')
+    const finishBreakdownIndex = markup.indexOf('id="finish-breakdown"')
 
     expect(totalWinsIndex).toBeGreaterThan(-1)
     expect(winRateIndex).toBeGreaterThan(totalWinsIndex)
     expect(avgScoreIndex).toBeGreaterThan(winRateIndex)
     expect(medianScoreIndex).toBeGreaterThan(avgScoreIndex)
     expect(podiumRateIndex).toBeGreaterThan(medianScoreIndex)
-    expect(finishBreakdownIndex).toBeGreaterThan(podiumRateIndex)
-    expect(tierShowdownIndex).toBeGreaterThan(finishBreakdownIndex)
-    expect(expectedVsActualWinsIndex).toBeGreaterThan(tierShowdownIndex)
+    expect(expectedVsActualWinsIndex).toBeGreaterThan(podiumRateIndex)
+    expect(tierShowdownIndex).toBeGreaterThan(expectedVsActualWinsIndex)
+    expect(finishBreakdownIndex).toBeGreaterThan(tierShowdownIndex)
     expect(markup).toContain('Finish Breakdown')
     expect(markup).toContain('>1st<')
     expect(markup).toContain('>2nd<')
@@ -192,6 +192,14 @@ describe('StatsPage', () => {
     expect(markup).toContain('Expected vs Actual Wins')
     expect(markup).toContain('+1.2')
     expect(markup).toContain('-0.5')
+
+    const totalWinsSection = markup.slice(totalWinsIndex, totalWinsIndex + 160)
+    const winRateSection = markup.slice(winRateIndex, winRateIndex + 160)
+    const expectedVsActualSection = markup.slice(expectedVsActualWinsIndex, expectedVsActualWinsIndex + 160)
+
+    expect(totalWinsSection).not.toContain('lg:col-span-2')
+    expect(winRateSection).not.toContain('lg:col-span-2')
+    expect(expectedVsActualSection).not.toContain('lg:col-span-2')
   })
 
   it('renders card empty states when no stats are available', async () => {

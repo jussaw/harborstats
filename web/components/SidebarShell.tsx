@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useState, useSyncExternalStore } from 'react'
 import { usePathname } from 'next/navigation'
 import { Menu } from 'lucide-react'
 import Link from 'next/link'
@@ -8,6 +8,23 @@ import { Sidebar } from './Sidebar'
 
 const cinzelStyle = {
   fontFamily: 'var(--font-cinzel), Georgia, serif',
+}
+
+const SIDEBAR_COLLAPSED_KEY = 'hs_sidebar_collapsed'
+const SIDEBAR_COLLAPSED_EVENT = 'hs-sidebar-collapsed'
+
+function subscribeToCollapsedPreference(onStoreChange: () => void) {
+  window.addEventListener('storage', onStoreChange)
+  window.addEventListener(SIDEBAR_COLLAPSED_EVENT, onStoreChange)
+
+  return () => {
+    window.removeEventListener('storage', onStoreChange)
+    window.removeEventListener(SIDEBAR_COLLAPSED_EVENT, onStoreChange)
+  }
+}
+
+function getCollapsedPreferenceSnapshot() {
+  return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true'
 }
 
 interface Props {
@@ -18,19 +35,19 @@ interface Props {
 
 export function SidebarShell({ isAdmin, logoutAction, children }: Props) {
   const pathname = usePathname()
-  const [collapsed, setCollapsed] = useState(() => {
-    if (typeof window === 'undefined') return false
-    return window.localStorage.getItem('hs_sidebar_collapsed') === 'true'
-  })
+  const collapsed = useSyncExternalStore(
+    subscribeToCollapsedPreference,
+    getCollapsedPreferenceSnapshot,
+    () => false,
+  )
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const toggleCollapsed = useCallback(() => {
-    setCollapsed((prev) => {
-      const next = !prev
-      window.localStorage.setItem('hs_sidebar_collapsed', String(next))
-      return next
-    })
-  }, [])
+    const next = !collapsed
+
+    window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(next))
+    window.dispatchEvent(new Event(SIDEBAR_COLLAPSED_EVENT))
+  }, [collapsed])
 
   const closeMobile = useCallback(() => {
     setMobileOpen(false)
