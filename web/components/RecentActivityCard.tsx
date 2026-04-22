@@ -45,8 +45,15 @@ export function RecentActivityCard({ latestPlayedAt, timeZone, now }: Props) {
       )}
       <div className="text-sm text-(--cream)/55">
         <p>Latest recorded game</p>
-        <FormattedDate iso={latestPlayedAt} className="mt-1 block text-(--cream)/70" />
+        <FormattedDate iso={latestPlayedAt} className="
+          mt-1 block text-(--cream)/70
+        " />
       </div>
     </div>
   )
+}
+
+RecentActivityCard.defaultProps = {
+  timeZone: undefined,
+  now: undefined,
 }

@@ -37,8 +37,8 @@ export function StatsCard({
       `}
     >
       <div className="
-        rounded-2xl border border-(--gold)/20 bg-(--navy-900)/40 p-4
-        shadow-[0_18px_40px_rgba(0,0,0,0.18)]
+        flex h-full flex-col rounded-2xl border border-(--gold)/20
+        bg-(--navy-900)/40 p-4 shadow-[0_18px_40px_rgba(0,0,0,0.18)]
         sm:p-5
       ">
         <div className="
@@ -56,16 +56,16 @@ export function StatsCard({
           {badge && (
             <span className="
               inline-flex rounded-full border border-(--gold)/20 bg-(--gold)/10
-              sm:shrink-0 sm:whitespace-nowrap
               px-3 py-1 text-[11px] font-semibold tracking-[0.25em]
               text-(--gold) uppercase
+              sm:shrink-0 sm:whitespace-nowrap
             ">
               {badge}
             </span>
           )}
         </div>
 
-        <div className="mt-4">{children}</div>
+        <div className="mt-4 flex-1">{children}</div>
       </div>
     </section>
   )

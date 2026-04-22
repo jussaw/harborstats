@@ -98,6 +98,10 @@ function toUtcDateKey(date: Date): string {
   return date.toISOString().slice(0, 10)
 }
 
+function fromUtcDateKey(dateKey: string): Date {
+  return new Date(`${dateKey}T00:00:00.000Z`)
+}
+
 const shortDateFormatter = new Intl.DateTimeFormat('en-US', {
   timeZone: 'UTC',
   month: 'short',
@@ -169,6 +173,51 @@ export interface GamesOverTimeSeries {
   totalGames: number
 }
 
+export interface CumulativeActivityBucket extends ActivityBucket {
+  cumulativeGames: number
+}
+
+export interface CumulativeGamesSeries {
+  weekly: CumulativeActivityBucket[]
+  monthly: CumulativeActivityBucket[]
+  totalGames: number
+}
+
+export interface ActivityRecord {
+  bucketStart: string
+  label: string
+  gameCount: number
+}
+
+export interface BusiestActivityRecords {
+  day: ActivityRecord | null
+  week: ActivityRecord | null
+  month: ActivityRecord | null
+}
+
+export interface LongestGameGap {
+  idleDays: number
+  startDate: string
+  endDate: string
+  startLabel: string
+  endLabel: string
+}
+
+function buildCountsByBucket(
+  localDays: Date[],
+  getBucketStart: (date: Date) => Date,
+): Map<string, number> {
+  const countsByBucket = new Map<string, number>()
+
+  localDays.forEach((localDay) => {
+    const bucketStart = getBucketStart(localDay)
+    const bucketKey = toUtcDateKey(bucketStart)
+    countsByBucket.set(bucketKey, (countsByBucket.get(bucketKey) ?? 0) + 1)
+  })
+
+  return countsByBucket
+}
+
 function buildActivityBuckets(
   localDays: Date[],
   getBucketStart: (date: Date) => Date,
@@ -179,13 +228,7 @@ function buildActivityBuckets(
     return []
   }
 
-  const countsByBucket = new Map<string, number>()
-
-  localDays.forEach((localDay) => {
-    const bucketStart = getBucketStart(localDay)
-    const bucketKey = toUtcDateKey(bucketStart)
-    countsByBucket.set(bucketKey, (countsByBucket.get(bucketKey) ?? 0) + 1)
-  })
+  const countsByBucket = buildCountsByBucket(localDays, getBucketStart)
 
   return buildBucketStarts(localDays, getBucketStart, getNextBucketStart).map((bucketStart) => {
     const bucketKey = toUtcDateKey(bucketStart)
@@ -217,6 +260,130 @@ export function buildGamesOverTimeSeries({
     ),
     totalGames: playedAtIsos.length,
   }
+}
+
+function buildCumulativeActivityBuckets(buckets: ActivityBucket[]): CumulativeActivityBucket[] {
+  let cumulativeGames = 0
+
+  return buckets.map((bucket) => {
+    cumulativeGames += bucket.gameCount
+
+    return {
+      ...bucket,
+      cumulativeGames,
+    }
+  })
+}
+
+export function buildCumulativeGamesSeries({
+  playedAtIsos,
+  timeZone,
+}: {
+  playedAtIsos: string[]
+  timeZone: string
+}): CumulativeGamesSeries {
+  const series = buildGamesOverTimeSeries({ playedAtIsos, timeZone })
+
+  return {
+    weekly: buildCumulativeActivityBuckets(series.weekly),
+    monthly: buildCumulativeActivityBuckets(series.monthly),
+    totalGames: series.totalGames,
+  }
+}
+
+function buildActivityRecord(
+  countsByBucket: Map<string, number>,
+  formatLabel: (date: Date) => string,
+): ActivityRecord | null {
+  let bestBucketKey: string | null = null
+  let bestCount = -1
+
+  countsByBucket.forEach((gameCount, bucketKey) => {
+    if (gameCount > bestCount || (gameCount === bestCount && bucketKey > (bestBucketKey ?? ''))) {
+      bestBucketKey = bucketKey
+      bestCount = gameCount
+    }
+  })
+
+  if (!bestBucketKey) {
+    return null
+  }
+
+  const bucketStart = fromUtcDateKey(bestBucketKey)
+
+  return {
+    bucketStart: bestBucketKey,
+    label: formatLabel(bucketStart),
+    gameCount: bestCount,
+  }
+}
+
+function formatWeekRecordLabel(date: Date): string {
+  return `Week of ${formatShortUtcDate(date)}`
+}
+
+export function buildBusiestActivityRecords({
+  playedAtIsos,
+  timeZone,
+}: {
+  playedAtIsos: string[]
+  timeZone: string
+}): BusiestActivityRecords {
+  const localDays = getOrderedLocalDays(playedAtIsos, timeZone)
+
+  if (localDays.length === 0) {
+    return {
+      day: null,
+      week: null,
+      month: null,
+    }
+  }
+
+  return {
+    day: buildActivityRecord(buildCountsByBucket(localDays, startOfUtcDay), formatLongUtcDate),
+    week: buildActivityRecord(buildCountsByBucket(localDays, getIsoWeekStart), formatWeekRecordLabel),
+    month: buildActivityRecord(buildCountsByBucket(localDays, getUtcMonthStart), formatShortUtcMonth),
+  }
+}
+
+export function buildLongestGameGap({
+  playedAtIsos,
+  timeZone,
+}: {
+  playedAtIsos: string[]
+  timeZone: string
+}): LongestGameGap | null {
+  const localDays = getOrderedLocalDays(playedAtIsos, timeZone)
+
+  if (localDays.length < 2) {
+    return null
+  }
+
+  let longestGap: LongestGameGap | null = null
+
+  for (let index = 1; index < localDays.length; index += 1) {
+    const startDay = startOfUtcDay(localDays[index - 1])
+    const endDay = startOfUtcDay(localDays[index])
+    const calendarDayGap = Math.round((endDay.getTime() - startDay.getTime()) / millisecondsPerDay)
+    const idleDays = Math.max(calendarDayGap - 1, 0)
+    const candidate: LongestGameGap = {
+      idleDays,
+      startDate: toUtcDateKey(startDay),
+      endDate: toUtcDateKey(endDay),
+      startLabel: formatLongUtcDate(startDay),
+      endLabel: formatLongUtcDate(endDay),
+    }
+
+    if (
+      !longestGap ||
+      candidate.idleDays > longestGap.idleDays ||
+      (candidate.idleDays === longestGap.idleDays && candidate.endDate >= longestGap.endDate)
+    ) {
+      longestGap = candidate
+    }
+  }
+
+  return longestGap
 }
 
 export interface PlayerAttendanceEvent {

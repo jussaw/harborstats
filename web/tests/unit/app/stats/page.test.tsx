@@ -238,10 +238,13 @@ describe('StatsPage', () => {
     const gamesOverTimeIndex = markup.indexOf('id="games-over-time"')
     const participationRateIndex = markup.indexOf('id="participation-rate"')
     const attendanceIndex = markup.indexOf('id="player-attendance-over-time"')
+    const cumulativeGamesIndex = markup.indexOf('id="cumulative-games"')
     const calendarHeatmapIndex = markup.indexOf('id="calendar-heatmap"')
     const dayOfWeekPatternIndex = markup.indexOf('id="day-of-week-pattern"')
     const timeOfDayPatternIndex = markup.indexOf('id="time-of-day-pattern"')
     const averageGamesPerSessionIndex = markup.indexOf('id="average-games-per-session"')
+    const longestGapIndex = markup.indexOf('id="longest-gap-between-games"')
+    const busiestRecordsIndex = markup.indexOf('id="busiest-records"')
 
     expect(totalWinsIndex).toBeGreaterThan(-1)
     expect(winRateIndex).toBeGreaterThan(totalWinsIndex)
@@ -256,10 +259,13 @@ describe('StatsPage', () => {
     expect(gamesOverTimeIndex).toBeGreaterThan(finishBreakdownIndex)
     expect(participationRateIndex).toBeGreaterThan(gamesOverTimeIndex)
     expect(attendanceIndex).toBeGreaterThan(participationRateIndex)
-    expect(calendarHeatmapIndex).toBeGreaterThan(attendanceIndex)
+    expect(cumulativeGamesIndex).toBeGreaterThan(attendanceIndex)
+    expect(calendarHeatmapIndex).toBeGreaterThan(cumulativeGamesIndex)
     expect(dayOfWeekPatternIndex).toBeGreaterThan(calendarHeatmapIndex)
     expect(timeOfDayPatternIndex).toBeGreaterThan(dayOfWeekPatternIndex)
     expect(averageGamesPerSessionIndex).toBeGreaterThan(timeOfDayPatternIndex)
+    expect(longestGapIndex).toBeGreaterThan(averageGamesPerSessionIndex)
+    expect(busiestRecordsIndex).toBeGreaterThan(longestGapIndex)
 
     expect(markup).toContain('Finish Breakdown')
     expect(markup).toContain('>1st<')
@@ -281,10 +287,13 @@ describe('StatsPage', () => {
     expect(markup).toContain('Games Over Time')
     expect(markup).toContain('Participation Rate')
     expect(markup).toContain('Player Attendance Over Time')
+    expect(markup).toContain('Cumulative Games')
     expect(markup).toContain('Calendar Heatmap')
     expect(markup).toContain('Day-of-Week Pattern')
     expect(markup).toContain('Time-of-Day Pattern')
     expect(markup).toContain('Average Games per Session')
+    expect(markup).toContain('Longest Gap Between Games')
+    expect(markup).toContain('Busiest Day / Week / Month Records')
     expect(markup).toContain('Loading your local-time view...')
     expect(markup).toContain('88.9%')
     expect(markup).toContain('66.7%')
@@ -301,6 +310,7 @@ describe('StatsPage', () => {
       'lg:col-span-2',
     )
     expect(markup.slice(attendanceIndex, attendanceIndex + 160)).toContain('lg:col-span-2')
+    expect(markup.slice(cumulativeGamesIndex, cumulativeGamesIndex + 160)).toContain('lg:col-span-2')
     expect(markup.slice(calendarHeatmapIndex, calendarHeatmapIndex + 160)).toContain(
       'lg:col-span-2',
     )
@@ -313,6 +323,14 @@ describe('StatsPage', () => {
     expect(markup.slice(averageGamesPerSessionIndex, averageGamesPerSessionIndex + 160)).not.toContain(
       'lg:col-span-2',
     )
+    expect(markup.slice(longestGapIndex, longestGapIndex + 160)).not.toContain('lg:col-span-2')
+    expect(markup.slice(busiestRecordsIndex, busiestRecordsIndex + 160)).not.toContain(
+      'lg:col-span-2',
+    )
+    expect(markup.slice(averageGamesPerSessionIndex, averageGamesPerSessionIndex + 220)).toContain(
+      'flex h-full flex-col',
+    )
+    expect(markup.slice(longestGapIndex, longestGapIndex + 220)).toContain('flex h-full flex-col')
   })
 
   it('renders card empty states when no stats are available', async () => {
@@ -340,11 +358,14 @@ describe('StatsPage', () => {
     expect(markup).toContain('Games Over Time')
     expect(markup).toContain('Participation Rate')
     expect(markup).toContain('Player Attendance Over Time')
+    expect(markup).toContain('Cumulative Games')
     expect(markup).toContain('Calendar Heatmap')
     expect(markup).toContain('Day-of-Week Pattern')
     expect(markup).toContain('Time-of-Day Pattern')
     expect(markup).toContain('Average Games per Session')
-    expect(markup.match(/No games recorded yet\./g)).toHaveLength(14)
+    expect(markup).toContain('Longest Gap Between Games')
+    expect(markup).toContain('Busiest Day / Week / Month Records')
+    expect(markup.match(/No games recorded yet\./g)).toHaveLength(17)
   })
 
   it('filters the podium leaderboard using the podium threshold instead of the win-rate threshold', async () => {

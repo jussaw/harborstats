@@ -200,8 +200,9 @@ export function PlayerAttendanceChart({ events, defaultView, timeZone }: Props) 
             <span
               key={player.playerId}
               className="
-                inline-flex items-center gap-2 rounded-full border border-(--gold)/15
-                bg-(--navy-900)/45 px-3 py-1 text-xs text-(--cream)/75
+                inline-flex items-center gap-2 rounded-full border
+                border-(--gold)/15 bg-(--navy-900)/45 px-3 py-1 text-xs
+                text-(--cream)/75
               "
             >
               <span
@@ -226,8 +227,8 @@ export function PlayerAttendanceChart({ events, defaultView, timeZone }: Props) 
             aria-label={`Attendance details for ${activeBucket.label}`}
             data-side={dialogPosition?.side}
             className="
-              pointer-events-none absolute z-10 min-w-52
-              rounded-2xl border border-(--gold)/20 bg-(--navy-900)/95 p-4
+              pointer-events-none absolute z-10 min-w-52 rounded-2xl border
+              border-(--gold)/20 bg-(--navy-900)/95 p-4
               shadow-[0_18px_40px_rgba(0,0,0,0.28)]
             "
             style={{
@@ -396,4 +397,8 @@ export function PlayerAttendanceChart({ events, defaultView, timeZone }: Props) 
       </div>
     </div>
   )
+}
+
+PlayerAttendanceChart.defaultProps = {
+  timeZone: undefined,
 }

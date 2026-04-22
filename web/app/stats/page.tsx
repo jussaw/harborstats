@@ -2,8 +2,11 @@ import type { ReactNode } from 'react';
 import type { Metadata } from 'next';
 import { ActivityDistributionChart } from '@/components/ActivityDistributionChart';
 import { AverageGamesPerSessionCard } from '@/components/AverageGamesPerSessionCard';
+import { BusiestRecordsCard } from '@/components/BusiestRecordsCard';
 import { CalendarHeatmap } from '@/components/CalendarHeatmap';
+import { CumulativeGamesAreaChart } from '@/components/CumulativeGamesAreaChart';
 import { GamesOverTimeChart } from '@/components/GamesOverTimeChart';
+import { LongestGapCard } from '@/components/LongestGapCard';
 import { PlayerAttendanceChart } from '@/components/PlayerAttendanceChart';
 import { StatsCard } from '@/components/StatsCard';
 import { StatsLeaderboardTable } from '@/components/StatsLeaderboardTable';
@@ -42,9 +45,7 @@ function PlayerName({ name, tier }: { name: string; tier: PlayerTier }) {
       <span
         className={
           tier === PlayerTier.Premium
-            ? `
-        font-semibold text-(--gold)
-      `
+            ? `font-semibold text-(--gold)`
             : ''
         }
       >
@@ -66,10 +67,10 @@ function DataRow({ children }: { children: ReactNode }) {
   return (
     <tr
       className="
-      border-b border-(--gold)/10 bg-(--navy-900)/35 transition-colors
-      last:border-0
-      hover:bg-(--navy-900)/70
-    "
+        border-b border-(--gold)/10 bg-(--navy-900)/35 transition-colors
+        last:border-0
+        hover:bg-(--navy-900)/70
+      "
     >
       {children}
     </tr>
@@ -249,6 +250,13 @@ export default async function StatsPage() {
       span: 'full',
     },
     {
+      id: 'cumulative-games',
+      title: 'Cumulative Games',
+      description: 'Running total of recorded games over time, bucketed by week or month in your local time.',
+      badge: undefined,
+      span: 'full',
+    },
+    {
       id: 'calendar-heatmap',
       title: 'Calendar Heatmap',
       description: 'Daily game frequency across the last 12 months or any recorded year in your local time.',
@@ -276,6 +284,20 @@ export default async function StatsPage() {
       badge: undefined,
       span: 'single',
     },
+    {
+      id: 'longest-gap-between-games',
+      title: 'Longest Gap Between Games',
+      description: 'Longest stretch of idle local calendar days between consecutive games.',
+      badge: undefined,
+      span: 'single',
+    },
+    {
+      id: 'busiest-records',
+      title: 'Busiest Day / Week / Month Records',
+      description: 'Most active local day, ISO week, and month by total games played.',
+      badge: undefined,
+      span: 'single',
+    },
   ];
 
   const cardById = Object.fromEntries(statsCards.map((card) => [card.id, card])) as Record<
@@ -286,15 +308,15 @@ export default async function StatsPage() {
   return (
     <main
       className="
-      mx-auto max-w-7xl px-4 py-6
-      sm:px-6 sm:py-8
-    "
+        mx-auto max-w-7xl px-4 py-6
+        sm:px-6 sm:py-8
+      "
     >
       <div
         className="
-        grid grid-cols-1 gap-5
-        lg:grid-cols-2
-      "
+          grid grid-cols-1 gap-5
+          lg:grid-cols-2
+        "
       >
         <StatsCard {...cardById['total-wins']}>
           {winRates.length === 0 ? (
@@ -315,9 +337,7 @@ export default async function StatsPage() {
                     <PlayerName name={player.name} tier={player.tier} />
                   </td>
                   <td
-                    className="
-                      px-3 py-2 text-right text-(--cream) tabular-nums
-                    "
+                    className="px-3 py-2 text-right text-(--cream) tabular-nums"
                   >
                     {player.wins}
                   </td>
@@ -365,9 +385,7 @@ export default async function StatsPage() {
                     {formatPercent(player.winRate, 1)}
                   </td>
                   <td
-                    className="
-                      px-3 py-2 text-right text-(--cream) tabular-nums
-                    "
+                    className="px-3 py-2 text-right text-(--cream) tabular-nums"
                   >
                     {player.wins}
                   </td>
@@ -568,9 +586,7 @@ export default async function StatsPage() {
                     {formatPercent(player.podiumRate, 1)}
                   </td>
                   <td
-                    className="
-                      px-3 py-2 text-right text-(--cream) tabular-nums
-                    "
+                    className="px-3 py-2 text-right text-(--cream) tabular-nums"
                   >
                     {player.podiums}
                   </td>
@@ -610,18 +626,14 @@ export default async function StatsPage() {
                       ${
                         player.winDelta >= 0
                           ? 'text-(--gold)'
-                          : `
-                        text-(--cream)
-                      `
+                          : `text-(--cream)`
                       }
                     `}
                   >
                     {formatSignedNumber(player.winDelta)}
                   </td>
                   <td
-                    className="
-                      px-3 py-2 text-right text-(--cream) tabular-nums
-                    "
+                    className="px-3 py-2 text-right text-(--cream) tabular-nums"
                   >
                     {player.wins}
                   </td>
@@ -659,9 +671,7 @@ export default async function StatsPage() {
                     <span
                       className={
                         row.tier === PlayerTier.Premium
-                          ? `
-                        font-semibold text-(--gold)
-                      `
+                          ? `font-semibold text-(--gold)`
                           : ''
                       }
                     >
@@ -677,16 +687,12 @@ export default async function StatsPage() {
                     {formatPercent(row.winRate, 1)}
                   </td>
                   <td
-                    className="
-                      px-3 py-2 text-right text-(--cream) tabular-nums
-                    "
+                    className="px-3 py-2 text-right text-(--cream) tabular-nums"
                   >
                     {row.wins}
                   </td>
                   <td
-                    className="
-                      px-3 py-2 text-right text-(--cream) tabular-nums
-                    "
+                    className="px-3 py-2 text-right text-(--cream) tabular-nums"
                   >
                     {row.appearances}
                   </td>
@@ -735,23 +741,17 @@ export default async function StatsPage() {
                     {formatPercent(player.firstRate, 1)}
                   </td>
                   <td
-                    className="
-                      px-3 py-2 text-right text-(--cream) tabular-nums
-                    "
+                    className="px-3 py-2 text-right text-(--cream) tabular-nums"
                   >
                     {formatPercent(player.secondRate, 1)}
                   </td>
                   <td
-                    className="
-                      px-3 py-2 text-right text-(--cream) tabular-nums
-                    "
+                    className="px-3 py-2 text-right text-(--cream) tabular-nums"
                   >
                     {formatPercent(player.thirdRate, 1)}
                   </td>
                   <td
-                    className="
-                      px-3 py-2 text-right text-(--cream) tabular-nums
-                    "
+                    className="px-3 py-2 text-right text-(--cream) tabular-nums"
                   >
                     {formatPercent(player.lastRate, 1)}
                   </td>
@@ -815,6 +815,10 @@ export default async function StatsPage() {
           <PlayerAttendanceChart events={playerAttendanceEvents} defaultView="week" />
         </StatsCard>
 
+        <StatsCard {...cardById['cumulative-games']}>
+          <CumulativeGamesAreaChart playedAtIsos={gameActivityTimestamps} defaultView="month" />
+        </StatsCard>
+
         <StatsCard {...cardById['calendar-heatmap']}>
           <CalendarHeatmap playedAtIsos={gameActivityTimestamps} defaultSelection="recent" />
         </StatsCard>
@@ -829,6 +833,14 @@ export default async function StatsPage() {
 
         <StatsCard {...cardById['average-games-per-session']}>
           <AverageGamesPerSessionCard playedAtIsos={gameActivityTimestamps} />
+        </StatsCard>
+
+        <StatsCard {...cardById['longest-gap-between-games']}>
+          <LongestGapCard playedAtIsos={gameActivityTimestamps} />
+        </StatsCard>
+
+        <StatsCard {...cardById['busiest-records']}>
+          <BusiestRecordsCard playedAtIsos={gameActivityTimestamps} />
         </StatsCard>
       </div>
     </main>

@@ -713,6 +713,17 @@ export async function getRecentActivitySummary(): Promise<RecentActivitySummary>
   }
 }
 
+async function getOrderedGameDates(): Promise<Date[]> {
+  const gameRows = await db
+    .select({
+      playedAt: games.playedAt,
+    })
+    .from(games)
+    .orderBy(games.playedAt, games.id)
+
+  return gameRows.map((game) => game.playedAt)
+}
+
 export async function getGameActivityTimestamps(): Promise<string[]> {
   const playedAtDates = await getOrderedGameDates()
   return playedAtDates.map((playedAt) => playedAt.toISOString())
@@ -781,17 +792,6 @@ function buildActivityBuckets(
       gameCount: countsByBucket.get(bucketKey) ?? 0,
     }
   })
-}
-
-async function getOrderedGameDates(): Promise<Date[]> {
-  const gameRows = await db
-    .select({
-      playedAt: games.playedAt,
-    })
-    .from(games)
-    .orderBy(games.playedAt, games.id)
-
-  return gameRows.map((game) => game.playedAt)
 }
 
 export async function getGamesOverTimeSeries(): Promise<GamesOverTimeSeries> {

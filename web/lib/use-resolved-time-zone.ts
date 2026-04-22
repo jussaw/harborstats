@@ -1,20 +1,18 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useSyncExternalStore } from 'react'
 
 export const localTimeLoadingMessage = 'Loading your local-time view...'
 
+function subscribe() {
+  return () => {}
+}
+
+function getClientTimeZoneSnapshot() {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+}
+
 export function useResolvedTimeZone(explicitTimeZone?: string): string | null {
-  const [resolvedTimeZone, setResolvedTimeZone] = useState<string | null>(explicitTimeZone ?? null)
-
-  useEffect(() => {
-    if (explicitTimeZone) {
-      setResolvedTimeZone(explicitTimeZone)
-      return
-    }
-
-    setResolvedTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC')
-  }, [explicitTimeZone])
-
+  const resolvedTimeZone = useSyncExternalStore(subscribe, getClientTimeZoneSnapshot, () => null)
   return explicitTimeZone ?? resolvedTimeZone
 }

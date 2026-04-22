@@ -23,8 +23,8 @@ export default async function AdminSettingsPage() {
         >
           <p
             className="
-            font-cinzel mb-4 text-xs tracking-widest text-(--gold) uppercase
-          "
+              font-cinzel mb-4 text-xs tracking-widest text-(--gold) uppercase
+            "
           >
             Stats
           </p>

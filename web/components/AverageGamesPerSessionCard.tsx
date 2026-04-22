@@ -28,15 +28,17 @@ export function AverageGamesPerSessionCard({ playedAtIsos, timeZone }: Props) {
   }
 
   return (
-    <div className="space-y-4">
-      <p
-        className="
-          font-cinzel text-5xl leading-none font-semibold tracking-wide
-          text-(--gold)
-        "
-      >
-        {summary.averageGamesPerSession.toFixed(1)}
-      </p>
+    <div className="flex min-h-40 flex-col justify-between gap-4">
+      <div>
+        <p
+          className="
+            font-cinzel text-5xl leading-none font-semibold tracking-wide
+            text-(--gold)
+          "
+        >
+          {summary.averageGamesPerSession.toFixed(1)}
+        </p>
+      </div>
       <div className="space-y-1 text-sm text-(--cream)/60">
         <p>{summary.sessionCount} session{summary.sessionCount === 1 ? '' : 's'}</p>
         <p>{summary.totalGames} total game{summary.totalGames === 1 ? '' : 's'}</p>
@@ -44,4 +46,8 @@ export function AverageGamesPerSessionCard({ playedAtIsos, timeZone }: Props) {
       </div>
     </div>
   )
+}
+
+AverageGamesPerSessionCard.defaultProps = {
+  timeZone: undefined,
 }

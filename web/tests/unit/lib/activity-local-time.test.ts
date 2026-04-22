@@ -1,8 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  buildBusiestActivityRecords,
   buildCalendarHeatmapData,
+  buildCumulativeGamesSeries,
   buildDayOfWeekPattern,
   buildGamesOverTimeSeries,
+  buildLongestGameGap,
   buildSessionSummary,
   buildTimeOfDayPattern,
   getDaysSinceLastGame,
@@ -78,6 +81,144 @@ describe('activity-local-time', () => {
       { bucketStart: '2026-02-01', gameCount: 1 },
       { bucketStart: '2026-03-01', gameCount: 3 },
     ])
+  })
+
+  it('builds cumulative weekly and monthly buckets with zero-filled gaps and running totals', () => {
+    const series = buildCumulativeGamesSeries({
+      playedAtIsos: [
+        '2026-03-01T01:00:00.000Z',
+        '2026-03-02T04:00:00.000Z',
+        '2026-03-03T05:00:00.000Z',
+        '2026-03-17T04:00:00.000Z',
+      ],
+      timeZone: 'America/New_York',
+    })
+
+    expect(series.totalGames).toBe(4)
+    expect(series.weekly.map((bucket) => ({
+      bucketStart: bucket.bucketStart,
+      gameCount: bucket.gameCount,
+      cumulativeGames: bucket.cumulativeGames,
+    }))).toEqual([
+      { bucketStart: '2026-02-23', gameCount: 2, cumulativeGames: 2 },
+      { bucketStart: '2026-03-02', gameCount: 1, cumulativeGames: 3 },
+      { bucketStart: '2026-03-09', gameCount: 0, cumulativeGames: 3 },
+      { bucketStart: '2026-03-16', gameCount: 1, cumulativeGames: 4 },
+    ])
+    expect(series.monthly.map((bucket) => ({
+      bucketStart: bucket.bucketStart,
+      gameCount: bucket.gameCount,
+      cumulativeGames: bucket.cumulativeGames,
+    }))).toEqual([
+      { bucketStart: '2026-02-01', gameCount: 1, cumulativeGames: 1 },
+      { bucketStart: '2026-03-01', gameCount: 3, cumulativeGames: 4 },
+    ])
+  })
+
+  it('builds busiest day, iso-week, and month records in local time across utc boundaries', () => {
+    const records = buildBusiestActivityRecords({
+      playedAtIsos: [
+        '2026-03-01T01:00:00.000Z',
+        '2026-03-01T03:00:00.000Z',
+        '2026-03-01T20:00:00.000Z',
+        '2026-03-03T05:00:00.000Z',
+        '2026-03-17T04:00:00.000Z',
+      ],
+      timeZone: 'America/New_York',
+    })
+
+    expect(records.day).toMatchObject({
+      bucketStart: '2026-02-28',
+      label: 'Feb 28, 2026',
+      gameCount: 2,
+    })
+    expect(records.week).toMatchObject({
+      bucketStart: '2026-02-23',
+      label: 'Week of Feb 23',
+      gameCount: 3,
+    })
+    expect(records.month).toMatchObject({
+      bucketStart: '2026-03-01',
+      label: 'Mar 2026',
+      gameCount: 3,
+    })
+  })
+
+  it('breaks busiest-record ties by choosing the most recent local bucket', () => {
+    const records = buildBusiestActivityRecords({
+      playedAtIsos: [
+        '2026-02-01T18:00:00.000Z',
+        '2026-02-01T21:00:00.000Z',
+        '2026-02-02T18:00:00.000Z',
+        '2026-02-02T21:00:00.000Z',
+        '2026-04-01T18:00:00.000Z',
+        '2026-04-01T21:00:00.000Z',
+        '2026-04-10T18:00:00.000Z',
+        '2026-04-10T21:00:00.000Z',
+      ],
+      timeZone: 'America/New_York',
+    })
+
+    expect(records.day).toMatchObject({
+      bucketStart: '2026-04-10',
+      label: 'Apr 10, 2026',
+      gameCount: 2,
+    })
+    expect(records.week).toMatchObject({
+      bucketStart: '2026-04-06',
+      label: 'Week of Apr 6',
+      gameCount: 2,
+    })
+    expect(records.month).toMatchObject({
+      bucketStart: '2026-04-01',
+      label: 'Apr 2026',
+      gameCount: 4,
+    })
+  })
+
+  it('calculates the longest gap using idle-day semantics and prefers the most recent tied window', () => {
+    const gap = buildLongestGameGap({
+      playedAtIsos: [
+        '2026-04-20T15:00:00.000Z',
+        '2026-04-20T23:00:00.000Z',
+        '2026-04-22T15:00:00.000Z',
+        '2026-04-24T15:00:00.000Z',
+      ],
+      timeZone: 'America/New_York',
+    })
+
+    expect(gap).toEqual({
+      idleDays: 1,
+      startDate: '2026-04-22',
+      endDate: '2026-04-24',
+      startLabel: 'Apr 22, 2026',
+      endLabel: 'Apr 24, 2026',
+    })
+  })
+
+  it('returns a zero-day gap for same-day games and null when fewer than two games exist', () => {
+    expect(
+      buildLongestGameGap({
+        playedAtIsos: [
+          '2026-04-20T15:00:00.000Z',
+          '2026-04-20T23:00:00.000Z',
+        ],
+        timeZone: 'America/New_York',
+      }),
+    ).toEqual({
+      idleDays: 0,
+      startDate: '2026-04-20',
+      endDate: '2026-04-20',
+      startLabel: 'Apr 20, 2026',
+      endLabel: 'Apr 20, 2026',
+    })
+
+    expect(
+      buildLongestGameGap({
+        playedAtIsos: ['2026-04-20T15:00:00.000Z'],
+        timeZone: 'America/New_York',
+      }),
+    ).toBeNull()
   })
 
   it('merges same local days in the heatmap and computes local day gaps from now', () => {
@@ -181,7 +322,9 @@ describe('activity-local-time', () => {
   })
 
   it('normalizes midnight hour 24 into the 12 AM bucket', () => {
-    const originalDateTimeFormat = Intl.DateTimeFormat
+    const OriginalDateTimeFormat = Intl.DateTimeFormat
+    // Vitest requires a constructable function when spying on this constructor.
+    // eslint-disable-next-line prefer-arrow-callback
     const dateTimeFormatSpy = vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(function mockDateTimeFormat(
       locales,
       options,
@@ -198,7 +341,7 @@ describe('activity-local-time', () => {
         } as Intl.DateTimeFormat
       }
 
-      return new originalDateTimeFormat(locales, options)
+      return new OriginalDateTimeFormat(locales, options)
     })
 
     try {

@@ -91,7 +91,7 @@ All activity and time-based stats in this section use the viewer's local time.
 - **Needs:** per-player game dates (extend query from 2.3)
 
 ### 2.5 Cumulative games area chart `[S]`
-- [ ] Area chart of total games played over time.
+- [x] Area chart of total games played over time.
 - **Needs:** game date list (share query from 2.2)
 
 ### 2.6 Calendar heatmap `[S]`
@@ -108,11 +108,11 @@ All activity and time-based stats in this section use the viewer's local time.
 - [x] Compute mean number of games played per session, where a session is games on the same local calendar day.
 
 ### 2.10 Busiest day / week / month records `[S]`
-- [ ] Surface the single most active day, week, and month by game count.
+- [x] Surface the single most active day, week, and month by game count.
 - **Needs:** bucketed game counts (share query from 2.2)
 
 ### 2.11 Longest gap between games `[S]`
-- [ ] Find the longest stretch of days between two consecutive games.
+- [x] Find the longest stretch of days between two consecutive games.
 - **Needs:** sorted game date list (share query from 2.2)
 
 ## 3. Streaks & Records
