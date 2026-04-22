@@ -27,6 +27,7 @@ describe('PlayerRow', () => {
 
     expect(screen.getByRole('group', { name: 'Premium' })).toBeInTheDocument()
     expect(screen.getByRole('group', { name: 'Standard' })).toBeInTheDocument()
+    expect(screen.getByRole('listbox')).toHaveClass('harbor-scrollbar')
   })
 
   it('disables players already chosen in other rows while keeping the current selection enabled', async () => {

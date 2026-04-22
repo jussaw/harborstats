@@ -247,7 +247,7 @@ export function PlayerSelect({ players, value, selectedPlayerIds, onChange }: Pl
           <div
             id={listboxId}
             role="listbox"
-            className="max-h-56 space-y-2 overflow-y-auto"
+            className="harbor-scrollbar max-h-56 space-y-2 overflow-y-auto"
           >
             {groups.length === 0 ? (
               <p className="px-2 py-3 text-sm text-(--cream)/55">No players found</p>
