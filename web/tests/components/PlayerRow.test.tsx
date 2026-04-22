@@ -157,4 +157,17 @@ describe('PlayerRow', () => {
 
     expect(screen.getByRole('button', { name: /mark as winner/i })).toBeDisabled()
   })
+
+  it('styles the outline winner toggle with the harbor gold accent', () => {
+    render(
+      <PlayerRow
+        value={{ playerId: 1, score: 0, isWinner: false }}
+        onChange={vi.fn()}
+        players={players}
+        selectedPlayerIds={[1]}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: /mark as winner/i })).toHaveClass('text-(--gold)')
+  })
 })

@@ -71,10 +71,11 @@ export function PlayerRow({ value, onChange, players, selectedPlayerIds }: Playe
         type="button"
         onClick={() => onChange({ ...value, isWinner: !value.isWinner })}
         disabled={value.playerId === null}
-        className="
+        className={`
           text-xl transition-opacity
           disabled:opacity-30
-        "
+          ${value.isWinner ? '' : 'text-(--gold)'}
+        `}
         title={value.isWinner ? 'Remove winner' : 'Mark as winner'}
         aria-label={value.isWinner ? 'Remove winner' : 'Mark as winner'}
       >
