@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { act } from 'react'
 import { hydrateRoot } from 'react-dom/client'
@@ -183,5 +183,57 @@ describe('SidebarShell', () => {
     )
 
     expect(screen.getByRole('link', { name: 'Players' })).toHaveClass('bg-(--gold)/10')
+  })
+
+  it('renders signed-in admin links in a footer navigation section', () => {
+    mockPathname = '/admin/games'
+
+    render(
+      <SidebarShell isAdmin logoutAction={vi.fn().mockResolvedValue(undefined)}>
+        <main>Dashboard</main>
+      </SidebarShell>,
+    )
+
+    const primaryNav = screen.getByRole('navigation', { name: 'Primary navigation' })
+    const adminNav = screen.getByRole('navigation', { name: 'Admin navigation' })
+
+    expect(within(primaryNav).getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/')
+    expect(within(primaryNav).getByRole('link', { name: 'Games' })).toHaveAttribute('href', '/games')
+    expect(within(primaryNav).getByRole('link', { name: 'Stats' })).toHaveAttribute('href', '/stats')
+    expect(within(primaryNav).getByRole('link', { name: 'Players' })).toHaveAttribute(
+      'href',
+      '/players',
+    )
+
+    expect(within(adminNav).getByText('Admin')).toBeInTheDocument()
+    expect(within(adminNav).getByRole('link', { name: 'Games' })).toHaveAttribute(
+      'href',
+      '/admin/games',
+    )
+    expect(within(adminNav).getByRole('link', { name: 'Players' })).toHaveAttribute(
+      'href',
+      '/admin/players',
+    )
+    expect(within(adminNav).getByRole('link', { name: 'Settings' })).toHaveAttribute(
+      'href',
+      '/admin/settings',
+    )
+    expect(within(adminNav).getByRole('button', { name: 'Logout' })).toBeInTheDocument()
+  })
+
+  it('renders the signed-out admin entrypoint in the footer navigation section', () => {
+    mockPathname = '/'
+
+    render(
+      <SidebarShell isAdmin={false} logoutAction={vi.fn().mockResolvedValue(undefined)}>
+        <main>Dashboard</main>
+      </SidebarShell>,
+    )
+
+    const primaryNav = screen.getByRole('navigation', { name: 'Primary navigation' })
+    const adminNav = screen.getByRole('navigation', { name: 'Admin navigation' })
+
+    expect(within(primaryNav).queryByRole('link', { name: 'Admin' })).not.toBeInTheDocument()
+    expect(within(adminNav).getByRole('link', { name: 'Admin' })).toHaveAttribute('href', '/admin')
   })
 })
