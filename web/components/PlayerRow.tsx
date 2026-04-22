@@ -1,6 +1,7 @@
 'use client'
 
 import { PlayerTier } from '@/lib/player-tier'
+import { PlayerSelect } from './PlayerSelect'
 
 interface PlayerRowValue {
   playerId: number | null
@@ -26,64 +27,26 @@ function getScoreOptions(score: number | null) {
 }
 
 export function PlayerRow({ value, onChange, players, selectedPlayerIds }: PlayerRowProps) {
-  const premium = players.filter((p) => p.tier === PlayerTier.Premium)
-  const standard = players.filter((p) => p.tier === PlayerTier.Standard)
-  const selectedIds = new Set(selectedPlayerIds)
   const scoreOptions = getScoreOptions(value.score)
-
-  const handlePlayerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const id = e.target.value ? Number(e.target.value) : null
-    onChange({ ...value, playerId: id, score: id === null ? null : (value.score ?? 0) })
-  }
 
   const handleScoreChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     onChange({ ...value, score: Number(e.target.value) })
   }
 
-  const isDisabledElsewhere = (playerId: number) =>
-    selectedIds.has(playerId) && value.playerId !== playerId
-
   return (
     <div className="flex items-center gap-3 py-2">
-      <select
-        aria-label="Player"
-        value={value.playerId?.toString() ?? ''}
-        onChange={handlePlayerChange}
-        className="
-          flex-1 rounded-sm border border-(--gold) bg-(--navy-900) px-2 py-1
-          text-sm text-(--cream)
-        "
-      >
-        <option value="">— select player —</option>
-        {premium.length > 0 && (
-          <optgroup label="Premium">
-            {premium.map((p) => (
-              <option
-                key={p.id}
-                value={p.id.toString()}
-                disabled={isDisabledElsewhere(p.id)}
-                className={isDisabledElsewhere(p.id) ? 'text-(--cream)/40' : undefined}
-              >
-                {p.name}
-              </option>
-            ))}
-          </optgroup>
-        )}
-        {standard.length > 0 && (
-          <optgroup label="Standard">
-            {standard.map((p) => (
-              <option
-                key={p.id}
-                value={p.id.toString()}
-                disabled={isDisabledElsewhere(p.id)}
-                className={isDisabledElsewhere(p.id) ? 'text-(--cream)/40' : undefined}
-              >
-                {p.name}
-              </option>
-            ))}
-          </optgroup>
-        )}
-      </select>
+      <PlayerSelect
+        players={players}
+        value={value.playerId}
+        selectedPlayerIds={selectedPlayerIds}
+        onChange={(playerId) =>
+          onChange({
+            ...value,
+            playerId,
+            score: playerId === null ? null : (value.score ?? 0),
+          })
+        }
+      />
 
       <div className={value.playerId === null ? 'pointer-events-none opacity-30' : ''}>
         <select
