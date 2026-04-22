@@ -52,11 +52,12 @@ cp .env.example .env
 pnpm install
 pnpm db:up
 pnpm db:migrate
-pnpm db:seed
 pnpm dev
 ```
 
 The app runs at [http://localhost:3000](http://localhost:3000).
+
+After the app is running, sign in to `/admin/players` and create your player roster there.
 
 ## Environment variables
 
@@ -91,7 +92,6 @@ Run these from `web/`.
 | `pnpm db:up` | Start the local Postgres container from `web/docker-compose.yml` |
 | `pnpm db:generate` | Generate a new Drizzle migration from `db/schema.ts` changes |
 | `pnpm db:migrate` | Apply pending migrations |
-| `pnpm db:seed` | Seed the player roster |
 | `pnpm db:baseline` | Mark the initial migration as already applied for an existing database |
 | `pnpm db:studio` | Open Drizzle Studio |
 

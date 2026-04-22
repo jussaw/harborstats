@@ -15,9 +15,10 @@ cp .env.example .env
 pnpm install
 pnpm db:up       # start Postgres in Docker
 pnpm db:migrate  # create schema (Drizzle migrations)
-pnpm db:seed     # seed player roster
 pnpm dev         # http://localhost:3000
 ```
+
+After startup, add players from the admin roster page at `/admin/players`.
 
 ## Environment variables
 
@@ -40,7 +41,6 @@ pnpm dev         # http://localhost:3000
 | `pnpm db:up` | Start the Postgres Docker container |
 | `pnpm db:generate` | Generate a new SQL migration from schema changes in `db/schema.ts` |
 | `pnpm db:migrate` | Apply pending migrations to `DATABASE_URL` |
-| `pnpm db:seed` | Seed the player roster (idempotent, safe to re-run) |
 | `pnpm db:baseline` | **One-time** — marks the initial migration as applied on an existing DB that already has the schema (run before first `db:migrate` on a pre-existing database) |
 | `pnpm db:studio` | Open Drizzle Studio (visual DB browser) |
 
@@ -85,7 +85,6 @@ db/
   migrations/         SQL migration files managed by Drizzle Kit
 scripts/
   migrate.ts          applies pending migrations via Drizzle migrator
-  seed.ts             seeds the player roster
   baseline.ts         one-time: marks initial migration applied on existing DBs
 ```
 
@@ -97,4 +96,4 @@ Three tables with cascading deletes:
 - **`games`** — id, played_at, notes, submitted_from_ip, created_at
 - **`game_players`** — game_id FK, player_id FK, score (≥ 0), is_winner
 
-Players are seeded once via `pnpm db:seed`. Renaming a player updates all historical records automatically via JOIN.
+Players are managed directly in the admin UI. Renaming a player updates all historical records automatically via JOIN.

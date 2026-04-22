@@ -25,7 +25,7 @@ Always heed deprecation warnings from Next.js 16.
 - `components/`: shared client components (`GameForm`, `PlayerRow`, `Stepper`, etc.)
 - `lib/`: DB + domain logic (`games`, `players`, `admin-auth`, date helpers)
 - `db/`: Drizzle schema and SQL migrations
-- `scripts/`: migration, seed, and baseline scripts
+- `scripts/`: migration and baseline scripts
 - `proxy.ts`: admin route protection (`/admin/:path*`)
 - `devops/`: production-ish compose and deploy script (repo root)
 
@@ -79,7 +79,6 @@ Database workflow:
 pnpm db:up
 pnpm db:generate
 pnpm db:migrate
-pnpm db:seed
 pnpm db:baseline
 pnpm db:studio
 ```
