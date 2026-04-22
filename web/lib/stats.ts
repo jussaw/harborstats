@@ -713,6 +713,169 @@ export async function getRecentActivitySummary(): Promise<RecentActivitySummary>
   }
 }
 
+interface GameOutcomeRow {
+  gameId: number
+  playedAt: Date
+  playerId: number
+  name: string
+  tier: PlayerTierType
+  isWinner: boolean
+}
+
+interface OrderedGameOutcomeData {
+  players: PlayerIdentity[]
+  outcomeRows: GameOutcomeRow[]
+}
+
+async function getOrderedGameOutcomeData(): Promise<OrderedGameOutcomeData> {
+  const [playerRows, outcomeRows] = await Promise.all([
+    db
+      .select({
+        playerId: players.id,
+        name: players.name,
+        tier: players.tier,
+      })
+      .from(players)
+      .orderBy(players.name),
+    db
+      .select({
+        gameId: games.id,
+        playedAt: games.playedAt,
+        playerId: players.id,
+        name: players.name,
+        tier: players.tier,
+        isWinner: gamePlayers.isWinner,
+      })
+      .from(gamePlayers)
+      .innerJoin(games, eq(games.id, gamePlayers.gameId))
+      .innerJoin(players, eq(players.id, gamePlayers.playerId))
+      .orderBy(desc(games.playedAt), desc(games.id), players.name),
+  ])
+
+  return {
+    players: playerRows.map((player) => ({
+      playerId: player.playerId,
+      name: player.name,
+      tier: parsePlayerTier(player.tier),
+    })),
+    outcomeRows: outcomeRows.map((row) => ({
+      gameId: row.gameId,
+      playedAt: row.playedAt,
+      playerId: row.playerId,
+      name: row.name,
+      tier: parsePlayerTier(row.tier),
+      isWinner: row.isWinner,
+    })),
+  }
+}
+
+export interface ReigningChampionSummary {
+  playedAt: string
+  winners: PlayerIdentity[]
+}
+
+export async function getReigningChampionSummary(): Promise<ReigningChampionSummary | null> {
+  const { outcomeRows } = await getOrderedGameOutcomeData()
+  const latestGame = outcomeRows[0]
+
+  if (!latestGame) {
+    return null
+  }
+
+  return {
+    playedAt: latestGame.playedAt.toISOString(),
+    winners: outcomeRows
+      .filter((row) => row.gameId === latestGame.gameId && row.isWinner)
+      .map((row) => ({
+        playerId: row.playerId,
+        name: row.name,
+        tier: row.tier,
+      })),
+  }
+}
+
+export interface PlayerCurrentWinStreak extends PlayerIdentity {
+  streak: number
+  mostRecentWin: string | null
+}
+
+function compareNullableIsoDesc(left: string | null, right: string | null) {
+  if (left === right) {
+    return 0
+  }
+
+  if (left === null) {
+    return 1
+  }
+
+  if (right === null) {
+    return -1
+  }
+
+  return right.localeCompare(left)
+}
+
+export async function getPlayerCurrentWinStreaks(): Promise<PlayerCurrentWinStreak[]> {
+  const { players: allPlayers, outcomeRows } = await getOrderedGameOutcomeData()
+  const rowsByPlayerId = new Map<number, GameOutcomeRow[]>()
+  const mostRecentWinByPlayerId = new Map<number, string | null>(
+    allPlayers.map((player) => [player.playerId, null]),
+  )
+
+  outcomeRows.forEach((row) => {
+    const existingRows = rowsByPlayerId.get(row.playerId) ?? []
+    existingRows.push(row)
+    rowsByPlayerId.set(row.playerId, existingRows)
+
+    if (row.isWinner && mostRecentWinByPlayerId.get(row.playerId) === null) {
+      mostRecentWinByPlayerId.set(row.playerId, row.playedAt.toISOString())
+    }
+  })
+
+  return allPlayers
+    .map((player) => {
+      const rows = rowsByPlayerId.get(player.playerId) ?? []
+      let streak = 0
+
+      rows.some((row) => {
+        if (!row.isWinner) {
+          return true
+        }
+
+        streak += 1
+        return false
+      })
+
+      return {
+        ...player,
+        streak,
+        mostRecentWin: mostRecentWinByPlayerId.get(player.playerId) ?? null,
+      }
+    })
+    .sort(
+      (a, b) => b.streak - a.streak
+        || compareNullableIsoDesc(a.mostRecentWin, b.mostRecentWin)
+        || a.name.localeCompare(b.name),
+    )
+}
+
+export interface PlayerWinEvent extends PlayerIdentity {
+  playedAt: string
+}
+
+export async function getPlayerWinEvents(): Promise<PlayerWinEvent[]> {
+  const { outcomeRows } = await getOrderedGameOutcomeData()
+
+  return outcomeRows
+    .filter((row) => row.isWinner)
+    .map((row) => ({
+      playedAt: row.playedAt.toISOString(),
+      playerId: row.playerId,
+      name: row.name,
+      tier: row.tier,
+    }))
+}
+
 async function getOrderedGameDates(): Promise<Date[]> {
   const gameRows = await db
     .select({

@@ -2,9 +2,11 @@ import type { ReactNode } from 'react';
 import type { Metadata } from 'next';
 import { ActivityDistributionChart } from '@/components/ActivityDistributionChart';
 import { AverageGamesPerSessionCard } from '@/components/AverageGamesPerSessionCard';
+import { BestWinRecordsLeaderboard } from '@/components/BestWinRecordsLeaderboard';
 import { BusiestRecordsCard } from '@/components/BusiestRecordsCard';
 import { CalendarHeatmap } from '@/components/CalendarHeatmap';
 import { CumulativeGamesAreaChart } from '@/components/CumulativeGamesAreaChart';
+import { FormattedDate } from '@/components/FormattedDate';
 import { GamesOverTimeChart } from '@/components/GamesOverTimeChart';
 import { LongestGapCard } from '@/components/LongestGapCard';
 import { PlayerAttendanceChart } from '@/components/PlayerAttendanceChart';
@@ -17,12 +19,14 @@ import { getSettings } from '@/lib/settings';
 import {
   getGameActivityTimestamps,
   getPlayerAttendanceEvents,
+  getPlayerCurrentWinStreaks,
   getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
   getPlayerNormalizedScoreStats,
   getPlayerParticipationRates,
   getPlayerPodiumRates,
   getPlayerScoreStats,
+  getPlayerWinEvents,
   getTierShowdownStats,
   getPlayerWinRates,
 } from '@/lib/stats';
@@ -85,6 +89,10 @@ function formatTierLabel(tier: PlayerTier) {
   return tier === PlayerTier.Premium ? 'Premium' : 'Standard';
 }
 
+function formatWinLabel(count: number) {
+  return `${count} win${count === 1 ? '' : 's'}`
+}
+
 export default async function StatsPage() {
   const [
     winRates,
@@ -98,6 +106,8 @@ export default async function StatsPage() {
     gameActivityTimestamps,
     participationRates,
     playerAttendanceEvents,
+    currentWinStreaks,
+    playerWinEvents,
   ] = await Promise.all([
     getPlayerWinRates(),
     getSettings(),
@@ -110,6 +120,8 @@ export default async function StatsPage() {
     getGameActivityTimestamps(),
     getPlayerParticipationRates(),
     getPlayerAttendanceEvents(),
+    getPlayerCurrentWinStreaks(),
+    getPlayerWinEvents(),
   ]);
 
   const winRateQualified = winRates
@@ -150,6 +162,7 @@ export default async function StatsPage() {
     participationRates,
     (player) => player.participationRate,
   );
+  const currentWinStreakRanks = rankWithTies(currentWinStreaks, (player) => player.streak);
 
   const statsCards: StatsCardMeta[] = [
     {
@@ -295,6 +308,27 @@ export default async function StatsPage() {
       id: 'busiest-records',
       title: 'Busiest Day / Week / Month Records',
       description: 'Most active local day, ISO week, and month by total games played.',
+      badge: undefined,
+      span: 'single',
+    },
+    {
+      id: 'current-win-streak',
+      title: 'Current Win Streak',
+      description: 'Active streak leaderboard based on each player’s own appearance history.',
+      badge: undefined,
+      span: 'single',
+    },
+    {
+      id: 'most-wins-in-week',
+      title: 'Most Wins in a Week',
+      description: 'Each player’s personal-best win total in a local calendar week.',
+      badge: undefined,
+      span: 'single',
+    },
+    {
+      id: 'most-wins-in-month',
+      title: 'Most Wins in a Month',
+      description: 'Each player’s personal-best win total in a local calendar month.',
       badge: undefined,
       span: 'single',
     },
@@ -841,6 +875,64 @@ export default async function StatsPage() {
 
         <StatsCard {...cardById['busiest-records']}>
           <BusiestRecordsCard playedAtIsos={gameActivityTimestamps} />
+        </StatsCard>
+
+        <StatsCard {...cardById['current-win-streak']}>
+          {currentWinStreaks.length > 0 ? (
+            <StatsLeaderboardTable
+              columns={[
+                { label: '#', align: 'center', widthClass: 'w-10' },
+                { label: 'Player' },
+                { label: 'Streak', align: 'right' },
+                { label: 'Last Win', align: 'right' },
+              ]}
+            >
+              {currentWinStreaks.map((player, index) => (
+                <DataRow key={player.playerId}>
+                  <RankCell rank={currentWinStreakRanks[index]} />
+                  <td className="px-3 py-2 text-(--cream)">
+                    <PlayerName name={player.name} tier={player.tier} />
+                  </td>
+                  <td
+                    className="
+                      px-3 py-2 text-right font-semibold text-(--gold)
+                      tabular-nums
+                    "
+                  >
+                    {formatWinLabel(player.streak)}
+                  </td>
+                  <td className="px-3 py-2 text-right text-(--cream)/70">
+                    {player.mostRecentWin ? (
+                      <FormattedDate
+                        iso={player.mostRecentWin}
+                        className="inline text-(--cream)/70"
+                      />
+                    ) : (
+                      '—'
+                    )}
+                  </td>
+                </DataRow>
+              ))}
+            </StatsLeaderboardTable>
+          ) : (
+            <EmptyState>No games recorded yet.</EmptyState>
+          )}
+        </StatsCard>
+
+        <StatsCard {...cardById['most-wins-in-week']}>
+          <BestWinRecordsLeaderboard
+            players={currentWinStreaks}
+            winEvents={playerWinEvents}
+            variant="week"
+          />
+        </StatsCard>
+
+        <StatsCard {...cardById['most-wins-in-month']}>
+          <BestWinRecordsLeaderboard
+            players={currentWinStreaks}
+            winEvents={playerWinEvents}
+            variant="month"
+          />
         </StatsCard>
       </div>
     </main>

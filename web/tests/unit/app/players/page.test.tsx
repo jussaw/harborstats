@@ -5,12 +5,14 @@ import PlayersPage from '@/app/players/page'
 import { getPlayers } from '@/lib/players'
 import { PlayerTier } from '@/lib/player-tier'
 import {
+  getPlayerCurrentWinStreaks,
   getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
   getPlayerMarginStats,
   getPlayerParticipationRates,
   getPlayerPodiumRates,
   getPlayerScoreStats,
+  getPlayerWinEvents,
   getPlayerWinRateByGameSize,
 } from '@/lib/stats'
 
@@ -19,12 +21,14 @@ vi.mock('@/lib/players', () => ({
 }))
 
 vi.mock('@/lib/stats', () => ({
+  getPlayerCurrentWinStreaks: vi.fn(),
   getPlayerExpectedVsActualWins: vi.fn(),
   getPlayerScoreStats: vi.fn(),
   getPlayerPodiumRates: vi.fn(),
   getPlayerFinishBreakdowns: vi.fn(),
   getPlayerMarginStats: vi.fn(),
   getPlayerParticipationRates: vi.fn(),
+  getPlayerWinEvents: vi.fn(),
   getPlayerWinRateByGameSize: vi.fn(),
 }))
 
@@ -197,6 +201,36 @@ describe('PlayersPage', () => {
         participationRate: 4 / 7,
       },
     ])
+    vi.mocked(getPlayerCurrentWinStreaks).mockResolvedValue([
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+        streak: 2,
+        mostRecentWin: '2026-04-20T18:00:00.000Z',
+      },
+      {
+        playerId: 2,
+        name: 'Bea',
+        tier: PlayerTier.Standard,
+        streak: 0,
+        mostRecentWin: '2026-04-18T18:00:00.000Z',
+      },
+    ])
+    vi.mocked(getPlayerWinEvents).mockResolvedValue([
+      {
+        playedAt: '2026-03-01T01:00:00.000Z',
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+      },
+      {
+        playedAt: '2026-03-17T04:00:00.000Z',
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+      },
+    ])
 
     const element = await PlayersPage()
     const markup = renderToStaticMarkup(element)
@@ -219,6 +253,9 @@ describe('PlayersPage', () => {
     expect(markup).toContain('Average Margin of Victory')
     expect(markup).toContain('Average Margin of Defeat')
     expect(markup).toContain('Expected vs Actual Wins')
+    expect(markup).toContain('Current Win Streak')
+    expect(markup).toContain('Most Wins in a Week')
+    expect(markup).toContain('Most Wins in a Month')
     expect(markup).toContain('9.4')
     expect(markup).toContain('9.0')
     expect(markup).toContain('80.0%')
@@ -231,11 +268,13 @@ describe('PlayersPage', () => {
     expect(markup).toContain('2 actual wins vs 1.2 expected across 3 games')
     expect(markup).toContain('2.5')
     expect(markup).toContain('1.7')
+    expect(markup).toContain('2 wins')
     expect(markup).toContain('Across 5 games')
     expect(markup).toContain('4 podiums in 5 games')
     expect(markup).toContain('5 appearances in 7 total games')
     expect(markup).toContain('Across 2 wins')
     expect(markup).toContain('Across 3 losses')
+    expect(markup).toContain('Loading your local-time view...')
   })
 
   it('renders an empty state when there are no players', async () => {
@@ -247,6 +286,8 @@ describe('PlayersPage', () => {
     vi.mocked(getPlayerParticipationRates).mockResolvedValue([])
     vi.mocked(getPlayerWinRateByGameSize).mockResolvedValue([])
     vi.mocked(getPlayerExpectedVsActualWins).mockResolvedValue([])
+    vi.mocked(getPlayerCurrentWinStreaks).mockResolvedValue([])
+    vi.mocked(getPlayerWinEvents).mockResolvedValue([])
 
     const element = await PlayersPage()
     const markup = renderToStaticMarkup(element)

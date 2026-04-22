@@ -2,6 +2,7 @@ import { describe, expect, test, vi } from 'vitest';
 import {
   getGameActivityTimestamps,
   getPlayerAttendanceEvents,
+  getPlayerCurrentWinStreaks,
   getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
   getPlayerMarginStats,
@@ -9,6 +10,7 @@ import {
   getPlayerPodiumRates,
   getPlayerParticipationRates,
   getPlayerScoreStats,
+  getReigningChampionSummary,
   getPlayerWinRateByGameSize,
   getPlayerWinRates,
   getRecentActivitySummary,
@@ -18,6 +20,108 @@ import { PlayerTier } from '@/lib/player-tier';
 import { createTestGame, createTestPlayer } from '../helpers/db';
 
 describe('stats integration', () => {
+  test('getReigningChampionSummary returns all winners from the most recent game only', async () => {
+    const alice = await createTestPlayer({ name: 'Alice', tier: PlayerTier.Premium });
+    const bob = await createTestPlayer({ name: 'Bob', tier: PlayerTier.Standard });
+    const carol = await createTestPlayer({ name: 'Carol', tier: PlayerTier.Standard });
+
+    await createTestGame({
+      playedAt: new Date('2026-04-20T18:00:00.000Z'),
+      players: [
+        { playerId: alice.id, score: 10, isWinner: true },
+        { playerId: bob.id, score: 8, isWinner: false },
+      ],
+    });
+
+    await createTestGame({
+      playedAt: new Date('2026-04-21T18:00:00.000Z'),
+      players: [
+        { playerId: bob.id, score: 10, isWinner: true },
+        { playerId: carol.id, score: 10, isWinner: true },
+        { playerId: alice.id, score: 7, isWinner: false },
+      ],
+    });
+
+    await expect(getReigningChampionSummary()).resolves.toMatchObject({
+      playedAt: '2026-04-21T18:00:00.000Z',
+      winners: [
+        {
+          playerId: bob.id,
+          name: 'Bob',
+          tier: PlayerTier.Standard,
+        },
+        {
+          playerId: carol.id,
+          name: 'Carol',
+          tier: PlayerTier.Standard,
+        },
+      ],
+    });
+  });
+
+  test('getPlayerCurrentWinStreaks counts appearance-based streaks, keeps missed games neutral, and sorts tied leaders by most recent win', async () => {
+    const alice = await createTestPlayer({ name: 'Alice', tier: PlayerTier.Premium });
+    const bob = await createTestPlayer({ name: 'Bob', tier: PlayerTier.Standard });
+    const carol = await createTestPlayer({ name: 'Carol', tier: PlayerTier.Standard });
+    const dana = await createTestPlayer({ name: 'Dana', tier: PlayerTier.Standard });
+
+    await createTestGame({
+      playedAt: new Date('2026-04-20T18:00:00.000Z'),
+      players: [
+        { playerId: alice.id, score: 10, isWinner: true },
+        { playerId: bob.id, score: 8, isWinner: false },
+      ],
+    });
+    await createTestGame({
+      playedAt: new Date('2026-04-21T18:00:00.000Z'),
+      players: [
+        { playerId: bob.id, score: 10, isWinner: true },
+        { playerId: alice.id, score: 7, isWinner: false },
+      ],
+    });
+    await createTestGame({
+      playedAt: new Date('2026-04-22T18:00:00.000Z'),
+      players: [
+        { playerId: alice.id, score: 10, isWinner: true },
+        { playerId: carol.id, score: 7, isWinner: false },
+      ],
+    });
+    await createTestGame({
+      playedAt: new Date('2026-04-23T18:00:00.000Z'),
+      players: [
+        { playerId: bob.id, score: 10, isWinner: true },
+        { playerId: carol.id, score: 7, isWinner: false },
+      ],
+    });
+    await createTestGame({
+      playedAt: new Date('2026-04-24T18:00:00.000Z'),
+      players: [
+        { playerId: alice.id, score: 10, isWinner: true },
+        { playerId: carol.id, score: 7, isWinner: false },
+      ],
+    });
+
+    const streaks = await getPlayerCurrentWinStreaks();
+
+    expect(streaks.map((player) => player.name)).toEqual(['Alice', 'Bob', 'Carol', 'Dana']);
+    expect(streaks.find((player) => player.playerId === alice.id)).toMatchObject({
+      streak: 2,
+      mostRecentWin: '2026-04-24T18:00:00.000Z',
+    });
+    expect(streaks.find((player) => player.playerId === bob.id)).toMatchObject({
+      streak: 2,
+      mostRecentWin: '2026-04-23T18:00:00.000Z',
+    });
+    expect(streaks.find((player) => player.playerId === carol.id)).toMatchObject({
+      streak: 0,
+      mostRecentWin: null,
+    });
+    expect(streaks.find((player) => player.playerId === dana.id)).toMatchObject({
+      streak: 0,
+      mostRecentWin: null,
+    });
+  });
+
   test('getPlayerWinRates includes zero-game players and breaks win ties by win rate', async () => {
     const alice = await createTestPlayer({ name: 'Alice', tier: PlayerTier.Premium });
     const bob = await createTestPlayer({ name: 'Bob', tier: PlayerTier.Standard });

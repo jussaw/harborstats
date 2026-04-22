@@ -1,12 +1,14 @@
 import { PlayersSection } from '@/components/PlayersSection'
 import { getPlayers } from '@/lib/players'
 import {
+  getPlayerCurrentWinStreaks,
   getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
   getPlayerMarginStats,
   getPlayerParticipationRates,
   getPlayerPodiumRates,
   getPlayerScoreStats,
+  getPlayerWinEvents,
   getPlayerWinRateByGameSize,
 } from '@/lib/stats'
 
@@ -22,6 +24,8 @@ export default async function PlayersPage() {
     participationRates,
     winRateByGameSize,
     expectedVsActualWins,
+    currentWinStreaks,
+    playerWinEvents,
   ] = await Promise.all([
     getPlayers(),
     getPlayerScoreStats(),
@@ -31,6 +35,8 @@ export default async function PlayersPage() {
     getPlayerParticipationRates(),
     getPlayerWinRateByGameSize(),
     getPlayerExpectedVsActualWins(),
+    getPlayerCurrentWinStreaks(),
+    getPlayerWinEvents(),
   ])
   const selectedPlayer = players[0] ?? null
 
@@ -46,6 +52,8 @@ export default async function PlayersPage() {
       participationRates={participationRates}
       winRateByGameSize={winRateByGameSize}
       expectedVsActualWins={expectedVsActualWins}
+      currentWinStreaks={currentWinStreaks}
+      playerWinEvents={playerWinEvents}
     />
   )
 }

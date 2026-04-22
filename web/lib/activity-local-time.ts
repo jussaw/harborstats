@@ -386,6 +386,125 @@ export function buildLongestGameGap({
   return longestGap
 }
 
+interface PlayerBestWinRecordIdentity {
+  playerId: number
+  name: string
+  tier: PlayerTierType
+}
+
+interface PlayerBestWinRecordEvent extends PlayerBestWinRecordIdentity {
+  playedAt: string
+}
+
+export interface PlayerBestWinRecord extends PlayerBestWinRecordIdentity {
+  wins: number
+  periodStart: string | null
+  periodLabel: string | null
+}
+
+function compareNullableDateKeyDesc(left: string | null, right: string | null) {
+  if (left === right) {
+    return 0
+  }
+
+  if (left === null) {
+    return 1
+  }
+
+  if (right === null) {
+    return -1
+  }
+
+  return right.localeCompare(left)
+}
+
+function buildPlayerBestWinRecords({
+  players,
+  winEvents,
+  timeZone,
+  getBucketStart,
+  formatLabel,
+}: {
+  players: PlayerBestWinRecordIdentity[]
+  winEvents: PlayerBestWinRecordEvent[]
+  timeZone: string
+  getBucketStart: (date: Date) => Date
+  formatLabel: (date: Date) => string
+}): PlayerBestWinRecord[] {
+  const countsByPlayerId = new Map<number, Map<string, number>>()
+
+  winEvents.forEach((event) => {
+    const localDay = toUtcCalendarDate(event.playedAt, timeZone)
+    const bucketStart = getBucketStart(localDay)
+    const bucketKey = toUtcDateKey(bucketStart)
+    const existingCounts = countsByPlayerId.get(event.playerId) ?? new Map<string, number>()
+    existingCounts.set(bucketKey, (existingCounts.get(bucketKey) ?? 0) + 1)
+    countsByPlayerId.set(event.playerId, existingCounts)
+  })
+
+  return players
+    .map((player) => {
+      const bucketCounts = countsByPlayerId.get(player.playerId) ?? new Map<string, number>()
+      let bestCount = 0
+      let bestBucketKey: string | null = null
+
+      bucketCounts.forEach((count, bucketKey) => {
+        if (count > bestCount || (count === bestCount && bucketKey > (bestBucketKey ?? ''))) {
+          bestCount = count
+          bestBucketKey = bucketKey
+        }
+      })
+
+      return {
+        ...player,
+        wins: bestCount,
+        periodStart: bestBucketKey,
+        periodLabel: bestBucketKey ? formatLabel(fromUtcDateKey(bestBucketKey)) : null,
+      }
+    })
+    .sort(
+      (a, b) => b.wins - a.wins
+        || compareNullableDateKeyDesc(a.periodStart, b.periodStart)
+        || a.name.localeCompare(b.name),
+    )
+}
+
+export function buildPlayerBestWeekWinRecords({
+  players,
+  winEvents,
+  timeZone,
+}: {
+  players: PlayerBestWinRecordIdentity[]
+  winEvents: PlayerBestWinRecordEvent[]
+  timeZone: string
+}): PlayerBestWinRecord[] {
+  return buildPlayerBestWinRecords({
+    players,
+    winEvents,
+    timeZone,
+    getBucketStart: getIsoWeekStart,
+    formatLabel: formatWeekRecordLabel,
+  })
+}
+
+export function buildPlayerBestMonthWinRecords({
+  players,
+  winEvents,
+  timeZone,
+}: {
+  players: PlayerBestWinRecordIdentity[]
+  winEvents: PlayerBestWinRecordEvent[]
+  timeZone: string
+}): PlayerBestWinRecord[] {
+  return buildPlayerBestWinRecords({
+    players,
+    winEvents,
+    timeZone,
+    getBucketStart: getUtcMonthStart,
+    formatLabel: formatShortUtcMonth,
+  })
+}
+
 export interface PlayerAttendanceEvent {
   playedAt: string
   playerId: number

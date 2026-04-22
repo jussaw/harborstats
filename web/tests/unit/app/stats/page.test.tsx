@@ -7,12 +7,14 @@ import { getSettings } from '@/lib/settings'
 import {
   getGameActivityTimestamps,
   getPlayerAttendanceEvents,
+  getPlayerCurrentWinStreaks,
   getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
   getPlayerNormalizedScoreStats,
   getPlayerParticipationRates,
   getPlayerPodiumRates,
   getPlayerScoreStats,
+  getPlayerWinEvents,
   getTierShowdownStats,
   getPlayerWinRates,
 } from '@/lib/stats'
@@ -20,8 +22,10 @@ import {
 vi.mock('@/lib/stats', () => ({
   getGameActivityTimestamps: vi.fn(),
   getPlayerAttendanceEvents: vi.fn(),
+  getPlayerCurrentWinStreaks: vi.fn(),
   getPlayerExpectedVsActualWins: vi.fn(),
   getPlayerWinRates: vi.fn(),
+  getPlayerWinEvents: vi.fn(),
   getPlayerNormalizedScoreStats: vi.fn(),
   getPlayerScoreStats: vi.fn(),
   getPlayerParticipationRates: vi.fn(),
@@ -211,6 +215,42 @@ describe('StatsPage', () => {
         tier: PlayerTier.Standard,
       },
     ])
+    vi.mocked(getPlayerCurrentWinStreaks).mockResolvedValue([
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+        streak: 2,
+        mostRecentWin: '2026-04-21T03:00:00.000Z',
+      },
+      {
+        playerId: 2,
+        name: 'Bea',
+        tier: PlayerTier.Standard,
+        streak: 2,
+        mostRecentWin: '2026-04-20T18:00:00.000Z',
+      },
+    ])
+    vi.mocked(getPlayerWinEvents).mockResolvedValue([
+      {
+        playedAt: '2026-04-20T18:00:00.000Z',
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+      },
+      {
+        playedAt: '2026-04-21T03:00:00.000Z',
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+      },
+      {
+        playedAt: '2026-04-20T18:00:00.000Z',
+        playerId: 2,
+        name: 'Bea',
+        tier: PlayerTier.Standard,
+      },
+    ])
     vi.mocked(getSettings).mockResolvedValue({ winRateMinGames: 3, podiumRateMinGames: 4 })
 
     const element = await StatsPage()
@@ -245,6 +285,9 @@ describe('StatsPage', () => {
     const averageGamesPerSessionIndex = markup.indexOf('id="average-games-per-session"')
     const longestGapIndex = markup.indexOf('id="longest-gap-between-games"')
     const busiestRecordsIndex = markup.indexOf('id="busiest-records"')
+    const currentWinStreakIndex = markup.indexOf('id="current-win-streak"')
+    const mostWinsInWeekIndex = markup.indexOf('id="most-wins-in-week"')
+    const mostWinsInMonthIndex = markup.indexOf('id="most-wins-in-month"')
 
     expect(totalWinsIndex).toBeGreaterThan(-1)
     expect(winRateIndex).toBeGreaterThan(totalWinsIndex)
@@ -266,6 +309,9 @@ describe('StatsPage', () => {
     expect(averageGamesPerSessionIndex).toBeGreaterThan(timeOfDayPatternIndex)
     expect(longestGapIndex).toBeGreaterThan(averageGamesPerSessionIndex)
     expect(busiestRecordsIndex).toBeGreaterThan(longestGapIndex)
+    expect(currentWinStreakIndex).toBeGreaterThan(busiestRecordsIndex)
+    expect(mostWinsInWeekIndex).toBeGreaterThan(currentWinStreakIndex)
+    expect(mostWinsInMonthIndex).toBeGreaterThan(mostWinsInWeekIndex)
 
     expect(markup).toContain('Finish Breakdown')
     expect(markup).toContain('>1st<')
@@ -294,6 +340,12 @@ describe('StatsPage', () => {
     expect(markup).toContain('Average Games per Session')
     expect(markup).toContain('Longest Gap Between Games')
     expect(markup).toContain('Busiest Day / Week / Month Records')
+    expect(markup).toContain('Current Win Streak')
+    expect(markup).toContain('Most Wins in a Week')
+    expect(markup).toContain('Most Wins in a Month')
+    expect(markup).toContain('>Last Win<')
+    expect(markup).toContain('>Period<')
+    expect(markup).toContain('2 wins')
     expect(markup).toContain('Loading your local-time view...')
     expect(markup).toContain('88.9%')
     expect(markup).toContain('66.7%')
@@ -331,6 +383,15 @@ describe('StatsPage', () => {
       'flex h-full flex-col',
     )
     expect(markup.slice(longestGapIndex, longestGapIndex + 220)).toContain('flex h-full flex-col')
+    expect(markup.slice(currentWinStreakIndex, currentWinStreakIndex + 160)).not.toContain(
+      'lg:col-span-2',
+    )
+    expect(markup.slice(mostWinsInWeekIndex, mostWinsInWeekIndex + 160)).not.toContain(
+      'lg:col-span-2',
+    )
+    expect(markup.slice(mostWinsInMonthIndex, mostWinsInMonthIndex + 160)).not.toContain(
+      'lg:col-span-2',
+    )
   })
 
   it('renders card empty states when no stats are available', async () => {
@@ -344,6 +405,8 @@ describe('StatsPage', () => {
     vi.mocked(getGameActivityTimestamps).mockResolvedValue([])
     vi.mocked(getPlayerParticipationRates).mockResolvedValue([])
     vi.mocked(getPlayerAttendanceEvents).mockResolvedValue([])
+    vi.mocked(getPlayerCurrentWinStreaks).mockResolvedValue([])
+    vi.mocked(getPlayerWinEvents).mockResolvedValue([])
     vi.mocked(getSettings).mockResolvedValue({ winRateMinGames: 2, podiumRateMinGames: 5 })
 
     const element = await StatsPage()
@@ -365,7 +428,10 @@ describe('StatsPage', () => {
     expect(markup).toContain('Average Games per Session')
     expect(markup).toContain('Longest Gap Between Games')
     expect(markup).toContain('Busiest Day / Week / Month Records')
-    expect(markup.match(/No games recorded yet\./g)).toHaveLength(17)
+    expect(markup).toContain('Current Win Streak')
+    expect(markup).toContain('Most Wins in a Week')
+    expect(markup).toContain('Most Wins in a Month')
+    expect(markup.match(/No games recorded yet\./g)).toHaveLength(18)
   })
 
   it('filters the podium leaderboard using the podium threshold instead of the win-rate threshold', async () => {
@@ -413,6 +479,8 @@ describe('StatsPage', () => {
     vi.mocked(getGameActivityTimestamps).mockResolvedValue([])
     vi.mocked(getPlayerParticipationRates).mockResolvedValue([])
     vi.mocked(getPlayerAttendanceEvents).mockResolvedValue([])
+    vi.mocked(getPlayerCurrentWinStreaks).mockResolvedValue([])
+    vi.mocked(getPlayerWinEvents).mockResolvedValue([])
     vi.mocked(getSettings).mockResolvedValue({ winRateMinGames: 2, podiumRateMinGames: 4 })
 
     const element = await StatsPage()

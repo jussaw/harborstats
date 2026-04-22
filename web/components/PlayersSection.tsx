@@ -5,15 +5,18 @@ import { formatAverage, formatPercent, formatSignedNumber } from '@/lib/format'
 import { PlayerTier } from '@/lib/player-tier'
 import type { Player } from '@/lib/players'
 import type {
+  PlayerCurrentWinStreak,
   PlayerExpectedVsActualWins,
   PlayerFinishBreakdown,
   PlayerMarginStats,
   PlayerParticipationRate,
   PlayerPodiumRate,
   PlayerScoreStats,
+  PlayerWinEvent,
   PlayerWinRateByGameSize,
 } from '@/lib/stats'
 import { PlayerProfileCard } from './PlayerProfileCard'
+import { PlayerBestWinRecordCard } from './PlayerBestWinRecordCard'
 
 const cinzelStyle = {
   fontFamily: 'var(--font-cinzel), Georgia, serif',
@@ -30,6 +33,8 @@ interface Props {
   participationRates: PlayerParticipationRate[]
   winRateByGameSize: PlayerWinRateByGameSize[]
   expectedVsActualWins: PlayerExpectedVsActualWins[]
+  currentWinStreaks: PlayerCurrentWinStreak[]
+  playerWinEvents: PlayerWinEvent[]
 }
 
 interface PlayersListProps {
@@ -234,6 +239,8 @@ function PlayerDetail({
   participationRates,
   winRateByGameSize,
   expectedVsActualWins,
+  currentWinStreaks,
+  playerWinEvents,
 }: {
   player: Player
   scoreStats: PlayerScoreStats[]
@@ -243,6 +250,8 @@ function PlayerDetail({
   participationRates: PlayerParticipationRate[]
   winRateByGameSize: PlayerWinRateByGameSize[]
   expectedVsActualWins: PlayerExpectedVsActualWins[]
+  currentWinStreaks: PlayerCurrentWinStreak[]
+  playerWinEvents: PlayerWinEvent[]
 }) {
   const scoreStat = scoreStats.find((candidate) => candidate.playerId === player.id) ?? null
   const podiumStat = podiumRates.find((candidate) => candidate.playerId === player.id) ?? null
@@ -253,6 +262,7 @@ function PlayerDetail({
     .filter((candidate) => candidate.playerId === player.id)
     .sort((a, b) => a.playerCount - b.playerCount)
   const expectedVsActualStat = expectedVsActualWins.find((candidate) => candidate.playerId === player.id) ?? null
+  const currentWinStreak = currentWinStreaks.find((candidate) => candidate.playerId === player.id) ?? null
 
   const hasGames = scoreStat !== null && scoreStat.games > 0
   const podiumHasGames = podiumStat !== null && podiumStat.games > 0
@@ -309,6 +319,17 @@ function PlayerDetail({
               : null
           }
         />
+        <ProfileMetricCard
+          id="player-current-win-streak"
+          title="Current Win Streak"
+          description="Active streak based on this player’s own appearance history."
+          value={formatCount(currentWinStreak?.streak ?? 0, 'win')}
+          detail={
+            (currentWinStreak?.streak ?? 0) > 0
+              ? 'Current active streak'
+              : 'No active streak right now.'
+          }
+        />
         <ProfileFinishBreakdownCard breakdown={finishBreakdown} />
         <ProfileOpponentCountWinRateCard rows={opponentCountStats} />
         <ProfileMetricCard
@@ -326,6 +347,24 @@ function PlayerDetail({
                 )}`
               : null
           }
+        />
+        <PlayerBestWinRecordCard
+          id="player-most-wins-in-week"
+          title="Most Wins in a Week"
+          description="This player’s personal-best win total in a local calendar week."
+          variant="week"
+          players={currentWinStreaks}
+          winEvents={playerWinEvents}
+          selectedPlayerId={player.id}
+        />
+        <PlayerBestWinRecordCard
+          id="player-most-wins-in-month"
+          title="Most Wins in a Month"
+          description="This player’s personal-best win total in a local calendar month."
+          variant="month"
+          players={currentWinStreaks}
+          winEvents={playerWinEvents}
+          selectedPlayerId={player.id}
         />
         <ProfileMetricCard
           id="player-average-margin-of-victory"
@@ -378,6 +417,8 @@ export function PlayersSection({
   participationRates,
   winRateByGameSize,
   expectedVsActualWins,
+  currentWinStreaks,
+  playerWinEvents,
 }: Props) {
   if (players.length === 0) {
     return (
@@ -431,6 +472,8 @@ export function PlayersSection({
                 participationRates={participationRates}
                 winRateByGameSize={winRateByGameSize}
                 expectedVsActualWins={expectedVsActualWins}
+                currentWinStreaks={currentWinStreaks}
+                playerWinEvents={playerWinEvents}
               />
             ) : null}
           </div>
@@ -455,6 +498,8 @@ export function PlayersSection({
               participationRates={participationRates}
               winRateByGameSize={winRateByGameSize}
               expectedVsActualWins={expectedVsActualWins}
+              currentWinStreaks={currentWinStreaks}
+              playerWinEvents={playerWinEvents}
             />
           ) : (
             <PlayersDetailEmptyState />

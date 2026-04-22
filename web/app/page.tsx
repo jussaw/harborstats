@@ -1,21 +1,60 @@
+import type { ReactNode } from 'react'
 import { listRecentGames } from '@/lib/games'
 import { getPlayers } from '@/lib/players'
-import { getRecentActivitySummary } from '@/lib/stats'
+import { getPlayerCurrentWinStreaks, getRecentActivitySummary, getReigningChampionSummary } from '@/lib/stats'
 import { NewGameButton } from '@/components/NewGameButton'
 import { FormattedDate } from '@/components/FormattedDate'
 import { RecentActivityCard } from '@/components/RecentActivityCard'
 
 export const dynamic = 'force-dynamic'
 
+function SummaryTile({
+  title,
+  description,
+  children,
+}: {
+  title: string
+  description: string
+  children: ReactNode
+}) {
+  return (
+    <section className="
+      rounded-2xl border border-(--gold)/20 bg-(--navy-900)/40 p-5
+      shadow-[0_18px_40px_rgba(0,0,0,0.18)]
+    ">
+      <div className="border-b border-(--gold)/10 pb-4">
+        <h2 className="font-cinzel text-xl tracking-wide text-(--cream)">{title}</h2>
+        <p className="mt-1 text-sm text-(--cream)/55">{description}</p>
+      </div>
+
+      <div className="mt-4">{children}</div>
+    </section>
+  )
+}
+
+function formatNameList(names: string[]) {
+  return names.join(', ')
+}
+
+function formatWinsLabel(count: number) {
+  return `${count} win${count === 1 ? '' : 's'}`
+}
+
 export default async function HomePage() {
-  const [games, players, activitySummary] = await Promise.all([
+  const [games, players, activitySummary, reigningChampion, currentWinStreaks] = await Promise.all([
     listRecentGames(),
     getPlayers(),
     getRecentActivitySummary(),
+    getReigningChampionSummary(),
+    getPlayerCurrentWinStreaks(),
   ])
+  const topStreak = currentWinStreaks[0]?.streak ?? 0
+  const currentLeaders = topStreak > 0
+    ? currentWinStreaks.filter((player) => player.streak === topStreak)
+    : []
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-12">
+    <main className="mx-auto max-w-5xl px-4 py-12">
       <div className="mb-8 flex items-center justify-between">
         <h1 className="font-cinzel text-xl tracking-wide text-(--gold)">Recent Games</h1>
         <NewGameButton
@@ -28,21 +67,60 @@ export default async function HomePage() {
         />
       </div>
 
-      <section className="
-        mb-6 rounded-2xl border border-(--gold)/20 bg-(--navy-900)/40 p-5
-        shadow-[0_18px_40px_rgba(0,0,0,0.18)]
+      <div className="
+        mb-8 grid gap-5
+        md:grid-cols-3
       ">
-        <div className="border-b border-(--gold)/10 pb-4">
-          <h2 className="font-cinzel text-xl tracking-wide text-(--cream)">Days Since Last Game</h2>
-          <p className="mt-1 text-sm text-(--cream)/55">
-            How long it has been since the latest recorded session.
-          </p>
-        </div>
-
-        <div className="mt-4">
+        <SummaryTile
+          title="Days Since Last Game"
+          description="How long it has been since the latest recorded session."
+        >
           <RecentActivityCard latestPlayedAt={activitySummary.latestPlayedAt} />
-        </div>
-      </section>
+        </SummaryTile>
+
+        <SummaryTile
+          title="Reigning Champion"
+          description="Winner of the most recent recorded game."
+        >
+          {reigningChampion && reigningChampion.winners.length > 0 ? (
+            <div className="space-y-3">
+              <p className="
+                font-cinzel text-4xl leading-none font-semibold tracking-wide
+                text-(--gold)
+              ">
+                {formatNameList(reigningChampion.winners.map((winner) => winner.name))}
+              </p>
+              <div className="text-sm text-(--cream)/55">
+                <p>Latest recorded game</p>
+                <FormattedDate iso={reigningChampion.playedAt} className="
+                  mt-1 block text-(--cream)/70
+                " />
+              </div>
+            </div>
+          ) : (
+            <p className="py-8 text-center text-sm text-(--cream)/50">No games recorded yet.</p>
+          )}
+        </SummaryTile>
+
+        <SummaryTile
+          title="Current Win Streak Leader"
+          description="Longest active streak based on each player’s own game history."
+        >
+          {currentLeaders.length > 0 ? (
+            <div className="space-y-3">
+              <p className="
+                font-cinzel text-4xl leading-none font-semibold tracking-wide
+                text-(--gold)
+              ">
+                {formatNameList(currentLeaders.map((leader) => leader.name))}
+              </p>
+              <p className="text-sm text-(--cream)/55">{formatWinsLabel(topStreak)}</p>
+            </div>
+          ) : (
+            <p className="py-8 text-center text-sm text-(--cream)/50">No active win streaks yet.</p>
+          )}
+        </SummaryTile>
+      </div>
 
       {games.length === 0 ? (
         <p className="py-16 text-center text-(--cream) opacity-60">

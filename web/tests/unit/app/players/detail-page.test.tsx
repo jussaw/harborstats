@@ -5,12 +5,14 @@ import PlayerProfilePage, { generateMetadata } from '@/app/players/[id]/page'
 import { getPlayerById, getPlayers } from '@/lib/players'
 import { PlayerTier } from '@/lib/player-tier'
 import {
+  getPlayerCurrentWinStreaks,
   getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
   getPlayerMarginStats,
   getPlayerParticipationRates,
   getPlayerPodiumRates,
   getPlayerScoreStats,
+  getPlayerWinEvents,
   getPlayerWinRateByGameSize,
 } from '@/lib/stats'
 
@@ -30,12 +32,14 @@ vi.mock('@/lib/players', () => ({
 }))
 
 vi.mock('@/lib/stats', () => ({
+  getPlayerCurrentWinStreaks: vi.fn(),
   getPlayerExpectedVsActualWins: vi.fn(),
   getPlayerScoreStats: vi.fn(),
   getPlayerPodiumRates: vi.fn(),
   getPlayerFinishBreakdowns: vi.fn(),
   getPlayerMarginStats: vi.fn(),
   getPlayerParticipationRates: vi.fn(),
+  getPlayerWinEvents: vi.fn(),
   getPlayerWinRateByGameSize: vi.fn(),
 }))
 
@@ -217,6 +221,36 @@ describe('PlayerProfilePage', () => {
         participationRate: 4 / 7,
       },
     ])
+    vi.mocked(getPlayerCurrentWinStreaks).mockResolvedValue([
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+        streak: 2,
+        mostRecentWin: '2026-04-20T18:00:00.000Z',
+      },
+      {
+        playerId: 2,
+        name: 'Bea',
+        tier: PlayerTier.Standard,
+        streak: 0,
+        mostRecentWin: '2026-04-18T18:00:00.000Z',
+      },
+    ])
+    vi.mocked(getPlayerWinEvents).mockResolvedValue([
+      {
+        playedAt: '2026-03-01T01:00:00.000Z',
+        playerId: 2,
+        name: 'Bea',
+        tier: PlayerTier.Standard,
+      },
+      {
+        playedAt: '2026-03-17T04:00:00.000Z',
+        playerId: 2,
+        name: 'Bea',
+        tier: PlayerTier.Standard,
+      },
+    ])
 
     const element = await PlayerProfilePage({ params: Promise.resolve({ id: '2' }) })
     const markup = renderToStaticMarkup(element)
@@ -236,6 +270,9 @@ describe('PlayerProfilePage', () => {
     expect(markup).toContain('Average Margin of Victory')
     expect(markup).toContain('Average Margin of Defeat')
     expect(markup).toContain('Expected vs Actual Wins')
+    expect(markup).toContain('Current Win Streak')
+    expect(markup).toContain('Most Wins in a Week')
+    expect(markup).toContain('Most Wins in a Month')
     expect(markup).toContain('8.7')
     expect(markup).toContain('8.5')
     expect(markup).toContain('50.0%')
@@ -250,8 +287,10 @@ describe('PlayerProfilePage', () => {
     expect(markup).toContain('Across 4 games')
     expect(markup).toContain('2 podiums in 4 games')
     expect(markup).toContain('4 appearances in 7 total games')
+    expect(markup).toContain('0 wins')
     expect(markup).toContain('1.5')
     expect(markup).toContain('Across 4 losses')
+    expect(markup).toContain('Loading your local-time view...')
     expect(markup.match(/No games recorded yet\./g)).toHaveLength(2)
   })
 
@@ -387,6 +426,23 @@ describe('PlayerProfilePage', () => {
         participationRate: 0,
       },
     ])
+    vi.mocked(getPlayerCurrentWinStreaks).mockResolvedValue([
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+        streak: 2,
+        mostRecentWin: '2026-04-20T18:00:00.000Z',
+      },
+      {
+        playerId: 2,
+        name: 'Bea',
+        tier: PlayerTier.Standard,
+        streak: 0,
+        mostRecentWin: null,
+      },
+    ])
+    vi.mocked(getPlayerWinEvents).mockResolvedValue([])
 
     const element = await PlayerProfilePage({ params: Promise.resolve({ id: '2' }) })
     const markup = renderToStaticMarkup(element)
@@ -400,9 +456,12 @@ describe('PlayerProfilePage', () => {
     expect(markup).toContain('Average Margin of Victory')
     expect(markup).toContain('Average Margin of Defeat')
     expect(markup).toContain('Expected vs Actual Wins')
+    expect(markup).toContain('Current Win Streak')
+    expect(markup).toContain('Most Wins in a Week')
+    expect(markup).toContain('Most Wins in a Month')
     expect(markup).toContain('0.0%')
     expect(markup).toContain('0 appearances in 5 total games')
-    expect(markup.match(/No games recorded yet\./g)).toHaveLength(16)
+    expect(markup.match(/No games recorded yet\./g)).toHaveLength(20)
   })
 
   it('calls notFound for invalid player ids', async () => {

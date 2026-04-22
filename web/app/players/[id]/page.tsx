@@ -3,12 +3,14 @@ import type { Metadata } from 'next'
 import { PlayersSection } from '@/components/PlayersSection'
 import { getPlayerById, getPlayers } from '@/lib/players'
 import {
+  getPlayerCurrentWinStreaks,
   getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
   getPlayerMarginStats,
   getPlayerParticipationRates,
   getPlayerPodiumRates,
   getPlayerScoreStats,
+  getPlayerWinEvents,
   getPlayerWinRateByGameSize,
 } from '@/lib/stats'
 
@@ -38,6 +40,8 @@ export default async function PlayerProfilePage({ params }: Props) {
     participationRates,
     winRateByGameSize,
     expectedVsActualWins,
+    currentWinStreaks,
+    playerWinEvents,
   ] = await Promise.all([
     getPlayers(),
     getPlayerScoreStats(),
@@ -47,6 +51,8 @@ export default async function PlayerProfilePage({ params }: Props) {
     getPlayerParticipationRates(),
     getPlayerWinRateByGameSize(),
     getPlayerExpectedVsActualWins(),
+    getPlayerCurrentWinStreaks(),
+    getPlayerWinEvents(),
   ])
   const player = players.find((candidate) => candidate.id === numericId) ?? null
   if (!player) notFound()
@@ -63,6 +69,8 @@ export default async function PlayerProfilePage({ params }: Props) {
       participationRates={participationRates}
       winRateByGameSize={winRateByGameSize}
       expectedVsActualWins={expectedVsActualWins}
+      currentWinStreaks={currentWinStreaks}
+      playerWinEvents={playerWinEvents}
     />
   )
 }

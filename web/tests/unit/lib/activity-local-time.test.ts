@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  buildPlayerBestMonthWinRecords,
+  buildPlayerBestWeekWinRecords,
   buildBusiestActivityRecords,
   buildCalendarHeatmapData,
   buildCumulativeGamesSeries,
@@ -10,6 +12,7 @@ import {
   buildTimeOfDayPattern,
   getDaysSinceLastGame,
 } from '@/lib/activity-local-time'
+import { PlayerTier } from '@/lib/player-tier'
 
 describe('activity-local-time', () => {
   it('groups weekday, hour, and session stats in the supplied local timezone', () => {
@@ -277,6 +280,101 @@ describe('activity-local-time', () => {
     })
   })
 
+  it('builds personal best week and month win records in local time and keeps the most recent tied bucket', () => {
+    const players = [
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+      },
+      {
+        playerId: 2,
+        name: 'Bea',
+        tier: PlayerTier.Standard,
+      },
+      {
+        playerId: 3,
+        name: 'Cara',
+        tier: PlayerTier.Standard,
+      },
+    ]
+    const winEvents = [
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+        playedAt: '2026-03-01T01:00:00.000Z',
+      },
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+        playedAt: '2026-03-01T03:00:00.000Z',
+      },
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+        playedAt: '2026-03-17T04:00:00.000Z',
+      },
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+        playedAt: '2026-03-18T04:00:00.000Z',
+      },
+      {
+        playerId: 2,
+        name: 'Bea',
+        tier: PlayerTier.Standard,
+        playedAt: '2026-03-03T05:00:00.000Z',
+      },
+    ]
+
+    const weeklyRecords = buildPlayerBestWeekWinRecords({
+      players,
+      winEvents,
+      timeZone: 'America/New_York',
+    })
+    const monthlyRecords = buildPlayerBestMonthWinRecords({
+      players,
+      winEvents,
+      timeZone: 'America/New_York',
+    })
+
+    expect(weeklyRecords.find((player) => player.playerId === 1)).toMatchObject({
+      wins: 2,
+      periodStart: '2026-03-16',
+      periodLabel: 'Week of Mar 16',
+    })
+    expect(weeklyRecords.find((player) => player.playerId === 2)).toMatchObject({
+      wins: 1,
+      periodStart: '2026-03-02',
+      periodLabel: 'Week of Mar 2',
+    })
+    expect(weeklyRecords.find((player) => player.playerId === 3)).toMatchObject({
+      wins: 0,
+      periodStart: null,
+      periodLabel: null,
+    })
+
+    expect(monthlyRecords.find((player) => player.playerId === 1)).toMatchObject({
+      wins: 2,
+      periodStart: '2026-03-01',
+      periodLabel: 'Mar 2026',
+    })
+    expect(monthlyRecords.find((player) => player.playerId === 2)).toMatchObject({
+      wins: 1,
+      periodStart: '2026-03-01',
+      periodLabel: 'Mar 2026',
+    })
+    expect(monthlyRecords.find((player) => player.playerId === 3)).toMatchObject({
+      wins: 0,
+      periodStart: null,
+      periodLabel: null,
+    })
+  })
+
   it('returns empty local-time structures when there is no activity', () => {
     expect(
       buildGamesOverTimeSeries({
@@ -319,6 +417,22 @@ describe('activity-local-time', () => {
         timeZone: 'America/New_York',
       }),
     ).toBeNull()
+
+    expect(
+      buildPlayerBestWeekWinRecords({
+        players: [],
+        winEvents: [],
+        timeZone: 'America/New_York',
+      }),
+    ).toEqual([])
+
+    expect(
+      buildPlayerBestMonthWinRecords({
+        players: [],
+        winEvents: [],
+        timeZone: 'America/New_York',
+      }),
+    ).toEqual([])
   })
 
   it('normalizes midnight hour 24 into the 12 AM bucket', () => {

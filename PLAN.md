@@ -118,13 +118,13 @@ All activity and time-based stats in this section use the viewer's local time.
 ## 3. Streaks & Records
 
 ### 3.1 Reigning champion `[H]`
-- [ ] Show whoever won the most recent game as a home-page highlight tile.
+- [x] Show whoever won the most recent game as a home-page highlight tile.
 
 ### 3.2 Current win streak per player + current leader `[H]` `[S]` `[P]`
-- [ ] Calculate each player's active win streak and surface the player with the longest current streak.
+- [x] Calculate each player's active win streak and surface the player with the longest current streak.
 
 ### 3.3 Most wins in a single week / month `[S]` `[P]`
-- [ ] Find each player's personal best for wins in a calendar week and month.
+- [x] Find each player's personal best for wins in a calendar week and month.
 
 ### 3.4 Highest-scoring game ever `[S]`
 - [ ] Record of the single highest individual score, with date and player name.
