@@ -179,6 +179,7 @@ export function CalendarHeatmap({ playedAtIsos, defaultSelection, timeZone }: Pr
           className="grid min-w-max grid-flow-col grid-rows-7 gap-1"
           role="grid"
           aria-label="Calendar heatmap"
+          onMouseLeave={() => setActiveDateKey(null)}
         >
           {weekColumns.map((column) =>
             column.map((cell) => {

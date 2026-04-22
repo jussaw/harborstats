@@ -1,10 +1,10 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { GamesOverTimeChart } from '@/components/GamesOverTimeChart'
 
 describe('GamesOverTimeChart', () => {
-  it('shows axis markers and reveals bucket details on hover', async () => {
+  it('reveals bucket details on hover, clears them on mouse leave, and preserves focus behavior', async () => {
     const user = userEvent.setup()
 
     render(
@@ -28,9 +28,18 @@ describe('GamesOverTimeChart', () => {
     expect(screen.getByText('2')).toBeInTheDocument()
     expect(screen.getByText('Hover over a data point to inspect its bucket.')).toBeInTheDocument()
 
-    await user.hover(screen.getByRole('button', { name: 'Feb 23: 2 games' }))
+    const firstBucket = screen.getByRole('button', { name: 'Feb 23: 2 games' })
+
+    await user.hover(firstBucket)
 
     expect(screen.getByText('2 games')).toBeInTheDocument()
+    fireEvent.mouseLeave(screen.getByRole('img', { name: 'Games over time (week)' }))
+    expect(screen.getByText('Hover over a data point to inspect its bucket.')).toBeInTheDocument()
+
+    fireEvent.focus(firstBucket)
+    expect(screen.getByText('2 games')).toBeInTheDocument()
+    fireEvent.blur(firstBucket)
+    expect(screen.getByText('Hover over a data point to inspect its bucket.')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Month' }))
 
@@ -39,10 +48,14 @@ describe('GamesOverTimeChart', () => {
     expect(screen.getByText('Hover over a data point to inspect its bucket.')).toBeInTheDocument()
     expect(screen.queryByText('Feb 23')).not.toBeInTheDocument()
 
-    await user.hover(screen.getByRole('button', { name: 'Feb 2026: 1 game' }))
+    const monthBucket = screen.getByRole('button', { name: 'Feb 2026: 1 game' })
+
+    await user.hover(monthBucket)
 
     expect(screen.getAllByText('Feb 2026')).toHaveLength(2)
     expect(screen.getByText('1 game')).toBeInTheDocument()
+    fireEvent.mouseLeave(screen.getByRole('img', { name: 'Games over time (month)' }))
+    expect(screen.getByText('Hover over a data point to inspect its bucket.')).toBeInTheDocument()
   })
 
   it('renders an empty state with no games', () => {

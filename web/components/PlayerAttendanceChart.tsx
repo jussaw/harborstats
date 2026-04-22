@@ -259,6 +259,7 @@ export function PlayerAttendanceChart({ events, defaultView, timeZone }: Props) 
           className="h-64 w-full"
           role="img"
           aria-label={`Player attendance over time (${view})`}
+          onMouseLeave={() => setActiveIndex(null)}
         >
           {yAxisTicks.map((tick) => {
             const y = plotBottom - (tick / maxAppearances) * (plotBottom - plotTop)

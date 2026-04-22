@@ -139,6 +139,7 @@ export function GamesOverTimeChart({ playedAtIsos, defaultView, timeZone }: Prop
           className="h-56 w-full"
           role="img"
           aria-label={`Games over time (${view})`}
+          onMouseLeave={() => setActiveIndex(null)}
         >
           {yAxisTicks.map((tick) => {
             const y = plotBottom - (tick / maxGameCount) * (plotBottom - plotTop)

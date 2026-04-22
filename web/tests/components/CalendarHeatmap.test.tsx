@@ -1,10 +1,10 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { CalendarHeatmap } from '@/components/CalendarHeatmap'
 
 describe('CalendarHeatmap', () => {
-  it('defaults to recent activity and switches to a selected year', async () => {
+  it('defaults to recent activity, clears hover details on pointer leave, and supports keyboard focus', async () => {
     const user = userEvent.setup()
 
     render(
@@ -36,12 +36,22 @@ describe('CalendarHeatmap', () => {
 
     expect(screen.getByText('Apr 20, 2026')).toBeInTheDocument()
     expect(screen.getByText('2 games')).toBeInTheDocument()
+    fireEvent.mouseLeave(screen.getByRole('grid', { name: 'Calendar heatmap' }))
+    expect(screen.getByText('Hover over a day to inspect activity.')).toBeInTheDocument()
+
+    fireEvent.focus(activeDay)
+    expect(screen.getByText('Apr 20, 2026')).toBeInTheDocument()
+    fireEvent.blur(activeDay)
+    expect(screen.getByText('Hover over a day to inspect activity.')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: '2025' }))
-    await user.hover(screen.getByRole('button', { name: 'Dec 31, 2025: 1 game' }))
+    const yearDay = screen.getByRole('button', { name: 'Dec 31, 2025: 1 game' })
+    await user.hover(yearDay)
 
     expect(screen.getByRole('button', { name: '2025' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByText('Dec 31, 2025')).toBeInTheDocument()
+    fireEvent.mouseLeave(screen.getByRole('grid', { name: 'Calendar heatmap' }))
+    expect(screen.getByText('Hover over a day to inspect activity.')).toBeInTheDocument()
   })
 
   it('renders an empty state with no recorded days', () => {

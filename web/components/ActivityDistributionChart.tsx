@@ -114,6 +114,7 @@ export function ActivityDistributionChart({ playedAtIsos, variant, timeZone }: P
           className="h-64 w-full"
           role="img"
           aria-label={variant === 'weekday' ? 'Day-of-week pattern' : 'Time-of-day pattern'}
+          onMouseLeave={() => setActiveIndex(null)}
         >
           {yAxisTicks.map((tick) => {
             const y = plotBottom - (tick / maxGameCount) * (plotBottom - plotTop)
