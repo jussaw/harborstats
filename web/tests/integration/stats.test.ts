@@ -5,6 +5,7 @@ import {
   getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
   getPlayerMarginStats,
+  getPlayerNormalizedScoreStats,
   getPlayerPodiumRates,
   getPlayerParticipationRates,
   getPlayerScoreStats,
@@ -96,6 +97,63 @@ describe('stats integration', () => {
 
     expect(scoreStats.findIndex((player) => player.playerId === bob.id)).toBeLessThan(
       scoreStats.findIndex((player) => player.playerId === alice.id),
+    );
+  });
+
+  test('getPlayerNormalizedScoreStats normalizes by winning score, falls back to max score, and excludes zero-target games', async () => {
+    const alice = await createTestPlayer({ name: 'Alice' });
+    const bob = await createTestPlayer({ name: 'Bob' });
+    const carol = await createTestPlayer({ name: 'Carol' });
+
+    await createTestGame({
+      players: [
+        { playerId: alice.id, score: 7, isWinner: true },
+        { playerId: bob.id, score: 6, isWinner: false },
+      ],
+    });
+
+    await createTestGame({
+      players: [
+        { playerId: alice.id, score: 8, isWinner: false },
+        { playerId: bob.id, score: 10, isWinner: true },
+      ],
+    });
+
+    await createTestGame({
+      players: [
+        { playerId: alice.id, score: 9, isWinner: false },
+        { playerId: bob.id, score: 7, isWinner: false },
+      ],
+    });
+
+    await createTestGame({
+      players: [
+        { playerId: alice.id, score: 0, isWinner: true },
+        { playerId: carol.id, score: 0, isWinner: false },
+      ],
+    });
+
+    const normalizedStats = await getPlayerNormalizedScoreStats();
+    const aliceStats = normalizedStats.find((player) => player.playerId === alice.id);
+    const bobStats = normalizedStats.find((player) => player.playerId === bob.id);
+    const carolStats = normalizedStats.find((player) => player.playerId === carol.id);
+
+    expect(aliceStats).toMatchObject({
+      games: 3,
+      avgScore: 0.933,
+      medianScore: 1,
+    });
+
+    expect(bobStats).toMatchObject({
+      games: 3,
+      avgScore: 0.878,
+      medianScore: 0.857,
+    });
+
+    expect(carolStats).toBeUndefined();
+
+    expect(normalizedStats.findIndex((player) => player.playerId === alice.id)).toBeLessThan(
+      normalizedStats.findIndex((player) => player.playerId === bob.id),
     );
   });
 

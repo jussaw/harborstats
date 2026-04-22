@@ -7,6 +7,25 @@ function round1(value: number): number {
   return Math.round(value * 10) / 10
 }
 
+function round3(value: number): number {
+  return Math.round(value * 1000) / 1000
+}
+
+function getMedian(values: number[]): number {
+  if (values.length === 0) {
+    return 0
+  }
+
+  const sorted = [...values].sort((a, b) => a - b)
+  const middle = Math.floor(sorted.length / 2)
+
+  if (sorted.length % 2 === 0) {
+    return (sorted[middle - 1] + sorted[middle]) / 2
+  }
+
+  return sorted[middle]
+}
+
 function startOfUtcDay(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
 }
@@ -314,6 +333,84 @@ export async function getPlayerScoreStats(): Promise<PlayerScoreStats[]> {
       medianScore: round1(row.medianScore),
     }))
     .sort((a, b) => b.avgScore - a.avgScore)
+}
+
+interface PlayerNormalizedScoreAccumulator extends PlayerIdentity {
+  normalizedScores: number[]
+}
+
+export interface PlayerNormalizedScoreStats {
+  playerId: number
+  name: string
+  tier: PlayerTierType
+  games: number
+  avgScore: number
+  medianScore: number
+}
+
+export async function getPlayerNormalizedScoreStats(): Promise<PlayerNormalizedScoreStats[]> {
+  const rows = await db
+    .select({
+      gameId: gamePlayers.gameId,
+      playerId: players.id,
+      name: players.name,
+      tier: players.tier,
+      score: gamePlayers.score,
+      isWinner: gamePlayers.isWinner,
+    })
+    .from(gamePlayers)
+    .innerJoin(players, eq(players.id, gamePlayers.playerId))
+    .orderBy(gamePlayers.gameId, players.id)
+
+  const participantsByGameId = new Map<number, typeof rows>()
+
+  rows.forEach((row) => {
+    const existing = participantsByGameId.get(row.gameId) ?? []
+    existing.push(row)
+    participantsByGameId.set(row.gameId, existing)
+  })
+
+  const normalizedScoresByPlayerId = new Map<number, PlayerNormalizedScoreAccumulator>()
+
+  participantsByGameId.forEach((participants) => {
+    const winnerScores = participants.filter((participant) => participant.isWinner).map((participant) => participant.score)
+    const winningScore = winnerScores.length > 0
+      ? Math.max(...winnerScores)
+      : Math.max(...participants.map((participant) => participant.score))
+
+    if (winningScore <= 0) {
+      return
+    }
+
+    participants.forEach((participant) => {
+      const existing = normalizedScoresByPlayerId.get(participant.playerId) ?? {
+        playerId: participant.playerId,
+        name: participant.name,
+        tier: parsePlayerTier(participant.tier),
+        normalizedScores: [],
+      }
+
+      existing.normalizedScores.push(participant.score / winningScore)
+      normalizedScoresByPlayerId.set(participant.playerId, existing)
+    })
+  })
+
+  return [...normalizedScoresByPlayerId.values()]
+    .map((player) => ({
+      playerId: player.playerId,
+      name: player.name,
+      tier: player.tier,
+      games: player.normalizedScores.length,
+      avgScore: round3(
+        player.normalizedScores.reduce((sum, score) => sum + score, 0) / player.normalizedScores.length,
+      ),
+      medianScore: round3(getMedian(player.normalizedScores)),
+    }))
+    .sort(
+      (a, b) => b.avgScore - a.avgScore
+        || b.medianScore - a.medianScore
+        || a.name.localeCompare(b.name),
+    )
 }
 
 export interface PlayerPodiumRate {

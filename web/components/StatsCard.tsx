@@ -56,6 +56,7 @@ export function StatsCard({
           {badge && (
             <span className="
               inline-flex rounded-full border border-(--gold)/20 bg-(--gold)/10
+              sm:shrink-0 sm:whitespace-nowrap
               px-3 py-1 text-[11px] font-semibold tracking-[0.25em]
               text-(--gold) uppercase
             ">

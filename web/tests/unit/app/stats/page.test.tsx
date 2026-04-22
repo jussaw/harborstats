@@ -9,6 +9,7 @@ import {
   getPlayerAttendanceEvents,
   getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
+  getPlayerNormalizedScoreStats,
   getPlayerParticipationRates,
   getPlayerPodiumRates,
   getPlayerScoreStats,
@@ -21,6 +22,7 @@ vi.mock('@/lib/stats', () => ({
   getPlayerAttendanceEvents: vi.fn(),
   getPlayerExpectedVsActualWins: vi.fn(),
   getPlayerWinRates: vi.fn(),
+  getPlayerNormalizedScoreStats: vi.fn(),
   getPlayerScoreStats: vi.fn(),
   getPlayerParticipationRates: vi.fn(),
   getPlayerPodiumRates: vi.fn(),
@@ -68,6 +70,24 @@ describe('StatsPage', () => {
         games: 4,
         avgScore: 8.7,
         medianScore: 8.5,
+      },
+    ])
+    vi.mocked(getPlayerNormalizedScoreStats).mockResolvedValue([
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+        games: 5,
+        avgScore: 0.94,
+        medianScore: 0.9,
+      },
+      {
+        playerId: 2,
+        name: 'Bea',
+        tier: PlayerTier.Standard,
+        games: 4,
+        avgScore: 0.87,
+        medianScore: 0.85,
       },
     ])
     vi.mocked(getPlayerPodiumRates).mockResolvedValue([
@@ -209,6 +229,8 @@ describe('StatsPage', () => {
     const winRateIndex = markup.indexOf('id="win-rate"')
     const avgScoreIndex = markup.indexOf('id="avg-score"')
     const medianScoreIndex = markup.indexOf('id="median-score"')
+    const normalizedAvgScoreIndex = markup.indexOf('id="normalized-avg-score"')
+    const normalizedMedianScoreIndex = markup.indexOf('id="normalized-median-score"')
     const podiumRateIndex = markup.indexOf('id="podium-rate"')
     const expectedVsActualWinsIndex = markup.indexOf('id="expected-vs-actual-wins"')
     const tierShowdownIndex = markup.indexOf('id="tier-showdown"')
@@ -225,7 +247,9 @@ describe('StatsPage', () => {
     expect(winRateIndex).toBeGreaterThan(totalWinsIndex)
     expect(avgScoreIndex).toBeGreaterThan(winRateIndex)
     expect(medianScoreIndex).toBeGreaterThan(avgScoreIndex)
-    expect(podiumRateIndex).toBeGreaterThan(medianScoreIndex)
+    expect(normalizedAvgScoreIndex).toBeGreaterThan(medianScoreIndex)
+    expect(normalizedMedianScoreIndex).toBeGreaterThan(normalizedAvgScoreIndex)
+    expect(podiumRateIndex).toBeGreaterThan(normalizedMedianScoreIndex)
     expect(expectedVsActualWinsIndex).toBeGreaterThan(podiumRateIndex)
     expect(tierShowdownIndex).toBeGreaterThan(expectedVsActualWinsIndex)
     expect(finishBreakdownIndex).toBeGreaterThan(tierShowdownIndex)
@@ -247,6 +271,12 @@ describe('StatsPage', () => {
     expect(markup).toContain('>Appearances<')
     expect(markup).toContain('>Players<')
     expect(markup).toContain('Expected vs Actual Wins')
+    expect(markup).toContain('Normalized Average Score')
+    expect(markup).toContain('Normalized Median Score')
+    expect(markup).toContain('Winner = 100%')
+    expect(markup).toContain('sm:whitespace-nowrap')
+    expect(markup).toContain('94.0%')
+    expect(markup).toContain('90.0%')
     expect(markup).not.toContain('Days Since Last Game')
     expect(markup).toContain('Games Over Time')
     expect(markup).toContain('Participation Rate')
@@ -288,6 +318,7 @@ describe('StatsPage', () => {
   it('renders card empty states when no stats are available', async () => {
     vi.mocked(getPlayerWinRates).mockResolvedValue([])
     vi.mocked(getPlayerScoreStats).mockResolvedValue([])
+    vi.mocked(getPlayerNormalizedScoreStats).mockResolvedValue([])
     vi.mocked(getPlayerPodiumRates).mockResolvedValue([])
     vi.mocked(getPlayerFinishBreakdowns).mockResolvedValue([])
     vi.mocked(getTierShowdownStats).mockResolvedValue([])
@@ -313,7 +344,7 @@ describe('StatsPage', () => {
     expect(markup).toContain('Day-of-Week Pattern')
     expect(markup).toContain('Time-of-Day Pattern')
     expect(markup).toContain('Average Games per Session')
-    expect(markup.match(/No games recorded yet\./g)).toHaveLength(12)
+    expect(markup.match(/No games recorded yet\./g)).toHaveLength(14)
   })
 
   it('filters the podium leaderboard using the podium threshold instead of the win-rate threshold', async () => {
@@ -336,6 +367,7 @@ describe('StatsPage', () => {
       },
     ])
     vi.mocked(getPlayerScoreStats).mockResolvedValue([])
+    vi.mocked(getPlayerNormalizedScoreStats).mockResolvedValue([])
     vi.mocked(getPlayerPodiumRates).mockResolvedValue([
       {
         playerId: 1,

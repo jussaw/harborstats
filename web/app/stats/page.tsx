@@ -16,6 +16,7 @@ import {
   getPlayerAttendanceEvents,
   getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
+  getPlayerNormalizedScoreStats,
   getPlayerParticipationRates,
   getPlayerPodiumRates,
   getPlayerScoreStats,
@@ -88,6 +89,7 @@ export default async function StatsPage() {
     winRates,
     settings,
     scoreStats,
+    normalizedScoreStats,
     podiumRates,
     finishBreakdowns,
     tierShowdown,
@@ -99,6 +101,7 @@ export default async function StatsPage() {
     getPlayerWinRates(),
     getSettings(),
     getPlayerScoreStats(),
+    getPlayerNormalizedScoreStats(),
     getPlayerPodiumRates(),
     getPlayerFinishBreakdowns(),
     getTierShowdownStats(),
@@ -116,6 +119,9 @@ export default async function StatsPage() {
     .sort((a, b) => b.podiumRate - a.podiumRate || b.podiums - a.podiums);
 
   const medianSorted = [...scoreStats].sort((a, b) => b.medianScore - a.medianScore);
+  const normalizedMedianSorted = [...normalizedScoreStats].sort(
+    (a, b) => b.medianScore - a.medianScore,
+  );
   const podiumRateEmptyState =
     settings.podiumRateMinGames > 0 ? (
       <EmptyState>
@@ -130,6 +136,11 @@ export default async function StatsPage() {
   const winRateRanks = rankWithTies(winRateQualified, (player) => player.winRate);
   const avgScoreRanks = rankWithTies(scoreStats, (player) => player.avgScore);
   const medianScoreRanks = rankWithTies(medianSorted, (player) => player.medianScore);
+  const normalizedAvgScoreRanks = rankWithTies(normalizedScoreStats, (player) => player.avgScore);
+  const normalizedMedianScoreRanks = rankWithTies(
+    normalizedMedianSorted,
+    (player) => player.medianScore,
+  );
   const podiumRateRanks = rankWithTies(podiumRateQualified, (player) => player.podiumRate);
   const finishBreakdownRanks = rankWithTies(finishBreakdowns, (player) => player.firstRate);
   const tierShowdownRanks = rankWithTies(tierShowdown, (row) => row.winRate);
@@ -169,6 +180,20 @@ export default async function StatsPage() {
       title: 'Median Score',
       description: 'Typical scoring performance with median values to smooth out spikes.',
       badge: undefined,
+      span: 'single',
+    },
+    {
+      id: 'normalized-avg-score',
+      title: 'Normalized Average Score',
+      description: 'Average share of each game’s winning score across all appearances.',
+      badge: 'Winner = 100%',
+      span: 'single',
+    },
+    {
+      id: 'normalized-median-score',
+      title: 'Normalized Median Score',
+      description: 'Typical share of each game’s winning score, using medians to smooth out spikes.',
+      badge: 'Winner = 100%',
       span: 'single',
     },
     {
@@ -423,6 +448,84 @@ export default async function StatsPage() {
                     "
                   >
                     {formatAverage(player.medianScore)}
+                  </td>
+                  <td
+                    className="
+                      px-3 py-2 text-right text-(--cream)/70 tabular-nums
+                    "
+                  >
+                    {player.games}
+                  </td>
+                </DataRow>
+              ))}
+            </StatsLeaderboardTable>
+          )}
+        </StatsCard>
+
+        <StatsCard {...cardById['normalized-avg-score']}>
+          {normalizedScoreStats.length === 0 ? (
+            <EmptyState>No games recorded yet.</EmptyState>
+          ) : (
+            <StatsLeaderboardTable
+              columns={[
+                { label: '#', align: 'center', widthClass: 'w-10' },
+                { label: 'Player' },
+                { label: 'Normalized Avg', align: 'right' },
+                { label: 'Games', align: 'right' },
+              ]}
+            >
+              {normalizedScoreStats.map((player, index) => (
+                <DataRow key={player.playerId}>
+                  <RankCell rank={normalizedAvgScoreRanks[index]} />
+                  <td className="px-3 py-2 text-(--cream)">
+                    <PlayerName name={player.name} tier={player.tier} />
+                  </td>
+                  <td
+                    className="
+                      px-3 py-2 text-right font-semibold text-(--gold)
+                      tabular-nums
+                    "
+                  >
+                    {formatPercent(player.avgScore, 1)}
+                  </td>
+                  <td
+                    className="
+                      px-3 py-2 text-right text-(--cream)/70 tabular-nums
+                    "
+                  >
+                    {player.games}
+                  </td>
+                </DataRow>
+              ))}
+            </StatsLeaderboardTable>
+          )}
+        </StatsCard>
+
+        <StatsCard {...cardById['normalized-median-score']}>
+          {normalizedMedianSorted.length === 0 ? (
+            <EmptyState>No games recorded yet.</EmptyState>
+          ) : (
+            <StatsLeaderboardTable
+              columns={[
+                { label: '#', align: 'center', widthClass: 'w-10' },
+                { label: 'Player' },
+                { label: 'Normalized Median', align: 'right' },
+                { label: 'Games', align: 'right' },
+              ]}
+            >
+              {normalizedMedianSorted.map((player, index) => (
+                <DataRow key={player.playerId}>
+                  <RankCell rank={normalizedMedianScoreRanks[index]} />
+                  <td className="px-3 py-2 text-(--cream)">
+                    <PlayerName name={player.name} tier={player.tier} />
+                  </td>
+                  <td
+                    className="
+                      px-3 py-2 text-right font-semibold text-(--gold)
+                      tabular-nums
+                    "
+                  >
+                    {formatPercent(player.medianScore, 1)}
                   </td>
                   <td
                     className="
