@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { PlayerTier } from '../../lib/player-tier';
 import { TEST_ENV } from '../helpers/test-env';
 import { createE2eGame, createE2ePlayer, resetE2eDatabase } from './db';
@@ -37,13 +37,27 @@ function playerDeleteButton(page: Page, name: string) {
     .getByRole('button', { name: 'Delete' });
 }
 
+async function pickPlayer(
+  scope: Page | Locator,
+  rowIndex: number,
+  playerName: string,
+  searchTerm = playerName,
+): Promise<void> {
+  const picker = scope.getByRole('combobox', { name: 'Player' }).nth(rowIndex);
+  await picker.click();
+
+  const pickerRoot = picker.locator('xpath=ancestor::div[contains(@class, "relative")][1]');
+  await pickerRoot.getByRole('textbox', { name: 'Player' }).fill(searchTerm);
+  await pickerRoot.getByRole('option', { name: playerName, exact: true }).click();
+}
+
 test.beforeEach(async () => {
   await resetE2eDatabase();
 });
 
 test('home page loads and creates a game from the modal', async ({ page }) => {
-  const ada = await createE2ePlayer({ name: 'Ada' });
-  const bea = await createE2ePlayer({ name: 'Bea' });
+  await createE2ePlayer({ name: 'Ada' });
+  await createE2ePlayer({ name: 'Bea' });
 
   await page.goto('/');
   await page.waitForLoadState('networkidle');
@@ -56,9 +70,9 @@ test('home page loads and creates a game from the modal', async ({ page }) => {
   const dialog = page.locator('dialog');
   await expect(dialog.getByRole('heading', { name: 'New Game' })).toBeVisible();
 
-  await dialog.getByLabel('Player').nth(0).selectOption(String(ada.id));
+  await pickPlayer(dialog, 0, 'Ada');
   await dialog.getByLabel('Score').nth(0).selectOption('10');
-  await dialog.getByLabel('Player').nth(1).selectOption(String(bea.id));
+  await pickPlayer(dialog, 1, 'Bea');
   await dialog.getByLabel('Score').nth(1).selectOption('8');
   await dialog.getByLabel('Notes').fill('Smoke game');
   await dialog.getByRole('button', { name: 'Save Game' }).click();
@@ -194,7 +208,7 @@ test('public games page filters by players and date range while preserving pagin
 test('admin login, edit game, and logout work', async ({ page }) => {
   const ada = await createE2ePlayer({ name: 'Ada' });
   const bea = await createE2ePlayer({ name: 'Bea' });
-  const cara = await createE2ePlayer({ name: 'Cara' });
+  await createE2ePlayer({ name: 'Cara' });
 
   await createE2eGame({
     notes: 'Original harbor game',
@@ -217,7 +231,7 @@ test('admin login, edit game, and logout work', async ({ page }) => {
   await page.waitForTimeout(1_000);
 
   await page.getByLabel('Score').nth(0).selectOption('5');
-  await page.getByLabel('Player').nth(1).selectOption(String(cara.id));
+  await pickPlayer(page, 1, 'Cara', 'ca');
   await page.getByLabel('Score').nth(1).selectOption('11');
   await page.getByLabel('Notes').fill('Updated harbor game');
   await Promise.all([

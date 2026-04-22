@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { PlayerRow } from '@/components/PlayerRow'
 import { PlayerTier } from '@/lib/player-tier'
@@ -6,10 +7,13 @@ import { PlayerTier } from '@/lib/player-tier'
 const players = [
   { id: 1, name: 'Alice', tier: PlayerTier.Premium },
   { id: 2, name: 'Bob', tier: PlayerTier.Standard },
+  { id: 3, name: 'Cara', tier: PlayerTier.Standard },
 ]
 
 describe('PlayerRow', () => {
-  it('renders premium and standard players in separate optgroups', () => {
+  it('renders premium and standard players in separate groups inside the picker', async () => {
+    const user = userEvent.setup()
+
     render(
       <PlayerRow
         value={{ playerId: null, score: null, isWinner: false }}
@@ -19,13 +23,15 @@ describe('PlayerRow', () => {
       />,
     )
 
-    const select = screen.getByRole('combobox', { name: 'Player' })
+    await user.click(screen.getByRole('combobox', { name: 'Player' }))
 
-    expect(select.querySelector('optgroup[label="Premium"]')).not.toBeNull()
-    expect(select.querySelector('optgroup[label="Standard"]')).not.toBeNull()
+    expect(screen.getByRole('group', { name: 'Premium' })).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Standard' })).toBeInTheDocument()
   })
 
-  it('disables players already chosen in other rows while keeping the current selection enabled', () => {
+  it('disables players already chosen in other rows while keeping the current selection enabled', async () => {
+    const user = userEvent.setup()
+
     render(
       <PlayerRow
         value={{ playerId: 1, score: 0, isWinner: false }}
@@ -35,8 +41,74 @@ describe('PlayerRow', () => {
       />,
     )
 
+    await user.click(screen.getByRole('combobox', { name: 'Player' }))
+
     expect(screen.getByRole('option', { name: 'Alice' })).not.toBeDisabled()
     expect(screen.getByRole('option', { name: 'Bob' })).toBeDisabled()
+  })
+
+  it('opens a searchable player picker and filters results as you type', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <PlayerRow
+        value={{ playerId: null, score: null, isWinner: false }}
+        onChange={vi.fn()}
+        players={players}
+        selectedPlayerIds={[]}
+      />,
+    )
+
+    await user.click(screen.getByRole('combobox', { name: 'Player' }))
+
+    const searchInput = screen.getByRole('textbox', { name: 'Player' })
+    await user.type(searchInput, 'ca')
+
+    expect(screen.getByRole('option', { name: 'Cara' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Alice' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Bob' })).not.toBeInTheDocument()
+  })
+
+  it('selects a player and keeps the grouped result lists visible while open', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+
+    render(
+      <PlayerRow
+        value={{ playerId: null, score: null, isWinner: false }}
+        onChange={onChange}
+        players={players}
+        selectedPlayerIds={[]}
+      />,
+    )
+
+    await user.click(screen.getByRole('combobox', { name: 'Player' }))
+    await user.click(screen.getByRole('option', { name: 'Bob' }))
+
+    expect(onChange).toHaveBeenCalledWith({ playerId: 2, score: 0, isWinner: false })
+  })
+
+  it('shows a clear action for an existing selection', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+
+    render(
+      <PlayerRow
+        value={{ playerId: 2, score: 7, isWinner: false }}
+        onChange={onChange}
+        players={players}
+        selectedPlayerIds={[2]}
+      />,
+    )
+
+    await user.click(screen.getByRole('combobox', { name: 'Player' }))
+
+    const standardGroup = screen.getByRole('group', { name: 'Standard' })
+    expect(within(standardGroup).getByRole('option', { name: 'Bob' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Clear player' }))
+
+    expect(onChange).toHaveBeenCalledWith({ playerId: null, score: null, isWinner: false })
   })
 
   it('renders a score dropdown with 0 through 20 options', () => {
