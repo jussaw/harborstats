@@ -4,11 +4,13 @@ This directory contains the deployment assets for the HarborStats repo. It is ai
 
 ## Files in this directory
 
+- `README.md`: deployment, backup, and restore guide for the tracked `devops/` assets
 - `docker-compose.yml`: deployment stack definition
 - `deploy.sh`: convenience script that pulls the latest code and performs the standard deploy sequence
 - `.env.example`: example production environment file for Docker Compose and the backup/restore scripts
 - `backup-db.sh`: production backup script that writes timestamped Postgres dumps to the host filesystem
 - `restore-db.sh`: production restore script that replaces the deployed database from a selected dump
+- `tests/backup-restore.test.sh`: shell test coverage for the backup and restore scripts
 
 ## Stack overview
 

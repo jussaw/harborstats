@@ -66,26 +66,40 @@ After startup, add players from the admin roster page at `/admin/players`.
 
 ```
 app/
-  layout.tsx          root layout (Cinzel font, harbor hex background)
-  page.tsx            home — recent game feed
-  globals.css         CSS custom properties and theme
-  actions.ts          server actions
-  new/
-    page.tsx          new game form page
-    NewGameForm.tsx   client component (8 player rows, datetime, notes)
+  page.tsx                  home feed
+  games/page.tsx            games index
+  players/page.tsx          player index
+  players/[id]/page.tsx     player detail page
+  stats/page.tsx            stats dashboard
+  admin/                    admin pages for login, players, games, and settings
+  actions.ts                server actions shared by app routes
+  layout.tsx                root layout and app shell
+  globals.css               theme and global styles
 components/
-  PlayerRow.tsx       player select + score stepper + winner toggle
-  Stepper.tsx         +/- score input with press-and-hold acceleration
-lib/
-  db.ts               Drizzle client (wraps postgres.js singleton)
-  players.ts          getPlayers(), listPlayersWithUsage(), etc.
-  games.ts            createGame(), listRecentGames(), etc.
+  GameForm.tsx              create/edit game form
+  Games*.tsx                games list filters and pagination UI
+  Player*.tsx               player UI, selectors, profile card, and modal
+  *Chart.tsx                stats visualizations
+  Sidebar*.tsx              navigation shell
 db/
-  schema.ts           Drizzle schema (players, games, game_players)
-  migrations/         SQL migration files managed by Drizzle Kit
+  schema.ts                 Drizzle schema
+  migrations/               SQL migrations and metadata
+lib/
+  admin-auth.ts             admin authentication helpers
+  db.ts                     Drizzle client
+  games.ts                  game queries and mutations
+  players.ts                player queries and mutations
+  settings.ts               app settings access
+  stats.ts                  stats aggregation helpers
 scripts/
-  migrate.ts          applies pending migrations via Drizzle migrator
-  baseline.ts         one-time: marks initial migration applied on existing DBs
+  baseline.ts               mark initial migration as already applied
+  migrate.ts                apply pending migrations
+tests/
+  unit/                     unit tests
+  components/               component tests
+  integration/              integration tests
+  e2e/                      Playwright smoke coverage
+proxy.ts                    request proxy entrypoint
 ```
 
 ## Database schema
