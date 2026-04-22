@@ -6,6 +6,7 @@ A menu of stat / graph / table / leaderboard ideas to surface insights from game
 
 ### Stats page
 - [x] Reorganize as a responsive grid of self-contained stat cards/components; each item in the plan below maps to one card.
+- Stats card sizing convention: any stats card whose inline content changes on hover or focus must reserve enough height for its richest inline state so the card and its grid row stay stable during interaction.
 
 ### Player profile page
 - [x] Banner at the top of the page for the profile header (name and key summary numbers).

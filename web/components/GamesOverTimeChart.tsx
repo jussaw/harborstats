@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { buildGamesOverTimeSeries, type ActivityBucket } from '@/lib/activity-local-time'
 import { localTimeLoadingMessage, useResolvedTimeZone } from '@/lib/use-resolved-time-zone'
 import { ActivityViewToggle, type ActivityView } from '@/components/ActivityViewToggle'
+import { StatsCardDetailSlot } from '@/components/StatsCard'
 
 interface Props {
   playedAtIsos: string[]
@@ -62,7 +63,11 @@ function getXAxisLabelIndices(pointCount: number) {
   ])
 }
 
-export function GamesOverTimeChart({ playedAtIsos, defaultView, timeZone }: Props) {
+export function GamesOverTimeChart({
+  playedAtIsos,
+  defaultView,
+  timeZone = undefined,
+}: Props) {
   const [view, setView] = useState<ActivityView>(defaultView)
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
   const resolvedTimeZone = useResolvedTimeZone(timeZone)
@@ -106,8 +111,11 @@ export function GamesOverTimeChart({ playedAtIsos, defaultView, timeZone }: Prop
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="text-sm text-(--cream)/55">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <StatsCardDetailSlot
+          size="compact"
+          className="flex-1 text-sm text-(--cream)/55"
+        >
           {activePoint ? (
             <div>
               <p className="text-(--cream)">{activePoint.label}</p>
@@ -118,7 +126,7 @@ export function GamesOverTimeChart({ playedAtIsos, defaultView, timeZone }: Prop
           ) : (
             <p>Hover over a data point to inspect its bucket.</p>
           )}
-        </div>
+        </StatsCardDetailSlot>
         <ActivityViewToggle
           view={view}
           onChange={(nextView) => {
@@ -257,4 +265,8 @@ export function GamesOverTimeChart({ playedAtIsos, defaultView, timeZone }: Prop
       </div>
     </div>
   )
+}
+
+GamesOverTimeChart.defaultProps = {
+  timeZone: undefined,
 }

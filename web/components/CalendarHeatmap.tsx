@@ -4,8 +4,8 @@ import { useMemo, useState } from 'react'
 import {
   buildCalendarHeatmapData,
   type CalendarHeatmapDay,
-  type CalendarHeatmapYear,
 } from '@/lib/activity-local-time'
+import { StatsCardDetailSlot } from '@/components/StatsCard'
 import { localTimeLoadingMessage, useResolvedTimeZone } from '@/lib/use-resolved-time-zone'
 
 interface Props {
@@ -73,7 +73,11 @@ function getCellClasses(intensity: number) {
   }
 }
 
-export function CalendarHeatmap({ playedAtIsos, defaultSelection, timeZone }: Props) {
+export function CalendarHeatmap({
+  playedAtIsos,
+  defaultSelection,
+  timeZone = undefined,
+}: Props) {
   const [selection, setSelection] = useState<HeatmapSelection>(defaultSelection)
   const [activeDateKey, setActiveDateKey] = useState<string | null>(null)
   const resolvedTimeZone = useResolvedTimeZone(timeZone)
@@ -116,8 +120,11 @@ export function CalendarHeatmap({ playedAtIsos, defaultSelection, timeZone }: Pr
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="text-sm text-(--cream)/55">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <StatsCardDetailSlot
+          size="roomy"
+          className="flex-1 text-sm text-(--cream)/55"
+        >
           {summaryLabel ? <p>{summaryLabel}</p> : null}
           {activeDay ? (
             <div className="mt-2">
@@ -127,7 +134,7 @@ export function CalendarHeatmap({ playedAtIsos, defaultSelection, timeZone }: Pr
           ) : (
             <p className="mt-2">Hover over a day to inspect activity.</p>
           )}
-        </div>
+        </StatsCardDetailSlot>
         <div className="flex flex-wrap gap-2">
           {options.map((option) => (
             <button
@@ -166,8 +173,8 @@ export function CalendarHeatmap({ playedAtIsos, defaultSelection, timeZone }: Pr
       >
         <div
           className="
-            mb-3 flex min-w-max items-center gap-3 text-[11px] uppercase
-            tracking-[0.24em] text-(--cream)/45
+            mb-3 flex min-w-max items-center gap-3 text-[11px] tracking-[0.24em]
+            text-(--cream)/45 uppercase
           "
         >
           <span>Sun</span>
@@ -179,6 +186,7 @@ export function CalendarHeatmap({ playedAtIsos, defaultSelection, timeZone }: Pr
           className="grid min-w-max grid-flow-col grid-rows-7 gap-1"
           role="grid"
           aria-label="Calendar heatmap"
+          tabIndex={-1}
           onMouseLeave={() => setActiveDateKey(null)}
         >
           {weekColumns.map((column) =>
@@ -211,4 +219,8 @@ export function CalendarHeatmap({ playedAtIsos, defaultSelection, timeZone }: Pr
       </div>
     </div>
   )
+}
+
+CalendarHeatmap.defaultProps = {
+  timeZone: undefined,
 }

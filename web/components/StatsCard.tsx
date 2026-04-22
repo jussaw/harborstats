@@ -9,6 +9,12 @@ interface Props {
   children: ReactNode
 }
 
+interface StatsCardDetailSlotProps {
+  size: 'compact' | 'roomy'
+  className?: string
+  children: ReactNode
+}
+
 const cinzelStyle = {
   fontFamily: 'var(--font-cinzel), Georgia, serif',
 }
@@ -62,4 +68,36 @@ export function StatsCard({
       </div>
     </section>
   )
+}
+
+function getDetailSlotHeightClass(size: StatsCardDetailSlotProps['size']) {
+  if (size === 'roomy') {
+    return 'min-h-24'
+  }
+
+  return 'min-h-14'
+}
+
+export function StatsCardDetailSlot({
+  size,
+  className = '',
+  children,
+}: StatsCardDetailSlotProps) {
+  return (
+    <div
+      data-testid="stats-card-detail-slot"
+      data-detail-size={size}
+      className={`
+        flex min-w-0 flex-col justify-start
+        ${getDetailSlotHeightClass(size)}
+        ${className}
+      `}
+    >
+      {children}
+    </div>
+  )
+}
+
+StatsCardDetailSlot.defaultProps = {
+  className: undefined,
 }

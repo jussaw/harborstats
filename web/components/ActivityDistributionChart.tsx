@@ -6,6 +6,7 @@ import {
   buildTimeOfDayPattern,
   type DistributionBucket,
 } from '@/lib/activity-local-time'
+import { StatsCardDetailSlot } from '@/components/StatsCard'
 import { localTimeLoadingMessage, useResolvedTimeZone } from '@/lib/use-resolved-time-zone'
 
 interface Props {
@@ -60,7 +61,11 @@ function buildDistributionLayout(data: DistributionBucket[]) {
   }
 }
 
-export function ActivityDistributionChart({ playedAtIsos, variant, timeZone }: Props) {
+export function ActivityDistributionChart({
+  playedAtIsos,
+  variant,
+  timeZone = undefined,
+}: Props) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
   const resolvedTimeZone = useResolvedTimeZone(timeZone)
   const data = useMemo(() => {
@@ -92,7 +97,10 @@ export function ActivityDistributionChart({ playedAtIsos, variant, timeZone }: P
 
   return (
     <div className="space-y-4">
-      <div className="text-sm text-(--cream)/55">
+      <StatsCardDetailSlot
+        size="compact"
+        className="text-sm text-(--cream)/55"
+      >
         {activeBucket ? (
           <div>
             <p className="text-(--cream)">{activeBucket.label}</p>
@@ -101,7 +109,7 @@ export function ActivityDistributionChart({ playedAtIsos, variant, timeZone }: P
         ) : (
           <p>Hover over a bar to inspect activity.</p>
         )}
-      </div>
+      </StatsCardDetailSlot>
 
       <div
         className="
@@ -217,4 +225,8 @@ export function ActivityDistributionChart({ playedAtIsos, variant, timeZone }: P
       </div>
     </div>
   )
+}
+
+ActivityDistributionChart.defaultProps = {
+  timeZone: undefined,
 }

@@ -21,20 +21,27 @@ describe('ActivityDistributionChart', () => {
 
     expect(screen.getByText('Sun')).toBeInTheDocument()
     expect(screen.getByText('Sat')).toBeInTheDocument()
+    const detailSlot = screen.getByTestId('stats-card-detail-slot')
+
+    expect(detailSlot).toHaveAttribute('data-detail-size', 'compact')
     expect(screen.getByText('Hover over a bar to inspect activity.')).toBeInTheDocument()
 
     const mondayBucket = screen.getByRole('button', { name: 'Mon: 2 games' })
 
     await user.hover(mondayBucket)
 
+    expect(screen.getByTestId('stats-card-detail-slot')).toBe(detailSlot)
     expect(screen.getAllByText('Mon')).toHaveLength(2)
     expect(screen.getByText('2 games')).toBeInTheDocument()
     fireEvent.mouseLeave(screen.getByRole('img', { name: 'Day-of-week pattern' }))
+    expect(screen.getByTestId('stats-card-detail-slot')).toBe(detailSlot)
     expect(screen.getByText('Hover over a bar to inspect activity.')).toBeInTheDocument()
 
     fireEvent.focus(mondayBucket)
+    expect(screen.getByTestId('stats-card-detail-slot')).toBe(detailSlot)
     expect(screen.getByText('2 games')).toBeInTheDocument()
     fireEvent.blur(mondayBucket)
+    expect(screen.getByTestId('stats-card-detail-slot')).toBe(detailSlot)
     expect(screen.getByText('Hover over a bar to inspect activity.')).toBeInTheDocument()
   })
 
@@ -53,6 +60,9 @@ describe('ActivityDistributionChart', () => {
       />,
     )
 
+    const detailSlot = screen.getByTestId('stats-card-detail-slot')
+
+    expect(detailSlot).toHaveAttribute('data-detail-size', 'compact')
     expect(screen.getByText('12 AM')).toBeInTheDocument()
     expect(screen.getByText('11 PM')).toBeInTheDocument()
 
@@ -60,9 +70,11 @@ describe('ActivityDistributionChart', () => {
 
     await user.hover(lateBucket)
 
+    expect(screen.getByTestId('stats-card-detail-slot')).toBe(detailSlot)
     expect(screen.getAllByText('11 PM')).toHaveLength(2)
     expect(screen.getByText('1 game')).toBeInTheDocument()
     fireEvent.mouseLeave(screen.getByRole('img', { name: 'Time-of-day pattern' }))
+    expect(screen.getByTestId('stats-card-detail-slot')).toBe(detailSlot)
     expect(screen.getByText('Hover over a bar to inspect activity.')).toBeInTheDocument()
   })
 

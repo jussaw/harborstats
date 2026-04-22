@@ -26,19 +26,26 @@ describe('GamesOverTimeChart', () => {
     expect(screen.getByText('Mar 16')).toBeInTheDocument()
     expect(screen.getByText('0')).toBeInTheDocument()
     expect(screen.getByText('2')).toBeInTheDocument()
+    const detailSlot = screen.getByTestId('stats-card-detail-slot')
+
+    expect(detailSlot).toHaveAttribute('data-detail-size', 'compact')
     expect(screen.getByText('Hover over a data point to inspect its bucket.')).toBeInTheDocument()
 
     const firstBucket = screen.getByRole('button', { name: 'Feb 23: 2 games' })
 
     await user.hover(firstBucket)
 
+    expect(screen.getByTestId('stats-card-detail-slot')).toBe(detailSlot)
     expect(screen.getByText('2 games')).toBeInTheDocument()
     fireEvent.mouseLeave(screen.getByRole('img', { name: 'Games over time (week)' }))
+    expect(screen.getByTestId('stats-card-detail-slot')).toBe(detailSlot)
     expect(screen.getByText('Hover over a data point to inspect its bucket.')).toBeInTheDocument()
 
     fireEvent.focus(firstBucket)
+    expect(screen.getByTestId('stats-card-detail-slot')).toBe(detailSlot)
     expect(screen.getByText('2 games')).toBeInTheDocument()
     fireEvent.blur(firstBucket)
+    expect(screen.getByTestId('stats-card-detail-slot')).toBe(detailSlot)
     expect(screen.getByText('Hover over a data point to inspect its bucket.')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Month' }))
@@ -52,9 +59,11 @@ describe('GamesOverTimeChart', () => {
 
     await user.hover(monthBucket)
 
+    expect(screen.getByTestId('stats-card-detail-slot')).toBe(detailSlot)
     expect(screen.getAllByText('Feb 2026')).toHaveLength(2)
     expect(screen.getByText('1 game')).toBeInTheDocument()
     fireEvent.mouseLeave(screen.getByRole('img', { name: 'Games over time (month)' }))
+    expect(screen.getByTestId('stats-card-detail-slot')).toBe(detailSlot)
     expect(screen.getByText('Hover over a data point to inspect its bucket.')).toBeInTheDocument()
   })
 
