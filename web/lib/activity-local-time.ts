@@ -372,9 +372,11 @@ function buildCalendarHeatmapDays(
 export function buildCalendarHeatmapData({
   playedAtIsos,
   timeZone,
+  now = new Date(),
 }: {
   playedAtIsos: string[]
   timeZone: string
+  now?: Date
 }): CalendarHeatmapData {
   const localDays = getOrderedLocalDays(playedAtIsos, timeZone)
 
@@ -395,8 +397,16 @@ export function buildCalendarHeatmapData({
   })
 
   const latestDay = localDays[localDays.length - 1]
+  const currentLocalDay = toUtcCalendarDate(now, timeZone)
+  const recentEnd = currentLocalDay
   const recentStart = addUtcDays(
-    new Date(Date.UTC(latestDay.getUTCFullYear() - 1, latestDay.getUTCMonth(), latestDay.getUTCDate())),
+    new Date(
+      Date.UTC(
+        recentEnd.getUTCFullYear() - 1,
+        recentEnd.getUTCMonth(),
+        recentEnd.getUTCDate(),
+      ),
+    ),
     1,
   )
   const firstRecordedYear = localDays[0].getUTCFullYear()
@@ -415,8 +425,8 @@ export function buildCalendarHeatmapData({
   }
 
   return {
-    recentDays: buildCalendarHeatmapDays(recentStart, latestDay, countsByDay),
-    recentRangeLabel: `${formatLongUtcDate(recentStart)} - ${formatLongUtcDate(latestDay)}`,
+    recentDays: buildCalendarHeatmapDays(recentStart, recentEnd, countsByDay),
+    recentRangeLabel: `${formatLongUtcDate(recentStart)} - ${formatLongUtcDate(recentEnd)}`,
     years,
     defaultYear: lastRecordedYear,
   }

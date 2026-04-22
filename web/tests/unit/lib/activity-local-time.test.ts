@@ -88,6 +88,7 @@ describe('activity-local-time', () => {
         '2026-04-22T14:00:00.000Z',
       ],
       timeZone: 'America/New_York',
+      now: new Date('2026-04-22T16:00:00.000Z'),
     })
 
     expect(
@@ -108,6 +109,31 @@ describe('activity-local-time', () => {
         timeZone: 'America/New_York',
       }),
     ).toBe(1)
+  })
+
+  it('extends the recent heatmap range through local today even when no games were played today', () => {
+    const heatmap = buildCalendarHeatmapData({
+      playedAtIsos: [
+        '2026-04-21T01:00:00.000Z',
+        '2026-04-21T03:00:00.000Z',
+        '2026-04-22T14:00:00.000Z',
+      ],
+      timeZone: 'America/New_York',
+      now: new Date('2026-04-24T16:00:00.000Z'),
+    })
+
+    expect(heatmap.recentRangeLabel).toBe('Apr 25, 2025 - Apr 24, 2026')
+    expect(
+      heatmap.recentDays.find((day) => day.date === '2026-04-24'),
+    ).toMatchObject({
+      label: 'Apr 24, 2026',
+      gameCount: 0,
+    })
+    expect(
+      heatmap.years.find((year) => year.year === 2026)?.days.find((day) => day.date === '2026-12-31'),
+    ).toMatchObject({
+      gameCount: 0,
+    })
   })
 
   it('returns empty local-time structures when there is no activity', () => {

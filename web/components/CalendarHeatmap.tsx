@@ -172,17 +172,6 @@ export function CalendarHeatmap({
         "
       >
         <div
-          className="
-            mb-3 flex min-w-max items-center gap-3 text-[11px] tracking-[0.24em]
-            text-(--cream)/45 uppercase
-          "
-        >
-          <span>Sun</span>
-          <span>Tue</span>
-          <span>Thu</span>
-          <span>Sat</span>
-        </div>
-        <div
           className="grid min-w-max grid-flow-col grid-rows-7 gap-1"
           role="grid"
           aria-label="Calendar heatmap"
