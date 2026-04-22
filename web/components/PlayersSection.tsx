@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { StatsCard } from '@/components/StatsCard'
 import { formatAverage, formatPercent, formatSignedNumber } from '@/lib/format'
+import type { RecentGame } from '@/lib/games'
 import { PlayerTier } from '@/lib/player-tier'
 import type { Player } from '@/lib/players'
 import type {
@@ -35,6 +36,7 @@ interface Props {
   expectedVsActualWins: PlayerExpectedVsActualWins[]
   currentWinStreaks: PlayerCurrentWinStreak[]
   playerWinEvents: PlayerWinEvent[]
+  playerGames: RecentGame[]
 }
 
 interface PlayersListProps {
@@ -241,6 +243,7 @@ function PlayerDetail({
   expectedVsActualWins,
   currentWinStreaks,
   playerWinEvents,
+  playerGames,
 }: {
   player: Player
   scoreStats: PlayerScoreStats[]
@@ -252,6 +255,7 @@ function PlayerDetail({
   expectedVsActualWins: PlayerExpectedVsActualWins[]
   currentWinStreaks: PlayerCurrentWinStreak[]
   playerWinEvents: PlayerWinEvent[]
+  playerGames: RecentGame[]
 }) {
   const scoreStat = scoreStats.find((candidate) => candidate.playerId === player.id) ?? null
   const podiumStat = podiumRates.find((candidate) => candidate.playerId === player.id) ?? null
@@ -273,7 +277,7 @@ function PlayerDetail({
 
   return (
     <div className="space-y-5">
-      <PlayerProfileCard player={player} />
+      <PlayerProfileCard player={player} games={playerGames} />
       <div className="
         grid grid-cols-1 gap-5
         lg:grid-cols-3
@@ -419,6 +423,7 @@ export function PlayersSection({
   expectedVsActualWins,
   currentWinStreaks,
   playerWinEvents,
+  playerGames,
 }: Props) {
   if (players.length === 0) {
     return (
@@ -474,6 +479,7 @@ export function PlayersSection({
                 expectedVsActualWins={expectedVsActualWins}
                 currentWinStreaks={currentWinStreaks}
                 playerWinEvents={playerWinEvents}
+                playerGames={playerGames}
               />
             ) : null}
           </div>
@@ -500,6 +506,7 @@ export function PlayersSection({
               expectedVsActualWins={expectedVsActualWins}
               currentWinStreaks={currentWinStreaks}
               playerWinEvents={playerWinEvents}
+              playerGames={playerGames}
             />
           ) : (
             <PlayersDetailEmptyState />

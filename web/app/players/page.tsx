@@ -1,4 +1,5 @@
 import { PlayersSection } from '@/components/PlayersSection'
+import { listGamesForPlayer } from '@/lib/games'
 import { getPlayers } from '@/lib/players'
 import {
   getPlayerCurrentWinStreaks,
@@ -39,6 +40,7 @@ export default async function PlayersPage() {
     getPlayerWinEvents(),
   ])
   const selectedPlayer = players[0] ?? null
+  const playerGames = selectedPlayer ? await listGamesForPlayer(selectedPlayer.id) : []
 
   return (
     <PlayersSection
@@ -54,6 +56,7 @@ export default async function PlayersPage() {
       expectedVsActualWins={expectedVsActualWins}
       currentWinStreaks={currentWinStreaks}
       playerWinEvents={playerWinEvents}
+      playerGames={playerGames}
     />
   )
 }

@@ -7,6 +7,7 @@ import {
   createGame,
   deleteGame,
   getGameForEdit,
+  listGamesForPlayer,
   listGamesPage,
   listRecentGames,
   parseGameFormData,
@@ -238,6 +239,85 @@ describe('games lib', () => {
     expect(recentGames.map((game) => game.id)).toEqual(
       createdGames.slice(-10).reverse().map((game) => game.id),
     );
+  });
+
+  it('lists the full game history for one player ordered newest-first', async () => {
+    const ada = await createTestPlayer({ name: 'Ada' });
+    const bea = await createTestPlayer({ name: 'Bea' });
+    const cara = await createTestPlayer({ name: 'Cara' });
+
+    const olderAdaGame = await createTestGame({
+      playedAt: new Date('2026-04-18T10:00:00.000Z'),
+      notes: 'Older Ada game',
+      players: [
+        { playerId: ada.id, score: 9, isWinner: true },
+        { playerId: bea.id, score: 6, isWinner: false },
+      ],
+    });
+
+    const sameMomentFirst = await createTestGame({
+      playedAt: new Date('2026-04-19T10:00:00.000Z'),
+      notes: 'Earlier insert',
+      players: [
+        { playerId: ada.id, score: 8, isWinner: false },
+        { playerId: cara.id, score: 10, isWinner: true },
+      ],
+    });
+
+    const sameMomentSecond = await createTestGame({
+      playedAt: new Date('2026-04-19T10:00:00.000Z'),
+      notes: 'Later insert',
+      players: [
+        { playerId: ada.id, score: 11, isWinner: true },
+        { playerId: bea.id, score: 7, isWinner: false },
+      ],
+    });
+
+    await createTestGame({
+      playedAt: new Date('2026-04-20T10:00:00.000Z'),
+      notes: 'Bea only',
+      players: [
+        { playerId: bea.id, score: 11, isWinner: true },
+        { playerId: cara.id, score: 8, isWinner: false },
+      ],
+    });
+
+    const playerGames = await listGamesForPlayer(ada.id);
+
+    expect(playerGames.map((game) => game.id)).toEqual([
+      sameMomentSecond.id,
+      sameMomentFirst.id,
+      olderAdaGame.id,
+    ]);
+    expect(playerGames).toEqual([
+      {
+        id: sameMomentSecond.id,
+        playedAt: new Date('2026-04-19T10:00:00.000Z'),
+        notes: 'Later insert',
+        players: [
+          { playerName: 'Ada', score: 11, isWinner: true },
+          { playerName: 'Bea', score: 7, isWinner: false },
+        ],
+      },
+      {
+        id: sameMomentFirst.id,
+        playedAt: new Date('2026-04-19T10:00:00.000Z'),
+        notes: 'Earlier insert',
+        players: [
+          { playerName: 'Ada', score: 8, isWinner: false },
+          { playerName: 'Cara', score: 10, isWinner: true },
+        ],
+      },
+      {
+        id: olderAdaGame.id,
+        playedAt: new Date('2026-04-18T10:00:00.000Z'),
+        notes: 'Older Ada game',
+        players: [
+          { playerName: 'Ada', score: 9, isWinner: true },
+          { playerName: 'Bea', score: 6, isWinner: false },
+        ],
+      },
+    ]);
   });
 
   it('lists a paginated slice of games with total counts and stable ordering', async () => {

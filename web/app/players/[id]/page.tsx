@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { PlayersSection } from '@/components/PlayersSection'
+import { listGamesForPlayer } from '@/lib/games'
 import { getPlayerById, getPlayers } from '@/lib/players'
 import {
   getPlayerCurrentWinStreaks,
@@ -42,6 +43,7 @@ export default async function PlayerProfilePage({ params }: Props) {
     expectedVsActualWins,
     currentWinStreaks,
     playerWinEvents,
+    playerGames,
   ] = await Promise.all([
     getPlayers(),
     getPlayerScoreStats(),
@@ -53,6 +55,7 @@ export default async function PlayerProfilePage({ params }: Props) {
     getPlayerExpectedVsActualWins(),
     getPlayerCurrentWinStreaks(),
     getPlayerWinEvents(),
+    listGamesForPlayer(numericId),
   ])
   const player = players.find((candidate) => candidate.id === numericId) ?? null
   if (!player) notFound()
@@ -71,6 +74,7 @@ export default async function PlayerProfilePage({ params }: Props) {
       expectedVsActualWins={expectedVsActualWins}
       currentWinStreaks={currentWinStreaks}
       playerWinEvents={playerWinEvents}
+      playerGames={playerGames}
     />
   )
 }

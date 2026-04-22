@@ -1,7 +1,8 @@
 import { renderToStaticMarkup } from 'react-dom/server'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import PlayersPage from '@/app/players/page'
+import { listGamesForPlayer } from '@/lib/games'
 import { getPlayers } from '@/lib/players'
 import { PlayerTier } from '@/lib/player-tier'
 import {
@@ -20,6 +21,10 @@ vi.mock('@/lib/players', () => ({
   getPlayers: vi.fn(),
 }))
 
+vi.mock('@/lib/games', () => ({
+  listGamesForPlayer: vi.fn(),
+}))
+
 vi.mock('@/lib/stats', () => ({
   getPlayerCurrentWinStreaks: vi.fn(),
   getPlayerExpectedVsActualWins: vi.fn(),
@@ -33,6 +38,10 @@ vi.mock('@/lib/stats', () => ({
 }))
 
 describe('PlayersPage', () => {
+  beforeEach(() => {
+    vi.mocked(listGamesForPlayer).mockResolvedValue([])
+  })
+
   it('renders the first player profile alongside the players list when players exist', async () => {
     vi.mocked(getPlayers).mockResolvedValue([
       {
@@ -231,6 +240,17 @@ describe('PlayersPage', () => {
         tier: PlayerTier.Premium,
       },
     ])
+    vi.mocked(listGamesForPlayer).mockResolvedValue([
+      {
+        id: 4,
+        playedAt: new Date('2026-04-20T18:00:00.000Z'),
+        notes: 'Ada wins',
+        players: [
+          { playerName: 'Ada', score: 11, isWinner: true },
+          { playerName: 'Bea', score: 8, isWinner: false },
+        ],
+      },
+    ])
 
     const element = await PlayersPage()
     const markup = renderToStaticMarkup(element)
@@ -240,6 +260,7 @@ describe('PlayersPage', () => {
     expect(markup).toContain('Bea')
     expect(markup).toContain('/players/1')
     expect(markup).toContain('/players/2')
+    expect(markup).toContain('View Games (1)')
     expect(markup).toContain('PREMIUM')
     expect(markup).not.toContain('lucide-user')
     expect(markup).not.toContain('size-16 shrink-0')

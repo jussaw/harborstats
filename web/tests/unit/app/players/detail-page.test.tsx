@@ -1,7 +1,8 @@
 import { renderToStaticMarkup } from 'react-dom/server'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import PlayerProfilePage, { generateMetadata } from '@/app/players/[id]/page'
+import { listGamesForPlayer } from '@/lib/games'
 import { getPlayerById, getPlayers } from '@/lib/players'
 import { PlayerTier } from '@/lib/player-tier'
 import {
@@ -31,6 +32,10 @@ vi.mock('@/lib/players', () => ({
   getPlayerById: vi.fn(),
 }))
 
+vi.mock('@/lib/games', () => ({
+  listGamesForPlayer: vi.fn(),
+}))
+
 vi.mock('@/lib/stats', () => ({
   getPlayerCurrentWinStreaks: vi.fn(),
   getPlayerExpectedVsActualWins: vi.fn(),
@@ -44,6 +49,10 @@ vi.mock('@/lib/stats', () => ({
 }))
 
 describe('PlayerProfilePage', () => {
+  beforeEach(() => {
+    vi.mocked(listGamesForPlayer).mockResolvedValue([])
+  })
+
   it('renders the selected player profile with a back link to the players list', async () => {
     vi.mocked(getPlayers).mockResolvedValue([
       {
@@ -251,6 +260,26 @@ describe('PlayerProfilePage', () => {
         tier: PlayerTier.Standard,
       },
     ])
+    vi.mocked(listGamesForPlayer).mockResolvedValue([
+      {
+        id: 12,
+        playedAt: new Date('2026-04-21T18:00:00.000Z'),
+        notes: 'Bea spotlight',
+        players: [
+          { playerName: 'Ada', score: 7, isWinner: false },
+          { playerName: 'Bea', score: 11, isWinner: true },
+        ],
+      },
+      {
+        id: 8,
+        playedAt: new Date('2026-04-18T18:00:00.000Z'),
+        notes: '',
+        players: [
+          { playerName: 'Bea', score: 9, isWinner: true },
+          { playerName: 'Cara', score: 6, isWinner: false },
+        ],
+      },
+    ])
 
     const element = await PlayerProfilePage({ params: Promise.resolve({ id: '2' }) })
     const markup = renderToStaticMarkup(element)
@@ -258,6 +287,7 @@ describe('PlayerProfilePage', () => {
     expect(markup).toContain('Ada')
     expect(markup).toContain('Bea')
     expect(markup).toContain('href="/players"')
+    expect(markup).toContain('View Games (2)')
     expect(markup).not.toContain('PREMIUM')
     expect(markup).not.toContain('lucide-user')
     expect(markup).not.toContain('size-16 shrink-0')
@@ -443,6 +473,7 @@ describe('PlayerProfilePage', () => {
       },
     ])
     vi.mocked(getPlayerWinEvents).mockResolvedValue([])
+    vi.mocked(listGamesForPlayer).mockResolvedValue([])
 
     const element = await PlayerProfilePage({ params: Promise.resolve({ id: '2' }) })
     const markup = renderToStaticMarkup(element)
@@ -459,9 +490,10 @@ describe('PlayerProfilePage', () => {
     expect(markup).toContain('Current Win Streak')
     expect(markup).toContain('Most Wins in a Week')
     expect(markup).toContain('Most Wins in a Month')
+    expect(markup).toContain('View Games (0)')
     expect(markup).toContain('0.0%')
     expect(markup).toContain('0 appearances in 5 total games')
-    expect(markup.match(/No games recorded yet\./g)).toHaveLength(20)
+    expect(markup.match(/No games recorded yet\./g)).toHaveLength(22)
   })
 
   it('calls notFound for invalid player ids', async () => {

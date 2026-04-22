@@ -162,6 +162,33 @@ export async function listRecentGames(limit = DEFAULT_RECENT_GAMES_LIMIT): Promi
   return groupGameRows(rows).slice(0, limit)
 }
 
+export async function listGamesForPlayer(playerId: number): Promise<RecentGame[]> {
+  const rows = await db
+    .select({
+      id: games.id,
+      playedAt: games.playedAt,
+      notes: games.notes,
+      playerName: players.name,
+      score: gamePlayers.score,
+      isWinner: gamePlayers.isWinner,
+    })
+    .from(games)
+    .innerJoin(gamePlayers, eq(gamePlayers.gameId, games.id))
+    .innerJoin(players, eq(players.id, gamePlayers.playerId))
+    .where(
+      inArray(
+        games.id,
+        db
+          .select({ id: gamePlayers.gameId })
+          .from(gamePlayers)
+          .where(eq(gamePlayers.playerId, playerId)),
+      ),
+    )
+    .orderBy(desc(games.playedAt), desc(games.id), asc(players.name))
+
+  return groupGameRows(rows)
+}
+
 export async function listGamesPage(
   page = 1,
   pageSize = 20,
