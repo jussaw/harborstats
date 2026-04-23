@@ -351,8 +351,9 @@ describe('PlayerProfilePage', () => {
       longestWinStreakSectionIndex,
       longestWinStreakSectionIndex + 2200,
     )
-    expect(longestWinStreakSection).toContain('Mar 1, 2026')
-    expect(longestWinStreakSection).toContain('Mar 17, 2026')
+    expect(longestWinStreakSection).toContain('dateTime="2026-03-01T01:00:00.000Z"')
+    expect(longestWinStreakSection).toContain('dateTime="2026-03-17T04:00:00.000Z"')
+    expect(longestWinStreakSection).toContain('>...<')
     expect(longestWinStreakSection).not.toContain('1:00 AM')
     expect(longestWinStreakSection).not.toContain('12:00 AM')
     expect(markup).toContain('8.7')

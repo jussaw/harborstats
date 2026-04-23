@@ -447,8 +447,9 @@ describe('StatsPage', () => {
       longestWinStreakEverIndex,
       longestWinStreakEverIndex + 3000,
     )
-    expect(longestWinStreakSection).toContain('Apr 20, 2026')
-    expect(longestWinStreakSection).toContain('Apr 22, 2026')
+    expect(longestWinStreakSection).toContain('dateTime="2026-04-20T18:00:00.000Z"')
+    expect(longestWinStreakSection).toContain('dateTime="2026-04-22T18:00:00.000Z"')
+    expect(longestWinStreakSection).toContain('>...<')
     expect(longestWinStreakSection).not.toContain('6:00 PM')
     expect(markup).toContain('Loading your local-time view...')
     expect(markup).toContain('88.9%')
