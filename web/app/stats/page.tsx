@@ -132,14 +132,14 @@ function StreakPeriod({
   }
 
   if (startedAt === endedAt) {
-    return <FormattedDate iso={startedAt} className="inline text-(--cream)/70" />;
+    return <FormattedDate iso={startedAt} className="inline text-(--cream)/70" dateOnly />;
   }
 
   return (
     <span>
-      <FormattedDate iso={startedAt} className="inline text-(--cream)/70" />
+      <FormattedDate iso={startedAt} className="inline text-(--cream)/70" dateOnly />
       <span className="text-(--cream)/45"> - </span>
-      <FormattedDate iso={endedAt} className="inline text-(--cream)/70" />
+      <FormattedDate iso={endedAt} className="inline text-(--cream)/70" dateOnly />
     </span>
   );
 }

@@ -155,25 +155,31 @@ function formatCount(value: number, singular: string, plural = `${singular}s`) {
 function StreakPeriodDetail({
   startedAt,
   endedAt,
+  dateOnly = false,
 }: {
   startedAt: string | null
   endedAt: string | null
+  dateOnly?: boolean
 }) {
   if (!startedAt || !endedAt) {
     return 'No recorded period yet.'
   }
 
   if (startedAt === endedAt) {
-    return <FormattedDate iso={startedAt} className="inline text-(--cream)/55" />
+    return <FormattedDate iso={startedAt} className="inline text-(--cream)/55" dateOnly={dateOnly} />
   }
 
   return (
     <span>
-      <FormattedDate iso={startedAt} className="inline text-(--cream)/55" />
+      <FormattedDate iso={startedAt} className="inline text-(--cream)/55" dateOnly={dateOnly} />
       <span className="text-(--cream)/40"> - </span>
-      <FormattedDate iso={endedAt} className="inline text-(--cream)/55" />
+      <FormattedDate iso={endedAt} className="inline text-(--cream)/55" dateOnly={dateOnly} />
     </span>
   )
+}
+
+StreakPeriodDetail.defaultProps = {
+  dateOnly: false,
 }
 
 function ProfileLossStreakCard({ streakRecord }: { streakRecord: PlayerStreakRecord | null }) {
@@ -427,6 +433,7 @@ function PlayerDetail({
               <StreakPeriodDetail
                 startedAt={streakRecord.longestWinStreakStartedAt}
                 endedAt={streakRecord.longestWinStreakEndedAt}
+                dateOnly
               />
             ) : null
           }

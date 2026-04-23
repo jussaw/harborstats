@@ -344,6 +344,15 @@ describe('PlayerProfilePage', () => {
     expect(markup).toContain('Longest Win Streak Ever')
     expect(markup).toContain('Current / Longest Loss Streak')
     expect(markup).toContain('Attendance Streak')
+    const longestWinStreakSectionIndex = markup.indexOf('id="player-longest-win-streak-ever"')
+    const longestWinStreakSection = markup.slice(
+      longestWinStreakSectionIndex,
+      longestWinStreakSectionIndex + 2200,
+    )
+    expect(longestWinStreakSection).toContain('Mar 1, 2026')
+    expect(longestWinStreakSection).toContain('Mar 17, 2026')
+    expect(longestWinStreakSection).not.toContain('1:00 AM')
+    expect(longestWinStreakSection).not.toContain('12:00 AM')
     expect(markup).toContain('8.7')
     expect(markup).toContain('8.5')
     expect(markup).toContain('50.0%')

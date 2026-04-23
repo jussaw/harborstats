@@ -441,6 +441,13 @@ describe('StatsPage', () => {
     expect(markup).toContain('>Record<')
     expect(markup).toContain('3 wins')
     expect(markup).toContain('2 wins')
+    const longestWinStreakSection = markup.slice(
+      longestWinStreakEverIndex,
+      longestWinStreakEverIndex + 3000,
+    )
+    expect(longestWinStreakSection).toContain('Apr 20, 2026')
+    expect(longestWinStreakSection).toContain('Apr 22, 2026')
+    expect(longestWinStreakSection).not.toContain('6:00 PM')
     expect(markup).toContain('Loading your local-time view...')
     expect(markup).toContain('88.9%')
     expect(markup).toContain('66.7%')
