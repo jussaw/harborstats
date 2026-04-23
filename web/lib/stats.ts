@@ -377,6 +377,60 @@ interface PlayerNormalizedScoreAccumulator extends PlayerIdentity {
   normalizedScores: number[]
 }
 
+interface GameScoreParticipantRow {
+  gameId: number
+  score: number
+  isWinner: boolean
+}
+
+interface WinningScoreSummary {
+  gameId: number
+  playerCount: number
+  winningScore: number
+  winnerRowScores: number[]
+  nonWinnerRowScores: number[]
+}
+
+async function getWinningScoreSummaries(): Promise<WinningScoreSummary[]> {
+  const rows = await db
+    .select({
+      gameId: gamePlayers.gameId,
+      score: gamePlayers.score,
+      isWinner: gamePlayers.isWinner,
+    })
+    .from(gamePlayers)
+    .orderBy(gamePlayers.gameId, desc(gamePlayers.score), desc(gamePlayers.isWinner))
+
+  const participantsByGameId = new Map<number, GameScoreParticipantRow[]>()
+
+  rows.forEach((row) => {
+    const existing = participantsByGameId.get(row.gameId) ?? []
+    existing.push(row)
+    participantsByGameId.set(row.gameId, existing)
+  })
+
+  return [...participantsByGameId.values()].map((participants) => {
+    const explicitWinners = participants.filter((participant) => participant.isWinner)
+    const winningScore = explicitWinners.length > 0
+      ? Math.max(...explicitWinners.map((participant) => participant.score))
+      : Math.max(...participants.map((participant) => participant.score))
+    const winnerRows = explicitWinners.length > 0
+      ? explicitWinners
+      : participants.filter((participant) => participant.score === winningScore)
+    const winnerRowSet = new Set(winnerRows)
+
+    return {
+      gameId: participants[0].gameId,
+      playerCount: participants.length,
+      winningScore,
+      winnerRowScores: winnerRows.map((participant) => participant.score),
+      nonWinnerRowScores: participants
+        .filter((participant) => !winnerRowSet.has(participant))
+        .map((participant) => participant.score),
+    }
+  })
+}
+
 export interface PlayerNormalizedScoreStats {
   playerId: number
   name: string
@@ -449,6 +503,64 @@ export async function getPlayerNormalizedScoreStats(): Promise<PlayerNormalizedS
         || b.medianScore - a.medianScore
         || a.name.localeCompare(b.name),
     )
+}
+
+export interface WinningScoreComparison {
+  winnerRows: number
+  nonWinnerRows: number
+  avgWinningScore: number
+  avgLosingScore: number
+  scoreGap: number
+}
+
+export async function getWinningScoreComparison(): Promise<WinningScoreComparison> {
+  const summaries = await getWinningScoreSummaries()
+  const winnerScores = summaries.flatMap((summary) => summary.winnerRowScores)
+  const nonWinnerScores = summaries.flatMap((summary) => summary.nonWinnerRowScores)
+  const avgWinningScore = winnerScores.length > 0
+    ? round1(winnerScores.reduce((sum, score) => sum + score, 0) / winnerScores.length)
+    : 0
+  const avgLosingScore = nonWinnerScores.length > 0
+    ? round1(nonWinnerScores.reduce((sum, score) => sum + score, 0) / nonWinnerScores.length)
+    : 0
+
+  return {
+    winnerRows: winnerScores.length,
+    nonWinnerRows: nonWinnerScores.length,
+    avgWinningScore,
+    avgLosingScore,
+    scoreGap: round1(avgWinningScore - avgLosingScore),
+  }
+}
+
+export interface WinningScoreByGameSizeBucket {
+  playerCount: number
+  gameCount: number
+  avgWinningScore: number
+}
+
+export async function getWinningScoreByGameSize(): Promise<WinningScoreByGameSizeBucket[]> {
+  const summaries = await getWinningScoreSummaries()
+  const buckets = new Map<number, { gameCount: number; winningScoreTotal: number }>()
+
+  summaries.forEach((summary) => {
+    const existing = buckets.get(summary.playerCount) ?? {
+      gameCount: 0,
+      winningScoreTotal: 0,
+    }
+
+    existing.gameCount += 1
+    existing.winningScoreTotal += summary.winningScore
+    buckets.set(summary.playerCount, existing)
+  })
+
+  return [...buckets.entries()]
+    .map(([playerCount, bucket]) => ({
+      playerCount,
+      gameCount: bucket.gameCount,
+      avgWinningScore: round1(bucket.winningScoreTotal / bucket.gameCount),
+    }))
+    .sort((a, b) => a.playerCount - b.playerCount)
 }
 
 export interface PlayerPodiumRate {

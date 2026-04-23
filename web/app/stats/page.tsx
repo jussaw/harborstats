@@ -12,6 +12,7 @@ import { LongestGapCard } from '@/components/LongestGapCard';
 import { PlayerAttendanceChart } from '@/components/PlayerAttendanceChart';
 import { StatsCard } from '@/components/StatsCard';
 import { StatsLeaderboardTable } from '@/components/StatsLeaderboardTable';
+import { WinningScoreByGameSizeChart } from '@/components/WinningScoreByGameSizeChart';
 import { formatAverage, formatPercent, formatSignedNumber } from '@/lib/format';
 import { PlayerTier } from '@/lib/player-tier';
 import { rankWithTies } from '@/lib/rank';
@@ -31,6 +32,8 @@ import {
   getPlayerWinEvents,
   getSingleGameRecords,
   getTierShowdownStats,
+  getWinningScoreByGameSize,
+  getWinningScoreComparison,
   getPlayerWinRates,
   type SingleGameRecords,
 } from '@/lib/stats';
@@ -87,6 +90,29 @@ function DataRow({ children }: { children: ReactNode }) {
 
 function EmptyState({ children }: { children: ReactNode }) {
   return <p className="py-8 text-center text-sm text-(--cream)/50">{children}</p>;
+}
+
+function ScoreComparisonMetric({
+  label,
+  value,
+  rowLabel,
+}: {
+  label: string;
+  value: number;
+  rowLabel: string;
+}) {
+  return (
+    <div className="rounded-xl border border-(--gold)/10 bg-(--navy-900)/35 p-3">
+      <p
+        style={{ fontFamily: 'var(--font-cinzel), Georgia, serif' }}
+        className="text-xs tracking-widest text-(--cream)/50 uppercase"
+      >
+        {label}
+      </p>
+      <p className="mt-2 font-semibold text-(--gold) tabular-nums">{formatAverage(value)}</p>
+      <p className="mt-1 text-xs text-(--cream)/55">{rowLabel}</p>
+    </div>
+  );
 }
 
 function formatTierLabel(tier: PlayerTier) {
@@ -282,6 +308,8 @@ export default async function StatsPage() {
     playerWinEvents,
     playerStreakRecords,
     singleGameRecords,
+    winningScoreComparison,
+    winningScoreByGameSize,
   ] = await Promise.all([
     getPlayerWinRates(),
     getSettings(),
@@ -299,6 +327,8 @@ export default async function StatsPage() {
     getPlayerWinEvents(),
     getPlayerStreakRecords(),
     getSingleGameRecords(),
+    getWinningScoreComparison(),
+    getWinningScoreByGameSize(),
   ]);
 
   const winRateQualified = winRates
@@ -393,6 +423,13 @@ export default async function StatsPage() {
       span: 'single',
     },
     {
+      id: 'winning-vs-losing-score',
+      title: 'Winning vs Losing Score',
+      description: 'Average score for winner rows versus non-winner rows across all recorded games.',
+      badge: undefined,
+      span: 'single',
+    },
+    {
       id: 'total-vp',
       title: 'Total VP',
       description: 'Cumulative points scored across every recorded game.',
@@ -418,6 +455,13 @@ export default async function StatsPage() {
       title: 'Normalized Median Score',
       description: 'Typical share of each game’s winning score, using medians to smooth out spikes.',
       badge: 'Winner = 100%',
+      span: 'single',
+    },
+    {
+      id: 'winning-score-by-game-size',
+      title: 'Winning Score by Game Size',
+      description: 'Average winning score grouped by game size, from 3P to 6P and beyond.',
+      badge: undefined,
       span: 'single',
     },
     {
@@ -738,6 +782,48 @@ export default async function StatsPage() {
           )}
         </StatsCard>
 
+        <StatsCard {...cardById['winning-vs-losing-score']}>
+          {winningScoreComparison.winnerRows + winningScoreComparison.nonWinnerRows === 0 ? (
+            <EmptyState>No games recorded yet.</EmptyState>
+          ) : (
+            <div className="space-y-4">
+              <div
+                className="
+                  grid gap-3
+                  sm:grid-cols-2
+                "
+              >
+                <ScoreComparisonMetric
+                  label="Winners"
+                  value={winningScoreComparison.avgWinningScore}
+                  rowLabel={`${winningScoreComparison.winnerRows} winner rows`}
+                />
+                <ScoreComparisonMetric
+                  label="Non-Winners"
+                  value={winningScoreComparison.avgLosingScore}
+                  rowLabel={`${winningScoreComparison.nonWinnerRows} non-winner rows`}
+                />
+              </div>
+              <div
+                className="
+                  rounded-xl border border-(--gold)/10 bg-(--navy-900)/35 p-3
+                "
+              >
+                <p
+                  className="
+                    text-xs tracking-widest text-(--cream)/50 uppercase
+                  "
+                >
+                  Gap
+                </p>
+                <p className="mt-2 font-semibold text-(--gold) tabular-nums">
+                  {formatSignedNumber(winningScoreComparison.scoreGap)}
+                </p>
+              </div>
+            </div>
+          )}
+        </StatsCard>
+
         <StatsCard {...cardById['total-vp']}>
           {cumulativeScoreStats.some((player) => player.games > 0) ? (
             <StatsLeaderboardTable
@@ -754,10 +840,19 @@ export default async function StatsPage() {
                   <td className="px-3 py-2 text-(--cream)">
                     <PlayerName name={player.name} tier={player.tier} />
                   </td>
-                  <td className="px-3 py-2 text-right font-semibold text-(--gold) tabular-nums">
+                  <td
+                    className="
+                      px-3 py-2 text-right font-semibold text-(--gold)
+                      tabular-nums
+                    "
+                  >
                     {player.totalScore}
                   </td>
-                  <td className="px-3 py-2 text-right text-(--cream)/70 tabular-nums">
+                  <td
+                    className="
+                      px-3 py-2 text-right text-(--cream)/70 tabular-nums
+                    "
+                  >
                     {player.games}
                   </td>
                 </DataRow>
@@ -787,13 +882,24 @@ export default async function StatsPage() {
                   <td className="px-3 py-2 text-(--cream)">
                     <PlayerName name={player.name} tier={player.tier} />
                   </td>
-                  <td className="px-3 py-2 text-right font-semibold text-(--gold) tabular-nums">
+                  <td
+                    className="
+                      px-3 py-2 text-right font-semibold text-(--gold)
+                      tabular-nums
+                    "
+                  >
                     {formatAverage(player.pointsPerGame)}
                   </td>
-                  <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
+                  <td className="
+                    px-3 py-2 text-right text-(--cream) tabular-nums
+                  ">
                     {player.totalScore}
                   </td>
-                  <td className="px-3 py-2 text-right text-(--cream)/70 tabular-nums">
+                  <td
+                    className="
+                      px-3 py-2 text-right text-(--cream)/70 tabular-nums
+                    "
+                  >
                     {player.games}
                   </td>
                 </DataRow>
@@ -878,6 +984,10 @@ export default async function StatsPage() {
               ))}
             </StatsLeaderboardTable>
           )}
+        </StatsCard>
+
+        <StatsCard {...cardById['winning-score-by-game-size']}>
+          <WinningScoreByGameSizeChart buckets={winningScoreByGameSize} />
         </StatsCard>
 
         <StatsCard {...cardById['podium-rate']}>

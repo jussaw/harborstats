@@ -156,7 +156,7 @@ All activity and time-based stats in this section use the viewer's local time.
 ## 4. Score Patterns
 
 ### 4.1 Average winning score vs. average losing score `[S]`
-- [ ] Side-by-side comparison of mean winner score vs. mean non-winner score across all games.
+- [x] Side-by-side comparison of mean winner score vs. mean non-winner score across all games.
 
 ### 4.2 Total VP scored ever — cumulative leaderboard `[S]` `[P]`
 - [x] Rank players by the total points they have scored across all games.
@@ -173,7 +173,7 @@ All activity and time-based stats in this section use the viewer's local time.
 - **Needs:** per-player score list (share query from 4.4)
 
 ### 4.6 Does winning score scale with player count? `[S]`
-- [ ] Scatter or grouped bar chart of average winning score by game size.
+- [x] Scatter or grouped bar chart of average winning score by game size.
 - **Needs:** winner score + game size (share queries from 4.1 and 1.9)
 
 ### 4.7 % of games with a tied top score `[A]` `[S]`

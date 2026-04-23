@@ -20,6 +20,8 @@ import {
   getSingleGameRecords,
   getTierShowdownStats,
   getPlayerWinRates,
+  getWinningScoreByGameSize,
+  getWinningScoreComparison,
 } from '@/lib/stats'
 
 vi.mock('@/lib/stats', () => ({
@@ -38,6 +40,8 @@ vi.mock('@/lib/stats', () => ({
   getPlayerPodiumRates: vi.fn(),
   getPlayerFinishBreakdowns: vi.fn(),
   getTierShowdownStats: vi.fn(),
+  getWinningScoreByGameSize: vi.fn(),
+  getWinningScoreComparison: vi.fn(),
 }))
 
 vi.mock('@/lib/settings', () => ({
@@ -117,6 +121,18 @@ describe('StatsPage', () => {
         avgScore: 0.87,
         medianScore: 0.85,
       },
+    ])
+    vi.mocked(getWinningScoreComparison).mockResolvedValue({
+      winnerRows: 6,
+      nonWinnerRows: 5,
+      avgWinningScore: 8.3,
+      avgLosingScore: 5,
+      scoreGap: 3.3,
+    })
+    vi.mocked(getWinningScoreByGameSize).mockResolvedValue([
+      { playerCount: 3, gameCount: 2, avgWinningScore: 9 },
+      { playerCount: 4, gameCount: 1, avgWinningScore: 12 },
+      { playerCount: 5, gameCount: 3, avgWinningScore: 10.7 },
     ])
     vi.mocked(getPlayerPodiumRates).mockResolvedValue([
       {
@@ -367,10 +383,12 @@ describe('StatsPage', () => {
     const winRateIndex = markup.indexOf('id="win-rate"')
     const avgScoreIndex = markup.indexOf('id="avg-score"')
     const medianScoreIndex = markup.indexOf('id="median-score"')
+    const winningVsLosingScoreIndex = markup.indexOf('id="winning-vs-losing-score"')
     const totalVpIndex = markup.indexOf('id="total-vp"')
     const pointsPerGameIndex = markup.indexOf('id="points-per-game"')
     const normalizedAvgScoreIndex = markup.indexOf('id="normalized-avg-score"')
     const normalizedMedianScoreIndex = markup.indexOf('id="normalized-median-score"')
+    const winningScoreByGameSizeIndex = markup.indexOf('id="winning-score-by-game-size"')
     const podiumRateIndex = markup.indexOf('id="podium-rate"')
     const expectedVsActualWinsIndex = markup.indexOf('id="expected-vs-actual-wins"')
     const tierShowdownIndex = markup.indexOf('id="tier-showdown"')
@@ -395,10 +413,12 @@ describe('StatsPage', () => {
     expect(winRateIndex).toBeGreaterThan(totalWinsIndex)
     expect(avgScoreIndex).toBeGreaterThan(winRateIndex)
     expect(medianScoreIndex).toBeGreaterThan(avgScoreIndex)
-    expect(totalVpIndex).toBeGreaterThan(medianScoreIndex)
+    expect(winningVsLosingScoreIndex).toBeGreaterThan(medianScoreIndex)
+    expect(totalVpIndex).toBeGreaterThan(winningVsLosingScoreIndex)
     expect(pointsPerGameIndex).toBeGreaterThan(totalVpIndex)
     expect(normalizedAvgScoreIndex).toBeGreaterThan(pointsPerGameIndex)
     expect(normalizedMedianScoreIndex).toBeGreaterThan(normalizedAvgScoreIndex)
+    expect(winningScoreByGameSizeIndex).toBeGreaterThan(normalizedMedianScoreIndex)
     expect(podiumRateIndex).toBeGreaterThan(normalizedMedianScoreIndex)
     expect(expectedVsActualWinsIndex).toBeGreaterThan(podiumRateIndex)
     expect(tierShowdownIndex).toBeGreaterThan(expectedVsActualWinsIndex)
@@ -429,11 +449,18 @@ describe('StatsPage', () => {
     expect(markup).toContain('>Appearances<')
     expect(markup).toContain('>Players<')
     expect(markup).toContain('Expected vs Actual Wins')
+    expect(markup).toContain('Winning vs Losing Score')
+    expect(markup).toContain('Winning Score by Game Size')
     expect(markup).toContain('Total VP')
     expect(markup).toContain('Points per Game')
     expect(markup).toContain('Normalized Average Score')
     expect(markup).toContain('Normalized Median Score')
     expect(markup).toContain('Winner = 100%')
+    expect(markup).toContain('8.3')
+    expect(markup).toContain('5.0')
+    expect(markup).toContain('+3.3')
+    expect(markup).toContain('6 winner rows')
+    expect(markup).toContain('5 non-winner rows')
     expect(markup).toContain('sm:whitespace-nowrap')
     expect(markup).toContain('47')
     expect(markup).toContain('35')
@@ -491,6 +518,9 @@ describe('StatsPage', () => {
     expect(markup.slice(expectedVsActualWinsIndex, expectedVsActualWinsIndex + 160)).not.toContain(
       'lg:col-span-2',
     )
+    expect(markup.slice(winningVsLosingScoreIndex, winningVsLosingScoreIndex + 160)).not.toContain(
+      'lg:col-span-2',
+    )
     expect(markup.slice(totalVpIndex, totalVpIndex + 160)).not.toContain('lg:col-span-2')
     expect(markup.slice(pointsPerGameIndex, pointsPerGameIndex + 160)).not.toContain(
       'lg:col-span-2',
@@ -536,6 +566,9 @@ describe('StatsPage', () => {
     expect(markup.slice(longestWinStreakEverIndex, longestWinStreakEverIndex + 160)).not.toContain(
       'lg:col-span-2',
     )
+    expect(markup.slice(winningScoreByGameSizeIndex, winningScoreByGameSizeIndex + 160)).not.toContain(
+      'lg:col-span-2',
+    )
   })
 
   it('renders card empty states when no stats are available', async () => {
@@ -543,6 +576,14 @@ describe('StatsPage', () => {
     vi.mocked(getPlayerScoreStats).mockResolvedValue([])
     vi.mocked(getPlayerCumulativeScoreStats).mockResolvedValue([])
     vi.mocked(getPlayerNormalizedScoreStats).mockResolvedValue([])
+    vi.mocked(getWinningScoreComparison).mockResolvedValue({
+      winnerRows: 0,
+      nonWinnerRows: 0,
+      avgWinningScore: 0,
+      avgLosingScore: 0,
+      scoreGap: 0,
+    })
+    vi.mocked(getWinningScoreByGameSize).mockResolvedValue([])
     vi.mocked(getPlayerPodiumRates).mockResolvedValue([])
     vi.mocked(getPlayerFinishBreakdowns).mockResolvedValue([])
     vi.mocked(getTierShowdownStats).mockResolvedValue([])
@@ -571,6 +612,8 @@ describe('StatsPage', () => {
     expect(markup).toContain('No players have played 5+ games yet.')
     expect(markup).toContain('Total VP')
     expect(markup).toContain('Points per Game')
+    expect(markup).toContain('Winning vs Losing Score')
+    expect(markup).toContain('Winning Score by Game Size')
     expect(markup).not.toContain('Days Since Last Game')
     expect(markup).toContain('Games Over Time')
     expect(markup).toContain('Participation Rate')
@@ -587,7 +630,7 @@ describe('StatsPage', () => {
     expect(markup).toContain('Most Wins in a Month')
     expect(markup).toContain('Single-Game Records')
     expect(markup).toContain('Longest Win Streak Ever')
-    expect(markup.match(/No games recorded yet\./g)).toHaveLength(22)
+    expect(markup.match(/No games recorded yet\./g)).toHaveLength(24)
   })
 
   it('filters the podium leaderboard using the podium threshold instead of the win-rate threshold', async () => {
@@ -629,6 +672,14 @@ describe('StatsPage', () => {
       },
     ])
     vi.mocked(getPlayerNormalizedScoreStats).mockResolvedValue([])
+    vi.mocked(getWinningScoreComparison).mockResolvedValue({
+      winnerRows: 0,
+      nonWinnerRows: 0,
+      avgWinningScore: 0,
+      avgLosingScore: 0,
+      scoreGap: 0,
+    })
+    vi.mocked(getWinningScoreByGameSize).mockResolvedValue([])
     vi.mocked(getPlayerPodiumRates).mockResolvedValue([
       {
         playerId: 1,

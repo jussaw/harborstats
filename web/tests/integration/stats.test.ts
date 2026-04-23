@@ -18,6 +18,8 @@ import {
   getPlayerWinRates,
   getRecentActivitySummary,
   getTierShowdownStats,
+  getWinningScoreByGameSize,
+  getWinningScoreComparison,
 } from '@/lib/stats';
 import { PlayerTier } from '@/lib/player-tier';
 import { createTestGame, createTestPlayer } from '../helpers/db';
@@ -448,6 +450,52 @@ describe('stats integration', () => {
     expect(normalizedStats.findIndex((player) => player.playerId === alice.id)).toBeLessThan(
       normalizedStats.findIndex((player) => player.playerId === bob.id),
     );
+  });
+
+  test('getWinningScoreComparison compares winner-equivalent rows against non-winner rows', async () => {
+    const alice = await createTestPlayer({ name: 'Alice' });
+    const bob = await createTestPlayer({ name: 'Bob' });
+    const carol = await createTestPlayer({ name: 'Carol' });
+    const dana = await createTestPlayer({ name: 'Dana' });
+
+    await createTestGame({
+      players: [
+        { playerId: alice.id, score: 10, isWinner: true },
+        { playerId: bob.id, score: 8, isWinner: false },
+        { playerId: carol.id, score: 6, isWinner: false },
+      ],
+    });
+
+    await createTestGame({
+      players: [
+        { playerId: alice.id, score: 11, isWinner: true },
+        { playerId: bob.id, score: 11, isWinner: true },
+        { playerId: carol.id, score: 7, isWinner: false },
+      ],
+    });
+
+    await createTestGame({
+      players: [
+        { playerId: bob.id, score: 9, isWinner: false },
+        { playerId: carol.id, score: 9, isWinner: false },
+        { playerId: dana.id, score: 4, isWinner: false },
+      ],
+    });
+
+    await createTestGame({
+      players: [
+        { playerId: alice.id, score: 0, isWinner: true },
+        { playerId: dana.id, score: 0, isWinner: false },
+      ],
+    });
+
+    await expect(getWinningScoreComparison()).resolves.toEqual({
+      winnerRows: 6,
+      nonWinnerRows: 5,
+      avgWinningScore: 8.3,
+      avgLosingScore: 5,
+      scoreGap: 3.3,
+    });
   });
 
   test('getPlayerPodiumRates counts tied finish ranks and breaks equal rates by podium count', async () => {
@@ -968,6 +1016,84 @@ describe('stats integration', () => {
         wins: 2,
         winRate: 0.25,
       }),
+    ]);
+  });
+
+  test('getWinningScoreByGameSize buckets average winning score per game size with fallback winners', async () => {
+    const alice = await createTestPlayer({ name: 'Alice' });
+    const bob = await createTestPlayer({ name: 'Bob' });
+    const carol = await createTestPlayer({ name: 'Carol' });
+    const dana = await createTestPlayer({ name: 'Dana' });
+    const eve = await createTestPlayer({ name: 'Eve' });
+    const frank = await createTestPlayer({ name: 'Frank' });
+
+    await createTestGame({
+      players: [
+        { playerId: alice.id, score: 10, isWinner: true },
+        { playerId: bob.id, score: 7, isWinner: false },
+        { playerId: carol.id, score: 6, isWinner: false },
+      ],
+    });
+
+    await createTestGame({
+      players: [
+        { playerId: bob.id, score: 8, isWinner: false },
+        { playerId: carol.id, score: 8, isWinner: false },
+        { playerId: dana.id, score: 4, isWinner: false },
+      ],
+    });
+
+    await createTestGame({
+      players: [
+        { playerId: alice.id, score: 12, isWinner: true },
+        { playerId: bob.id, score: 9, isWinner: false },
+        { playerId: carol.id, score: 7, isWinner: false },
+        { playerId: dana.id, score: 5, isWinner: false },
+      ],
+    });
+
+    await createTestGame({
+      players: [
+        { playerId: alice.id, score: 15, isWinner: true },
+        { playerId: eve.id, score: 15, isWinner: true },
+        { playerId: bob.id, score: 11, isWinner: false },
+        { playerId: carol.id, score: 10, isWinner: false },
+        { playerId: dana.id, score: 8, isWinner: false },
+      ],
+    });
+
+    await createTestGame({
+      players: [
+        { playerId: alice.id, score: 0, isWinner: true },
+        { playerId: bob.id, score: 0, isWinner: false },
+        { playerId: carol.id, score: 0, isWinner: false },
+        { playerId: dana.id, score: 0, isWinner: false },
+        { playerId: eve.id, score: 0, isWinner: false },
+        { playerId: frank.id, score: 0, isWinner: false },
+      ],
+    });
+
+    await expect(getWinningScoreByGameSize()).resolves.toEqual([
+      {
+        playerCount: 3,
+        gameCount: 2,
+        avgWinningScore: 9,
+      },
+      {
+        playerCount: 4,
+        gameCount: 1,
+        avgWinningScore: 12,
+      },
+      {
+        playerCount: 5,
+        gameCount: 1,
+        avgWinningScore: 15,
+      },
+      {
+        playerCount: 6,
+        gameCount: 1,
+        avgWinningScore: 0,
+      },
     ]);
   });
 
