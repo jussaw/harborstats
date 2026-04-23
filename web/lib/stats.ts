@@ -1037,6 +1037,7 @@ export async function getReigningChampionSummary(): Promise<ReigningChampionSumm
 
 export interface PlayerCurrentWinStreak extends PlayerIdentity {
   streak: number
+  mostRecentAppearance: string | null
   mostRecentWin: string | null
 }
 
@@ -1087,6 +1088,9 @@ function compareNullableIsoDesc(left: string | null, right: string | null) {
 export async function getPlayerCurrentWinStreaks(): Promise<PlayerCurrentWinStreak[]> {
   const { players: allPlayers, outcomeRows } = await getOrderedGameOutcomeData()
   const rowsByPlayerId = new Map<number, GameOutcomeRow[]>()
+  const mostRecentAppearanceByPlayerId = new Map<number, string | null>(
+    allPlayers.map((player) => [player.playerId, null]),
+  )
   const mostRecentWinByPlayerId = new Map<number, string | null>(
     allPlayers.map((player) => [player.playerId, null]),
   )
@@ -1095,6 +1099,10 @@ export async function getPlayerCurrentWinStreaks(): Promise<PlayerCurrentWinStre
     const existingRows = rowsByPlayerId.get(row.playerId) ?? []
     existingRows.push(row)
     rowsByPlayerId.set(row.playerId, existingRows)
+
+    if (mostRecentAppearanceByPlayerId.get(row.playerId) === null) {
+      mostRecentAppearanceByPlayerId.set(row.playerId, row.playedAt.toISOString())
+    }
 
     if (row.isWinner && mostRecentWinByPlayerId.get(row.playerId) === null) {
       mostRecentWinByPlayerId.set(row.playerId, row.playedAt.toISOString())
@@ -1118,6 +1126,7 @@ export async function getPlayerCurrentWinStreaks(): Promise<PlayerCurrentWinStre
       return {
         ...player,
         streak,
+        mostRecentAppearance: mostRecentAppearanceByPlayerId.get(player.playerId) ?? null,
         mostRecentWin: mostRecentWinByPlayerId.get(player.playerId) ?? null,
       }
     })

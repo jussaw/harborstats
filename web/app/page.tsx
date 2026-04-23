@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { listRecentGames } from '@/lib/games'
 import { getPlayers } from '@/lib/players'
 import { getPlayerCurrentWinStreaks, getRecentActivitySummary, getReigningChampionSummary } from '@/lib/stats'
+import { CurrentWinStreakLeaderCard } from '@/components/CurrentWinStreakLeaderCard'
 import { NewGameButton } from '@/components/NewGameButton'
 import { FormattedDate } from '@/components/FormattedDate'
 import { RecentActivityCard } from '@/components/RecentActivityCard'
@@ -36,10 +37,6 @@ function formatNameList(names: string[]) {
   return names.join(', ')
 }
 
-function formatWinsLabel(count: number) {
-  return `${count} win${count === 1 ? '' : 's'}`
-}
-
 export default async function HomePage() {
   const [games, players, activitySummary, reigningChampion, currentWinStreaks] = await Promise.all([
     listRecentGames(),
@@ -48,10 +45,6 @@ export default async function HomePage() {
     getReigningChampionSummary(),
     getPlayerCurrentWinStreaks(),
   ])
-  const topStreak = currentWinStreaks[0]?.streak ?? 0
-  const currentLeaders = topStreak > 0
-    ? currentWinStreaks.filter((player) => player.streak === topStreak)
-    : []
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-12">
@@ -106,19 +99,7 @@ export default async function HomePage() {
           title="Current Win Streak Leader"
           description="Longest active streak based on each player’s own game history."
         >
-          {currentLeaders.length > 0 ? (
-            <div className="space-y-3">
-              <p className="
-                font-cinzel text-4xl leading-none font-semibold tracking-wide
-                text-(--gold)
-              ">
-                {formatNameList(currentLeaders.map((leader) => leader.name))}
-              </p>
-              <p className="text-sm text-(--cream)/55">{formatWinsLabel(topStreak)}</p>
-            </div>
-          ) : (
-            <p className="py-8 text-center text-sm text-(--cream)/50">No active win streaks yet.</p>
-          )}
+          <CurrentWinStreakLeaderCard currentWinStreaks={currentWinStreaks} />
         </SummaryTile>
       </div>
 

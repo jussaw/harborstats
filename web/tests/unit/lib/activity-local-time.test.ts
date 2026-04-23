@@ -11,6 +11,7 @@ import {
   buildSessionSummary,
   buildTimeOfDayPattern,
   getDaysSinceLastGame,
+  isWithinRecentLocalCalendarDays,
 } from '@/lib/activity-local-time'
 import { PlayerTier } from '@/lib/player-tier'
 
@@ -419,6 +420,15 @@ describe('activity-local-time', () => {
     ).toBeNull()
 
     expect(
+      isWithinRecentLocalCalendarDays({
+        iso: null,
+        now: new Date('2026-04-21T05:00:00.000Z'),
+        timeZone: 'America/New_York',
+        days: 7,
+      }),
+    ).toBe(false)
+
+    expect(
       buildPlayerBestWeekWinRecords({
         players: [],
         winEvents: [],
@@ -433,6 +443,26 @@ describe('activity-local-time', () => {
         timeZone: 'America/New_York',
       }),
     ).toEqual([])
+  })
+
+  it('uses the viewer local calendar when checking recent-day eligibility', () => {
+    expect(
+      isWithinRecentLocalCalendarDays({
+        iso: '2026-04-17T23:30:00.000Z',
+        now: new Date('2026-04-23T12:00:00.000Z'),
+        timeZone: 'America/New_York',
+        days: 7,
+      }),
+    ).toBe(true)
+
+    expect(
+      isWithinRecentLocalCalendarDays({
+        iso: '2026-04-16T23:30:00.000Z',
+        now: new Date('2026-04-23T12:00:00.000Z'),
+        timeZone: 'America/New_York',
+        days: 7,
+      }),
+    ).toBe(false)
   })
 
   it('normalizes midnight hour 24 into the 12 AM bucket', () => {

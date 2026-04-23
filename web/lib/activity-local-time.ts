@@ -823,3 +823,27 @@ export function getDaysSinceLastGame({
 
   return Math.floor((currentLocalDay.getTime() - latestLocalDay.getTime()) / millisecondsPerDay)
 }
+
+export function isWithinRecentLocalCalendarDays({
+  iso,
+  now,
+  timeZone,
+  days,
+}: {
+  iso: string | null
+  now: Date
+  timeZone: string
+  days: number
+}): boolean {
+  if (!iso || days <= 0) {
+    return false
+  }
+
+  const daysSince = getDaysSinceLastGame({
+    latestPlayedAtIso: iso,
+    now,
+    timeZone,
+  })
+
+  return daysSince !== null && daysSince >= 0 && daysSince < days
+}

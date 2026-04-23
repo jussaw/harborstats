@@ -108,18 +108,22 @@ describe('stats integration', () => {
     expect(streaks.map((player) => player.name)).toEqual(['Alice', 'Bob', 'Carol', 'Dana']);
     expect(streaks.find((player) => player.playerId === alice.id)).toMatchObject({
       streak: 2,
+      mostRecentAppearance: '2026-04-24T18:00:00.000Z',
       mostRecentWin: '2026-04-24T18:00:00.000Z',
     });
     expect(streaks.find((player) => player.playerId === bob.id)).toMatchObject({
       streak: 2,
+      mostRecentAppearance: '2026-04-23T18:00:00.000Z',
       mostRecentWin: '2026-04-23T18:00:00.000Z',
     });
     expect(streaks.find((player) => player.playerId === carol.id)).toMatchObject({
       streak: 0,
+      mostRecentAppearance: '2026-04-24T18:00:00.000Z',
       mostRecentWin: null,
     });
     expect(streaks.find((player) => player.playerId === dana.id)).toMatchObject({
       streak: 0,
+      mostRecentAppearance: null,
       mostRecentWin: null,
     });
   });

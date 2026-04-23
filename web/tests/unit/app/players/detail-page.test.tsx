@@ -238,6 +238,7 @@ describe('PlayerProfilePage', () => {
         name: 'Ada',
         tier: PlayerTier.Premium,
         streak: 2,
+        mostRecentAppearance: '2026-04-20T18:00:00.000Z',
         mostRecentWin: '2026-04-20T18:00:00.000Z',
       },
       {
@@ -245,6 +246,7 @@ describe('PlayerProfilePage', () => {
         name: 'Bea',
         tier: PlayerTier.Standard,
         streak: 0,
+        mostRecentAppearance: '2026-04-21T18:00:00.000Z',
         mostRecentWin: '2026-04-18T18:00:00.000Z',
       },
     ])
@@ -516,6 +518,7 @@ describe('PlayerProfilePage', () => {
         name: 'Ada',
         tier: PlayerTier.Premium,
         streak: 2,
+        mostRecentAppearance: '2026-04-20T18:00:00.000Z',
         mostRecentWin: '2026-04-20T18:00:00.000Z',
       },
       {
@@ -523,6 +526,7 @@ describe('PlayerProfilePage', () => {
         name: 'Bea',
         tier: PlayerTier.Standard,
         streak: 0,
+        mostRecentAppearance: null,
         mostRecentWin: null,
       },
     ])

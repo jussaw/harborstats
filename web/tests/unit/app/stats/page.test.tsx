@@ -225,6 +225,7 @@ describe('StatsPage', () => {
         name: 'Ada',
         tier: PlayerTier.Premium,
         streak: 2,
+        mostRecentAppearance: '2026-04-21T03:00:00.000Z',
         mostRecentWin: '2026-04-21T03:00:00.000Z',
       },
       {
@@ -232,6 +233,7 @@ describe('StatsPage', () => {
         name: 'Bea',
         tier: PlayerTier.Standard,
         streak: 2,
+        mostRecentAppearance: '2026-04-20T18:00:00.000Z',
         mostRecentWin: '2026-04-20T18:00:00.000Z',
       },
     ])

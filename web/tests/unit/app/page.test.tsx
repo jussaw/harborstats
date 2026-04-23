@@ -67,6 +67,7 @@ describe('HomePage', () => {
         name: 'Ada',
         tier: 'premium' as const,
         streak: 2,
+        mostRecentAppearance: '2026-04-18T12:00:00.000Z',
         mostRecentWin: '2026-04-18T12:00:00.000Z',
       },
       {
@@ -74,6 +75,7 @@ describe('HomePage', () => {
         name: 'Bea',
         tier: 'standard' as const,
         streak: 2,
+        mostRecentAppearance: '2026-04-17T12:00:00.000Z',
         mostRecentWin: '2026-04-17T12:00:00.000Z',
       },
     ]);
@@ -87,8 +89,8 @@ describe('HomePage', () => {
     expect(markup).toContain('Current Win Streak Leader');
     expect(markup).toContain('Latest recorded game');
     expect(markup).toContain('Ada, Bea');
-    expect(markup).toContain('2 wins');
-    expect(markup).toContain('Loading your local-time view...');
+    expect(markup).not.toContain('2 wins');
+    expect(markup.match(/Loading your local-time view\.\.\./g)).toHaveLength(2);
     expect(markup).toContain('2026-04-18T12:00:00.000Z');
     expect(markup).toContain('Fast game');
   });
@@ -107,6 +109,7 @@ describe('HomePage', () => {
         name: 'Ada',
         tier: 'premium' as const,
         streak: 0,
+        mostRecentAppearance: null,
         mostRecentWin: null,
       },
     ]);
