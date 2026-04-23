@@ -27,8 +27,10 @@ import {
   getPlayerPodiumRates,
   getPlayerScoreStats,
   getPlayerWinEvents,
+  getSingleGameRecords,
   getTierShowdownStats,
   getPlayerWinRates,
+  type SingleGameRecords,
 } from '@/lib/stats';
 
 export const dynamic = 'force-dynamic';
@@ -93,6 +95,133 @@ function formatWinLabel(count: number) {
   return `${count} win${count === 1 ? '' : 's'}`
 }
 
+function formatPointLabel(count: number) {
+  return `${count} point${count === 1 ? '' : 's'}`;
+}
+
+function formatMarginLabel(count: number) {
+  return `${count}-point margin`;
+}
+
+function SingleGameRecordRow({
+  label,
+  value,
+  detail,
+  playedAt,
+}: {
+  label: string;
+  value: string;
+  detail: ReactNode;
+  playedAt: string;
+}) {
+  return (
+    <div className="rounded-xl border border-(--gold)/10 bg-(--navy-900)/35 p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p
+            style={{ fontFamily: 'var(--font-cinzel), Georgia, serif' }}
+            className="text-xs tracking-widest text-(--cream)/50 uppercase"
+          >
+            {label}
+          </p>
+          <div className="mt-1 text-sm text-(--cream)">{detail}</div>
+        </div>
+        <p
+          className="
+            shrink-0 text-right font-semibold text-(--gold) tabular-nums
+          "
+        >
+          {value}
+        </p>
+      </div>
+      <FormattedDate
+        iso={playedAt}
+        className="mt-2 block text-xs text-(--cream)/50"
+      />
+    </div>
+  );
+}
+
+function SingleGameRecordsContent({ records }: { records: SingleGameRecords }) {
+  const recordRows = [
+    records.highestScore
+      ? {
+        key: 'highest-score',
+        label: 'Highest Score',
+        value: formatPointLabel(records.highestScore.score),
+        detail: <PlayerName name={records.highestScore.name} tier={records.highestScore.tier} />,
+        playedAt: records.highestScore.playedAt,
+      }
+      : null,
+    records.lowestWinningScore
+      ? {
+        key: 'lowest-winning-score',
+        label: 'Lowest Winning Score',
+        value: formatPointLabel(records.lowestWinningScore.score),
+        detail: (
+          <PlayerName
+            name={records.lowestWinningScore.name}
+            tier={records.lowestWinningScore.tier}
+          />
+        ),
+        playedAt: records.lowestWinningScore.playedAt,
+      }
+      : null,
+    records.biggestBlowout
+      ? {
+        key: 'biggest-blowout',
+        label: 'Biggest Blowout',
+        value: formatMarginLabel(records.biggestBlowout.margin),
+        detail: (
+          <span>
+            {records.biggestBlowout.winner}
+            <span className="text-(--cream)/50">
+              {' '}
+              ({records.biggestBlowout.winnerScore}-{records.biggestBlowout.runnerUpScore})
+            </span>
+          </span>
+        ),
+        playedAt: records.biggestBlowout.playedAt,
+      }
+      : null,
+    records.closestGame
+      ? {
+        key: 'closest-game',
+        label: 'Closest Game',
+        value: formatMarginLabel(records.closestGame.margin),
+        detail: (
+          <span>
+            {records.closestGame.winner}
+            <span className="text-(--cream)/50">
+              {' '}
+              ({records.closestGame.winnerScore}-{records.closestGame.runnerUpScore})
+            </span>
+          </span>
+        ),
+        playedAt: records.closestGame.playedAt,
+      }
+      : null,
+  ].filter((record): record is NonNullable<typeof record> => record !== null);
+
+  if (recordRows.length === 0) {
+    return <EmptyState>No games recorded yet.</EmptyState>;
+  }
+
+  return (
+    <div className="grid gap-3">
+      {recordRows.map((record) => (
+        <SingleGameRecordRow
+          key={record.key}
+          label={record.label}
+          value={record.value}
+          detail={record.detail}
+          playedAt={record.playedAt}
+        />
+      ))}
+    </div>
+  );
+}
+
 export default async function StatsPage() {
   const [
     winRates,
@@ -108,6 +237,7 @@ export default async function StatsPage() {
     playerAttendanceEvents,
     currentWinStreaks,
     playerWinEvents,
+    singleGameRecords,
   ] = await Promise.all([
     getPlayerWinRates(),
     getSettings(),
@@ -122,6 +252,7 @@ export default async function StatsPage() {
     getPlayerAttendanceEvents(),
     getPlayerCurrentWinStreaks(),
     getPlayerWinEvents(),
+    getSingleGameRecords(),
   ]);
 
   const winRateQualified = winRates
@@ -329,6 +460,13 @@ export default async function StatsPage() {
       id: 'most-wins-in-month',
       title: 'Most Wins in a Month',
       description: 'Each player’s personal-best win total in a local calendar month.',
+      badge: undefined,
+      span: 'single',
+    },
+    {
+      id: 'single-game-records',
+      title: 'Single-Game Records',
+      description: 'Peak scores, squeaky wins, blowouts, and nail-biters from recorded games.',
       badge: undefined,
       span: 'single',
     },
@@ -933,6 +1071,10 @@ export default async function StatsPage() {
             winEvents={playerWinEvents}
             variant="month"
           />
+        </StatsCard>
+
+        <StatsCard {...cardById['single-game-records']}>
+          <SingleGameRecordsContent records={singleGameRecords} />
         </StatsCard>
       </div>
     </main>

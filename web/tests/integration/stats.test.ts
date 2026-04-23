@@ -11,6 +11,7 @@ import {
   getPlayerParticipationRates,
   getPlayerScoreStats,
   getReigningChampionSummary,
+  getSingleGameRecords,
   getPlayerWinRateByGameSize,
   getPlayerWinRates,
   getRecentActivitySummary,
@@ -535,6 +536,104 @@ describe('stats integration', () => {
       lossGames: 0,
       averageVictoryMargin: null,
       averageDefeatMargin: null,
+    });
+  });
+
+  test('getSingleGameRecords returns highest score, lowest winning score, biggest blowout, and closest game', async () => {
+    const alice = await createTestPlayer({ name: 'Alice', tier: PlayerTier.Premium });
+    const bob = await createTestPlayer({ name: 'Bob', tier: PlayerTier.Standard });
+    const carol = await createTestPlayer({ name: 'Carol', tier: PlayerTier.Standard });
+    const dana = await createTestPlayer({ name: 'Dana', tier: PlayerTier.Standard });
+    const eve = await createTestPlayer({ name: 'Eve', tier: PlayerTier.Premium });
+
+    await createTestGame({
+      playedAt: new Date('2026-04-20T18:00:00.000Z'),
+      players: [
+        { playerId: alice.id, score: 12, isWinner: true },
+        { playerId: bob.id, score: 10, isWinner: false },
+        { playerId: carol.id, score: 8, isWinner: false },
+      ],
+    });
+
+    await createTestGame({
+      playedAt: new Date('2026-04-21T18:00:00.000Z'),
+      players: [
+        { playerId: bob.id, score: 9, isWinner: true },
+        { playerId: alice.id, score: 8, isWinner: false },
+        { playerId: carol.id, score: 7, isWinner: false },
+      ],
+    });
+
+    const highScoreLoss = await createTestGame({
+      playedAt: new Date('2026-04-22T18:00:00.000Z'),
+      players: [
+        { playerId: carol.id, score: 20, isWinner: false },
+        { playerId: dana.id, score: 11, isWinner: true },
+        { playerId: bob.id, score: 10, isWinner: false },
+      ],
+    });
+
+    const closestTie = await createTestGame({
+      playedAt: new Date('2026-04-23T18:00:00.000Z'),
+      players: [
+        { playerId: eve.id, score: 7, isWinner: true },
+        { playerId: bob.id, score: 7, isWinner: false },
+        { playerId: carol.id, score: 4, isWinner: false },
+      ],
+    });
+
+    await createTestGame({
+      playedAt: new Date('2026-04-24T18:00:00.000Z'),
+      players: [
+        { playerId: alice.id, score: 6, isWinner: false },
+        { playerId: bob.id, score: 6, isWinner: false },
+      ],
+    });
+
+    const blowout = await createTestGame({
+      playedAt: new Date('2026-04-25T18:00:00.000Z'),
+      players: [
+        { playerId: alice.id, score: 15, isWinner: true },
+        { playerId: eve.id, score: 15, isWinner: true },
+        { playerId: dana.id, score: 4, isWinner: false },
+      ],
+    });
+
+    await expect(getSingleGameRecords()).resolves.toEqual({
+      highestScore: {
+        gameId: highScoreLoss.id,
+        playedAt: '2026-04-22T18:00:00.000Z',
+        playerId: carol.id,
+        name: 'Carol',
+        tier: PlayerTier.Standard,
+        score: 20,
+      },
+      lowestWinningScore: {
+        gameId: closestTie.id,
+        playedAt: '2026-04-23T18:00:00.000Z',
+        playerId: eve.id,
+        name: 'Eve',
+        tier: PlayerTier.Premium,
+        score: 7,
+      },
+      biggestBlowout: {
+        gameId: blowout.id,
+        playedAt: '2026-04-25T18:00:00.000Z',
+        winner: 'Alice, Eve',
+        winnerScore: 15,
+        runnerUpScore: 4,
+        margin: 11,
+        participantCount: 3,
+      },
+      closestGame: {
+        gameId: closestTie.id,
+        playedAt: '2026-04-23T18:00:00.000Z',
+        winner: 'Eve',
+        winnerScore: 7,
+        runnerUpScore: 7,
+        margin: 0,
+        participantCount: 3,
+      },
     });
   });
 

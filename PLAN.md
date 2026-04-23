@@ -127,18 +127,18 @@ All activity and time-based stats in this section use the viewer's local time.
 - [x] Find each player's personal best for wins in a calendar week and month.
 
 ### 3.4 Highest-scoring game ever `[S]`
-- [ ] Record of the single highest individual score, with date and player name.
+- [x] Record of the single highest individual score, with date and player name.
 
 ### 3.5 Lowest winning score `[S]`
-- [ ] The squeakiest win: lowest score that was still good enough to win a game.
+- [x] The squeakiest win: lowest score that was still good enough to win a game.
 - **Needs:** winner score per game (share query from 3.4)
 
 ### 3.6 Biggest blowout `[S]`
-- [ ] Game with the largest gap between winner and runner-up score.
+- [x] Game with the largest gap between winner and runner-up score.
 - **Needs:** margin per game (extend query from 3.4)
 
 ### 3.7 Closest game `[S]`
-- [ ] Game with the smallest gap between winner and runner-up score.
+- [x] Game with the smallest gap between winner and runner-up score.
 - **Needs:** margin per game (share query from 3.6)
 
 ### 3.8 Longest win streak ever `[S]` `[P]`

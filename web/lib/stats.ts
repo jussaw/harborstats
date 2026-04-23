@@ -637,6 +637,247 @@ export async function getPlayerMarginStats(): Promise<PlayerMarginStats[]> {
   }))
 }
 
+export interface HighestScoreRecord extends PlayerIdentity {
+  gameId: number
+  playedAt: string
+  score: number
+}
+
+export type WinningScoreRecord = HighestScoreRecord
+
+export interface MarginGameRecord {
+  gameId: number
+  playedAt: string
+  winner: string
+  winnerScore: number
+  runnerUpScore: number
+  margin: number
+  participantCount: number
+}
+
+export interface SingleGameRecords {
+  highestScore: HighestScoreRecord | null
+  lowestWinningScore: WinningScoreRecord | null
+  biggestBlowout: MarginGameRecord | null
+  closestGame: MarginGameRecord | null
+}
+
+interface SingleGameParticipantRecord extends PlayerIdentity {
+  gameId: number
+  playedAt: Date
+  score: number
+  isWinner: boolean
+}
+
+interface InternalScoreRecord extends PlayerIdentity {
+  gameId: number
+  playedAt: Date
+  score: number
+}
+
+interface InternalMarginGameRecord {
+  gameId: number
+  playedAt: Date
+  winner: string
+  winnerScore: number
+  runnerUpScore: number
+  margin: number
+  participantCount: number
+}
+
+function prefersNewerGame(
+  candidate: { gameId: number; playedAt: Date },
+  current: { gameId: number; playedAt: Date },
+): boolean {
+  const playedAtDiff = candidate.playedAt.getTime() - current.playedAt.getTime()
+
+  if (playedAtDiff !== 0) {
+    return playedAtDiff > 0
+  }
+
+  return candidate.gameId > current.gameId
+}
+
+function prefersHighestScore(candidate: InternalScoreRecord, current: InternalScoreRecord): boolean {
+  if (candidate.score !== current.score) {
+    return candidate.score > current.score
+  }
+
+  if (prefersNewerGame(candidate, current)) {
+    return true
+  }
+
+  if (candidate.playedAt.getTime() === current.playedAt.getTime()
+    && candidate.gameId === current.gameId
+  ) {
+    return candidate.name.localeCompare(current.name) < 0
+  }
+
+  return false
+}
+
+function prefersLowestWinningScore(
+  candidate: InternalScoreRecord,
+  current: InternalScoreRecord,
+): boolean {
+  if (candidate.score !== current.score) {
+    return candidate.score < current.score
+  }
+
+  if (prefersNewerGame(candidate, current)) {
+    return true
+  }
+
+  if (candidate.playedAt.getTime() === current.playedAt.getTime()
+    && candidate.gameId === current.gameId
+  ) {
+    return candidate.name.localeCompare(current.name) < 0
+  }
+
+  return false
+}
+
+function prefersMarginRecord(
+  candidate: InternalMarginGameRecord,
+  current: InternalMarginGameRecord,
+  direction: 'highest' | 'lowest',
+): boolean {
+  if (candidate.margin !== current.margin) {
+    return direction === 'highest'
+      ? candidate.margin > current.margin
+      : candidate.margin < current.margin
+  }
+
+  return prefersNewerGame(candidate, current)
+}
+
+function toScoreRecord(record: InternalScoreRecord): HighestScoreRecord {
+  return {
+    gameId: record.gameId,
+    playedAt: record.playedAt.toISOString(),
+    playerId: record.playerId,
+    name: record.name,
+    tier: record.tier,
+    score: record.score,
+  }
+}
+
+function toMarginRecord(record: InternalMarginGameRecord): MarginGameRecord {
+  return {
+    gameId: record.gameId,
+    playedAt: record.playedAt.toISOString(),
+    winner: record.winner,
+    winnerScore: record.winnerScore,
+    runnerUpScore: record.runnerUpScore,
+    margin: record.margin,
+    participantCount: record.participantCount,
+  }
+}
+
+export async function getSingleGameRecords(): Promise<SingleGameRecords> {
+  const rows = await db
+    .select({
+      gameId: games.id,
+      playedAt: games.playedAt,
+      playerId: players.id,
+      name: players.name,
+      tier: players.tier,
+      score: gamePlayers.score,
+      isWinner: gamePlayers.isWinner,
+    })
+    .from(gamePlayers)
+    .innerJoin(games, eq(games.id, gamePlayers.gameId))
+    .innerJoin(players, eq(players.id, gamePlayers.playerId))
+    .orderBy(desc(games.playedAt), desc(games.id), desc(gamePlayers.score), players.name)
+
+  let highestScore: InternalScoreRecord | null = null
+  let lowestWinningScore: InternalScoreRecord | null = null
+  let biggestBlowout: InternalMarginGameRecord | null = null
+  let closestGame: InternalMarginGameRecord | null = null
+  const participantsByGameId = new Map<number, SingleGameParticipantRecord[]>()
+
+  rows.forEach((row) => {
+    const record: SingleGameParticipantRecord = {
+      gameId: row.gameId,
+      playedAt: row.playedAt,
+      playerId: row.playerId,
+      name: row.name,
+      tier: parsePlayerTier(row.tier),
+      score: row.score,
+      isWinner: row.isWinner,
+    }
+    const scoreRecord: InternalScoreRecord = {
+      gameId: record.gameId,
+      playedAt: record.playedAt,
+      playerId: record.playerId,
+      name: record.name,
+      tier: record.tier,
+      score: record.score,
+    }
+
+    if (highestScore === null || prefersHighestScore(scoreRecord, highestScore)) {
+      highestScore = scoreRecord
+    }
+
+    if (
+      record.isWinner
+      && (lowestWinningScore === null || prefersLowestWinningScore(scoreRecord, lowestWinningScore))
+    ) {
+      lowestWinningScore = scoreRecord
+    }
+
+    const existing = participantsByGameId.get(record.gameId) ?? []
+    existing.push(record)
+    participantsByGameId.set(record.gameId, existing)
+  })
+
+  participantsByGameId.forEach((participants) => {
+    const winners = participants.filter((participant) => participant.isWinner)
+    const nonWinners = participants.filter((participant) => !participant.isWinner)
+
+    if (winners.length === 0 || nonWinners.length === 0) {
+      return
+    }
+
+    const winnerScore = Math.max(...winners.map((winner) => winner.score))
+    const topWinners = winners
+      .filter((winner) => winner.score === winnerScore)
+      .sort((a, b) => a.name.localeCompare(b.name))
+    const runnerUpScore = Math.max(...nonWinners.map((participant) => participant.score))
+    if (winnerScore < runnerUpScore) {
+      return
+    }
+
+    const marginRecord: InternalMarginGameRecord = {
+      gameId: participants[0].gameId,
+      playedAt: participants[0].playedAt,
+      winner: topWinners.map((winner) => winner.name).join(', '),
+      winnerScore,
+      runnerUpScore,
+      margin: winnerScore - runnerUpScore,
+      participantCount: participants.length,
+    }
+
+    if (
+      biggestBlowout === null
+      || prefersMarginRecord(marginRecord, biggestBlowout, 'highest')
+    ) {
+      biggestBlowout = marginRecord
+    }
+
+    if (closestGame === null || prefersMarginRecord(marginRecord, closestGame, 'lowest')) {
+      closestGame = marginRecord
+    }
+  })
+
+  return {
+    highestScore: highestScore ? toScoreRecord(highestScore) : null,
+    lowestWinningScore: lowestWinningScore ? toScoreRecord(lowestWinningScore) : null,
+    biggestBlowout: biggestBlowout ? toMarginRecord(biggestBlowout) : null,
+    closestGame: closestGame ? toMarginRecord(closestGame) : null,
+  }
+}
+
 export interface PlayerWinRateByGameSize {
   playerId: number
   name: string

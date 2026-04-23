@@ -15,6 +15,7 @@ import {
   getPlayerPodiumRates,
   getPlayerScoreStats,
   getPlayerWinEvents,
+  getSingleGameRecords,
   getTierShowdownStats,
   getPlayerWinRates,
 } from '@/lib/stats'
@@ -26,6 +27,7 @@ vi.mock('@/lib/stats', () => ({
   getPlayerExpectedVsActualWins: vi.fn(),
   getPlayerWinRates: vi.fn(),
   getPlayerWinEvents: vi.fn(),
+  getSingleGameRecords: vi.fn(),
   getPlayerNormalizedScoreStats: vi.fn(),
   getPlayerScoreStats: vi.fn(),
   getPlayerParticipationRates: vi.fn(),
@@ -251,6 +253,42 @@ describe('StatsPage', () => {
         tier: PlayerTier.Standard,
       },
     ])
+    vi.mocked(getSingleGameRecords).mockResolvedValue({
+      highestScore: {
+        gameId: 3,
+        playedAt: '2026-04-22T18:00:00.000Z',
+        playerId: 3,
+        name: 'Cara',
+        tier: PlayerTier.Standard,
+        score: 20,
+      },
+      lowestWinningScore: {
+        gameId: 4,
+        playedAt: '2026-04-23T18:00:00.000Z',
+        playerId: 4,
+        name: 'Eve',
+        tier: PlayerTier.Premium,
+        score: 7,
+      },
+      biggestBlowout: {
+        gameId: 5,
+        playedAt: '2026-04-24T18:00:00.000Z',
+        winner: 'Ada, Eve',
+        winnerScore: 15,
+        runnerUpScore: 4,
+        margin: 11,
+        participantCount: 3,
+      },
+      closestGame: {
+        gameId: 4,
+        playedAt: '2026-04-23T18:00:00.000Z',
+        winner: 'Eve',
+        winnerScore: 7,
+        runnerUpScore: 7,
+        margin: 0,
+        participantCount: 3,
+      },
+    })
     vi.mocked(getSettings).mockResolvedValue({ winRateMinGames: 3, podiumRateMinGames: 4 })
 
     const element = await StatsPage()
@@ -288,6 +326,7 @@ describe('StatsPage', () => {
     const currentWinStreakIndex = markup.indexOf('id="current-win-streak"')
     const mostWinsInWeekIndex = markup.indexOf('id="most-wins-in-week"')
     const mostWinsInMonthIndex = markup.indexOf('id="most-wins-in-month"')
+    const singleGameRecordsIndex = markup.indexOf('id="single-game-records"')
 
     expect(totalWinsIndex).toBeGreaterThan(-1)
     expect(winRateIndex).toBeGreaterThan(totalWinsIndex)
@@ -312,6 +351,7 @@ describe('StatsPage', () => {
     expect(currentWinStreakIndex).toBeGreaterThan(busiestRecordsIndex)
     expect(mostWinsInWeekIndex).toBeGreaterThan(currentWinStreakIndex)
     expect(mostWinsInMonthIndex).toBeGreaterThan(mostWinsInWeekIndex)
+    expect(singleGameRecordsIndex).toBeGreaterThan(mostWinsInMonthIndex)
 
     expect(markup).toContain('Finish Breakdown')
     expect(markup).toContain('>1st<')
@@ -343,6 +383,18 @@ describe('StatsPage', () => {
     expect(markup).toContain('Current Win Streak')
     expect(markup).toContain('Most Wins in a Week')
     expect(markup).toContain('Most Wins in a Month')
+    expect(markup).toContain('Single-Game Records')
+    expect(markup).toContain('Highest Score')
+    expect(markup).toContain('Lowest Winning Score')
+    expect(markup).toContain('Biggest Blowout')
+    expect(markup).toContain('Closest Game')
+    expect(markup).toContain('20 points')
+    expect(markup).toContain('7 points')
+    expect(markup).toContain('11-point margin')
+    expect(markup).toContain('0-point margin')
+    expect(markup).toContain('Cara')
+    expect(markup).toContain('Ada, Eve')
+    expect(markup).toContain('dateTime="2026-04-22T18:00:00.000Z"')
     expect(markup).toContain('>Last Win<')
     expect(markup).toContain('>Period<')
     expect(markup).toContain('2 wins')
@@ -392,6 +444,9 @@ describe('StatsPage', () => {
     expect(markup.slice(mostWinsInMonthIndex, mostWinsInMonthIndex + 160)).not.toContain(
       'lg:col-span-2',
     )
+    expect(markup.slice(singleGameRecordsIndex, singleGameRecordsIndex + 160)).not.toContain(
+      'lg:col-span-2',
+    )
   })
 
   it('renders card empty states when no stats are available', async () => {
@@ -407,6 +462,12 @@ describe('StatsPage', () => {
     vi.mocked(getPlayerAttendanceEvents).mockResolvedValue([])
     vi.mocked(getPlayerCurrentWinStreaks).mockResolvedValue([])
     vi.mocked(getPlayerWinEvents).mockResolvedValue([])
+    vi.mocked(getSingleGameRecords).mockResolvedValue({
+      highestScore: null,
+      lowestWinningScore: null,
+      biggestBlowout: null,
+      closestGame: null,
+    })
     vi.mocked(getSettings).mockResolvedValue({ winRateMinGames: 2, podiumRateMinGames: 5 })
 
     const element = await StatsPage()
@@ -431,7 +492,8 @@ describe('StatsPage', () => {
     expect(markup).toContain('Current Win Streak')
     expect(markup).toContain('Most Wins in a Week')
     expect(markup).toContain('Most Wins in a Month')
-    expect(markup.match(/No games recorded yet\./g)).toHaveLength(18)
+    expect(markup).toContain('Single-Game Records')
+    expect(markup.match(/No games recorded yet\./g)).toHaveLength(19)
   })
 
   it('filters the podium leaderboard using the podium threshold instead of the win-rate threshold', async () => {
@@ -481,6 +543,12 @@ describe('StatsPage', () => {
     vi.mocked(getPlayerAttendanceEvents).mockResolvedValue([])
     vi.mocked(getPlayerCurrentWinStreaks).mockResolvedValue([])
     vi.mocked(getPlayerWinEvents).mockResolvedValue([])
+    vi.mocked(getSingleGameRecords).mockResolvedValue({
+      highestScore: null,
+      lowestWinningScore: null,
+      biggestBlowout: null,
+      closestGame: null,
+    })
     vi.mocked(getSettings).mockResolvedValue({ winRateMinGames: 2, podiumRateMinGames: 4 })
 
     const element = await StatsPage()
