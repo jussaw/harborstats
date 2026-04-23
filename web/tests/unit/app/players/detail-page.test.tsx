@@ -6,6 +6,7 @@ import { listGamesForPlayer } from '@/lib/games'
 import { getPlayerById, getPlayers } from '@/lib/players'
 import { PlayerTier } from '@/lib/player-tier'
 import {
+  getPlayerCumulativeScoreStats,
   getPlayerCurrentWinStreaks,
   getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
@@ -38,6 +39,7 @@ vi.mock('@/lib/games', () => ({
 }))
 
 vi.mock('@/lib/stats', () => ({
+  getPlayerCumulativeScoreStats: vi.fn(),
   getPlayerCurrentWinStreaks: vi.fn(),
   getPlayerExpectedVsActualWins: vi.fn(),
   getPlayerScoreStats: vi.fn(),
@@ -86,6 +88,24 @@ describe('PlayerProfilePage', () => {
         games: 4,
         avgScore: 8.7,
         medianScore: 8.5,
+      },
+    ])
+    vi.mocked(getPlayerCumulativeScoreStats).mockResolvedValue([
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+        games: 5,
+        totalScore: 47,
+        pointsPerGame: 9.4,
+      },
+      {
+        playerId: 2,
+        name: 'Bea',
+        tier: PlayerTier.Standard,
+        games: 4,
+        totalScore: 35,
+        pointsPerGame: 8.8,
       },
     ])
     vi.mocked(getPlayerPodiumRates).mockResolvedValue([
@@ -333,6 +353,7 @@ describe('PlayerProfilePage', () => {
     expect(markup).not.toContain('size-16 shrink-0')
     expect(markup).toContain('Average Score')
     expect(markup).toContain('Median Score')
+    expect(markup).toContain('Total VP')
     expect(markup).toContain('Podium Rate')
     expect(markup).toContain('Participation Rate')
     expect(markup).toContain('Finish Breakdown')
@@ -357,6 +378,7 @@ describe('PlayerProfilePage', () => {
     expect(longestWinStreakSection).not.toContain('1:00 AM')
     expect(longestWinStreakSection).not.toContain('12:00 AM')
     expect(markup).toContain('8.7')
+    expect(markup).toContain('35')
     expect(markup).toContain('8.5')
     expect(markup).toContain('50.0%')
     expect(markup).toContain('57.1%')
@@ -404,6 +426,24 @@ describe('PlayerProfilePage', () => {
         games: 5,
         avgScore: 9.4,
         medianScore: 9,
+      },
+    ])
+    vi.mocked(getPlayerCumulativeScoreStats).mockResolvedValue([
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+        games: 5,
+        totalScore: 47,
+        pointsPerGame: 9.4,
+      },
+      {
+        playerId: 2,
+        name: 'Bea',
+        tier: PlayerTier.Standard,
+        games: 0,
+        totalScore: 0,
+        pointsPerGame: 0,
       },
     ])
     vi.mocked(getPlayerPodiumRates).mockResolvedValue([
@@ -575,6 +615,7 @@ describe('PlayerProfilePage', () => {
 
     expect(markup).toContain('Average Score')
     expect(markup).toContain('Median Score')
+    expect(markup).toContain('Total VP')
     expect(markup).toContain('Podium Rate')
     expect(markup).toContain('Participation Rate')
     expect(markup).toContain('Finish Breakdown')
@@ -595,7 +636,7 @@ describe('PlayerProfilePage', () => {
     expect(markup).toContain('Current: 0 losses')
     expect(markup).toContain('Longest: 0 losses')
     expect(markup).toContain('0 games')
-    expect(markup.match(/No games recorded yet\./g)).toHaveLength(22)
+    expect(markup.match(/No games recorded yet\./g)).toHaveLength(24)
   })
 
   it('calls notFound for invalid player ids', async () => {

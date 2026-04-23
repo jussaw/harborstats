@@ -8,6 +8,7 @@ import type { RecentGame } from '@/lib/games'
 import { PlayerTier } from '@/lib/player-tier'
 import type { Player } from '@/lib/players'
 import type {
+  PlayerCumulativeScoreStats,
   PlayerCurrentWinStreak,
   PlayerExpectedVsActualWins,
   PlayerFinishBreakdown,
@@ -31,6 +32,7 @@ interface Props {
   selectedPlayer: Player | null
   mobileMode: 'list' | 'detail'
   scoreStats: PlayerScoreStats[]
+  cumulativeScoreStats: PlayerCumulativeScoreStats[]
   podiumRates: PlayerPodiumRate[]
   finishBreakdowns: PlayerFinishBreakdown[]
   marginStats: PlayerMarginStats[]
@@ -321,6 +323,7 @@ function ProfileOpponentCountWinRateCard({
 function PlayerDetail({
   player,
   scoreStats,
+  cumulativeScoreStats,
   podiumRates,
   finishBreakdowns,
   marginStats,
@@ -334,6 +337,7 @@ function PlayerDetail({
 }: {
   player: Player
   scoreStats: PlayerScoreStats[]
+  cumulativeScoreStats: PlayerCumulativeScoreStats[]
   podiumRates: PlayerPodiumRate[]
   finishBreakdowns: PlayerFinishBreakdown[]
   marginStats: PlayerMarginStats[]
@@ -346,6 +350,7 @@ function PlayerDetail({
   playerGames: RecentGame[]
 }) {
   const scoreStat = scoreStats.find((candidate) => candidate.playerId === player.id) ?? null
+  const cumulativeScoreStat = cumulativeScoreStats.find((candidate) => candidate.playerId === player.id) ?? null
   const podiumStat = podiumRates.find((candidate) => candidate.playerId === player.id) ?? null
   const finishBreakdown = finishBreakdowns.find((candidate) => candidate.playerId === player.id) ?? null
   const marginStat = marginStats.find((candidate) => candidate.playerId === player.id) ?? null
@@ -358,6 +363,7 @@ function PlayerDetail({
   const streakRecord = playerStreakRecords.find((candidate) => candidate.playerId === player.id) ?? null
 
   const hasGames = scoreStat !== null && scoreStat.games > 0
+  const hasCumulativeScore = cumulativeScoreStat !== null && cumulativeScoreStat.games > 0
   const podiumHasGames = podiumStat !== null && podiumStat.games > 0
   const expectedVsActualHasGames = expectedVsActualStat !== null && expectedVsActualStat.games > 0
   const hasParticipationData = participationStat !== null && participationStat.totalGames > 0
@@ -384,6 +390,15 @@ function PlayerDetail({
           description="Middle score to smooth out unusually high or low games."
           value={hasGames ? formatAverage(scoreStat.medianScore) : null}
           detail={hasGames ? `Across ${formatCount(scoreStat.games, 'game')}` : null}
+        />
+        <ProfileMetricCard
+          id="player-total-vp"
+          title="Total VP"
+          description="Cumulative points across all recorded games."
+          value={hasCumulativeScore ? String(cumulativeScoreStat.totalScore) : null}
+          detail={
+            hasCumulativeScore ? `Across ${formatCount(cumulativeScoreStat.games, 'game')}` : null
+          }
         />
         <ProfileMetricCard
           id="player-podium-rate"
@@ -534,6 +549,7 @@ export function PlayersSection({
   selectedPlayer,
   mobileMode,
   scoreStats,
+  cumulativeScoreStats,
   podiumRates,
   finishBreakdowns,
   marginStats,
@@ -591,6 +607,7 @@ export function PlayersSection({
               <PlayerDetail
                 player={selectedPlayer}
                 scoreStats={scoreStats}
+                cumulativeScoreStats={cumulativeScoreStats}
                 podiumRates={podiumRates}
                 finishBreakdowns={finishBreakdowns}
                 marginStats={marginStats}
@@ -619,6 +636,7 @@ export function PlayersSection({
             <PlayerDetail
               player={selectedPlayer}
               scoreStats={scoreStats}
+              cumulativeScoreStats={cumulativeScoreStats}
               podiumRates={podiumRates}
               finishBreakdowns={finishBreakdowns}
               marginStats={marginStats}

@@ -6,6 +6,7 @@ import { listGamesForPlayer } from '@/lib/games'
 import { getPlayers } from '@/lib/players'
 import { PlayerTier } from '@/lib/player-tier'
 import {
+  getPlayerCumulativeScoreStats,
   getPlayerCurrentWinStreaks,
   getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
@@ -27,6 +28,7 @@ vi.mock('@/lib/games', () => ({
 }))
 
 vi.mock('@/lib/stats', () => ({
+  getPlayerCumulativeScoreStats: vi.fn(),
   getPlayerCurrentWinStreaks: vi.fn(),
   getPlayerExpectedVsActualWins: vi.fn(),
   getPlayerScoreStats: vi.fn(),
@@ -75,6 +77,24 @@ describe('PlayersPage', () => {
         games: 4,
         avgScore: 8.7,
         medianScore: 8.5,
+      },
+    ])
+    vi.mocked(getPlayerCumulativeScoreStats).mockResolvedValue([
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+        games: 5,
+        totalScore: 47,
+        pointsPerGame: 9.4,
+      },
+      {
+        playerId: 2,
+        name: 'Bea',
+        tier: PlayerTier.Standard,
+        games: 4,
+        totalScore: 35,
+        pointsPerGame: 8.8,
       },
     ])
     vi.mocked(getPlayerPodiumRates).mockResolvedValue([
@@ -307,6 +327,7 @@ describe('PlayersPage', () => {
     expect(markup.match(/aria-current="page"/g)).toHaveLength(1)
     expect(markup).toContain('Average Score')
     expect(markup).toContain('Median Score')
+    expect(markup).toContain('Total VP')
     expect(markup).toContain('Podium Rate')
     expect(markup).toContain('Participation Rate')
     expect(markup).toContain('Finish Breakdown')
@@ -321,6 +342,7 @@ describe('PlayersPage', () => {
     expect(markup).toContain('Current / Longest Loss Streak')
     expect(markup).toContain('Attendance Streak')
     expect(markup).toContain('9.4')
+    expect(markup).toContain('47')
     expect(markup).toContain('9.0')
     expect(markup).toContain('80.0%')
     expect(markup).toContain('71.4%')
@@ -347,6 +369,7 @@ describe('PlayersPage', () => {
   it('renders an empty state when there are no players', async () => {
     vi.mocked(getPlayers).mockResolvedValue([])
     vi.mocked(getPlayerScoreStats).mockResolvedValue([])
+    vi.mocked(getPlayerCumulativeScoreStats).mockResolvedValue([])
     vi.mocked(getPlayerPodiumRates).mockResolvedValue([])
     vi.mocked(getPlayerFinishBreakdowns).mockResolvedValue([])
     vi.mocked(getPlayerMarginStats).mockResolvedValue([])

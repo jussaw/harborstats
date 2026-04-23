@@ -2,6 +2,7 @@ import { describe, expect, test, vi } from 'vitest';
 import {
   getGameActivityTimestamps,
   getPlayerAttendanceEvents,
+  getPlayerCumulativeScoreStats,
   getPlayerCurrentWinStreaks,
   getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
@@ -328,6 +329,67 @@ describe('stats integration', () => {
 
     expect(scoreStats.findIndex((player) => player.playerId === bob.id)).toBeLessThan(
       scoreStats.findIndex((player) => player.playerId === alice.id),
+    );
+  });
+
+  test('getPlayerCumulativeScoreStats returns totals, rounded points per game, zero-game players, and stable total-score ordering', async () => {
+    const alice = await createTestPlayer({ name: 'Alice' });
+    const bob = await createTestPlayer({ name: 'Bob' });
+    const carol = await createTestPlayer({ name: 'Carol' });
+    const dana = await createTestPlayer({ name: 'Dana' });
+
+    await createTestGame({
+      players: [
+        { playerId: alice.id, score: 10, isWinner: true },
+        { playerId: bob.id, score: 12, isWinner: false },
+        { playerId: carol.id, score: 8, isWinner: false },
+      ],
+    });
+
+    await createTestGame({
+      players: [
+        { playerId: alice.id, score: 9, isWinner: true },
+        { playerId: bob.id, score: 7, isWinner: false },
+        { playerId: carol.id, score: 23, isWinner: false },
+      ],
+    });
+
+    await createTestGame({
+      players: [
+        { playerId: bob.id, score: 0, isWinner: false },
+      ],
+    });
+
+    const cumulativeStats = await getPlayerCumulativeScoreStats();
+
+    expect(cumulativeStats.map((player) => player.name)).toEqual(['Carol', 'Bob', 'Alice', 'Dana']);
+
+    expect(cumulativeStats.find((player) => player.playerId === carol.id)).toMatchObject({
+      games: 2,
+      totalScore: 31,
+      pointsPerGame: 15.5,
+    });
+
+    expect(cumulativeStats.find((player) => player.playerId === bob.id)).toMatchObject({
+      games: 3,
+      totalScore: 19,
+      pointsPerGame: 6.3,
+    });
+
+    expect(cumulativeStats.find((player) => player.playerId === alice.id)).toMatchObject({
+      games: 2,
+      totalScore: 19,
+      pointsPerGame: 9.5,
+    });
+
+    expect(cumulativeStats.find((player) => player.playerId === dana.id)).toMatchObject({
+      games: 0,
+      totalScore: 0,
+      pointsPerGame: 0,
+    });
+
+    expect(cumulativeStats.findIndex((player) => player.playerId === bob.id)).toBeLessThan(
+      cumulativeStats.findIndex((player) => player.playerId === alice.id),
     );
   });
 

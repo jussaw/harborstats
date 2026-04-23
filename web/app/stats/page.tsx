@@ -19,6 +19,7 @@ import { getSettings } from '@/lib/settings';
 import {
   getGameActivityTimestamps,
   getPlayerAttendanceEvents,
+  getPlayerCumulativeScoreStats,
   getPlayerCurrentWinStreaks,
   getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
@@ -268,6 +269,7 @@ export default async function StatsPage() {
     winRates,
     settings,
     scoreStats,
+    cumulativeScoreStats,
     normalizedScoreStats,
     podiumRates,
     finishBreakdowns,
@@ -284,6 +286,7 @@ export default async function StatsPage() {
     getPlayerWinRates(),
     getSettings(),
     getPlayerScoreStats(),
+    getPlayerCumulativeScoreStats(),
     getPlayerNormalizedScoreStats(),
     getPlayerPodiumRates(),
     getPlayerFinishBreakdowns(),
@@ -306,6 +309,14 @@ export default async function StatsPage() {
     .sort((a, b) => b.podiumRate - a.podiumRate || b.podiums - a.podiums);
 
   const medianSorted = [...scoreStats].sort((a, b) => b.medianScore - a.medianScore);
+  const pointsPerGameSorted = cumulativeScoreStats
+    .filter((player) => player.games > 0)
+    .sort(
+      (a, b) => b.pointsPerGame - a.pointsPerGame
+        || b.totalScore - a.totalScore
+        || b.games - a.games
+        || a.name.localeCompare(b.name),
+    );
   const normalizedMedianSorted = [...normalizedScoreStats].sort(
     (a, b) => b.medianScore - a.medianScore,
   );
@@ -323,6 +334,8 @@ export default async function StatsPage() {
   const winRateRanks = rankWithTies(winRateQualified, (player) => player.winRate);
   const avgScoreRanks = rankWithTies(scoreStats, (player) => player.avgScore);
   const medianScoreRanks = rankWithTies(medianSorted, (player) => player.medianScore);
+  const totalVpRanks = rankWithTies(cumulativeScoreStats, (player) => player.totalScore);
+  const pointsPerGameRanks = rankWithTies(pointsPerGameSorted, (player) => player.pointsPerGame);
   const normalizedAvgScoreRanks = rankWithTies(normalizedScoreStats, (player) => player.avgScore);
   const normalizedMedianScoreRanks = rankWithTies(
     normalizedMedianSorted,
@@ -376,6 +389,20 @@ export default async function StatsPage() {
       id: 'median-score',
       title: 'Median Score',
       description: 'Typical scoring performance with median values to smooth out spikes.',
+      badge: undefined,
+      span: 'single',
+    },
+    {
+      id: 'total-vp',
+      title: 'Total VP',
+      description: 'Cumulative points scored across every recorded game.',
+      badge: undefined,
+      span: 'single',
+    },
+    {
+      id: 'points-per-game',
+      title: 'Points per Game',
+      description: 'Scoring efficiency based on average points per appearance.',
       badge: undefined,
       span: 'single',
     },
@@ -703,6 +730,70 @@ export default async function StatsPage() {
                       px-3 py-2 text-right text-(--cream)/70 tabular-nums
                     "
                   >
+                    {player.games}
+                  </td>
+                </DataRow>
+              ))}
+            </StatsLeaderboardTable>
+          )}
+        </StatsCard>
+
+        <StatsCard {...cardById['total-vp']}>
+          {cumulativeScoreStats.some((player) => player.games > 0) ? (
+            <StatsLeaderboardTable
+              columns={[
+                { label: '#', align: 'center', widthClass: 'w-10' },
+                { label: 'Player' },
+                { label: 'Total VP', align: 'right' },
+                { label: 'Games', align: 'right' },
+              ]}
+            >
+              {cumulativeScoreStats.map((player, index) => (
+                <DataRow key={player.playerId}>
+                  <RankCell rank={totalVpRanks[index]} />
+                  <td className="px-3 py-2 text-(--cream)">
+                    <PlayerName name={player.name} tier={player.tier} />
+                  </td>
+                  <td className="px-3 py-2 text-right font-semibold text-(--gold) tabular-nums">
+                    {player.totalScore}
+                  </td>
+                  <td className="px-3 py-2 text-right text-(--cream)/70 tabular-nums">
+                    {player.games}
+                  </td>
+                </DataRow>
+              ))}
+            </StatsLeaderboardTable>
+          ) : (
+            <EmptyState>No games recorded yet.</EmptyState>
+          )}
+        </StatsCard>
+
+        <StatsCard {...cardById['points-per-game']}>
+          {pointsPerGameSorted.length === 0 ? (
+            <EmptyState>No games recorded yet.</EmptyState>
+          ) : (
+            <StatsLeaderboardTable
+              columns={[
+                { label: '#', align: 'center', widthClass: 'w-10' },
+                { label: 'Player' },
+                { label: 'PPG', align: 'right' },
+                { label: 'Total VP', align: 'right' },
+                { label: 'Games', align: 'right' },
+              ]}
+            >
+              {pointsPerGameSorted.map((player, index) => (
+                <DataRow key={player.playerId}>
+                  <RankCell rank={pointsPerGameRanks[index]} />
+                  <td className="px-3 py-2 text-(--cream)">
+                    <PlayerName name={player.name} tier={player.tier} />
+                  </td>
+                  <td className="px-3 py-2 text-right font-semibold text-(--gold) tabular-nums">
+                    {formatAverage(player.pointsPerGame)}
+                  </td>
+                  <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
+                    {player.totalScore}
+                  </td>
+                  <td className="px-3 py-2 text-right text-(--cream)/70 tabular-nums">
                     {player.games}
                   </td>
                 </DataRow>

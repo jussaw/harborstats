@@ -159,10 +159,10 @@ All activity and time-based stats in this section use the viewer's local time.
 - [ ] Side-by-side comparison of mean winner score vs. mean non-winner score across all games.
 
 ### 4.2 Total VP scored ever — cumulative leaderboard `[S]` `[P]`
-- [ ] Rank players by the total points they have scored across all games.
+- [x] Rank players by the total points they have scored across all games.
 
 ### 4.3 Points-per-game leaderboard `[S]`
-- [ ] Normalize total VP by games played to rank players by scoring efficiency.
+- [x] Normalize total VP by games played to rank players by scoring efficiency.
 - **Needs:** total VP and game count (share queries from 4.2 and 1.1)
 
 ### 4.4 Score histogram `[S]`

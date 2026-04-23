@@ -335,6 +335,44 @@ export async function getPlayerScoreStats(): Promise<PlayerScoreStats[]> {
     .sort((a, b) => b.avgScore - a.avgScore)
 }
 
+export interface PlayerCumulativeScoreStats {
+  playerId: number
+  name: string
+  tier: PlayerTierType
+  games: number
+  totalScore: number
+  pointsPerGame: number
+}
+
+export async function getPlayerCumulativeScoreStats(): Promise<PlayerCumulativeScoreStats[]> {
+  const rows = await db
+    .select({
+      playerId: players.id,
+      name: players.name,
+      tier: players.tier,
+      games: count(gamePlayers.id),
+      totalScore: sql<number>`COALESCE(SUM(${gamePlayers.score}), 0)`,
+    })
+    .from(players)
+    .leftJoin(gamePlayers, eq(gamePlayers.playerId, players.id))
+    .groupBy(players.id)
+
+  return rows
+    .map((row) => ({
+      playerId: row.playerId,
+      name: row.name,
+      tier: parsePlayerTier(row.tier),
+      games: row.games,
+      totalScore: Number(row.totalScore),
+      pointsPerGame: row.games > 0 ? round1(Number(row.totalScore) / row.games) : 0,
+    }))
+    .sort(
+      (a, b) => b.totalScore - a.totalScore
+        || b.games - a.games
+        || a.name.localeCompare(b.name),
+    )
+}
+
 interface PlayerNormalizedScoreAccumulator extends PlayerIdentity {
   normalizedScores: number[]
 }

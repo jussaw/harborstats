@@ -4,6 +4,7 @@ import { PlayersSection } from '@/components/PlayersSection'
 import { listGamesForPlayer } from '@/lib/games'
 import { getPlayerById, getPlayers } from '@/lib/players'
 import {
+  getPlayerCumulativeScoreStats,
   getPlayerCurrentWinStreaks,
   getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
@@ -36,6 +37,7 @@ export default async function PlayerProfilePage({ params }: Props) {
   const [
     players,
     scoreStats,
+    cumulativeScoreStats,
     podiumRates,
     finishBreakdowns,
     marginStats,
@@ -49,6 +51,7 @@ export default async function PlayerProfilePage({ params }: Props) {
   ] = await Promise.all([
     getPlayers(),
     getPlayerScoreStats(),
+    getPlayerCumulativeScoreStats(),
     getPlayerPodiumRates(),
     getPlayerFinishBreakdowns(),
     getPlayerMarginStats(),
@@ -69,6 +72,7 @@ export default async function PlayerProfilePage({ params }: Props) {
       selectedPlayer={player}
       mobileMode="detail"
       scoreStats={scoreStats}
+      cumulativeScoreStats={cumulativeScoreStats}
       podiumRates={podiumRates}
       finishBreakdowns={finishBreakdowns}
       marginStats={marginStats}
