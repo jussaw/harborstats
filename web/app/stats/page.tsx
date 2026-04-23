@@ -26,6 +26,7 @@ import {
   getPlayerParticipationRates,
   getPlayerPodiumRates,
   getPlayerScoreStats,
+  getPlayerStreakRecords,
   getPlayerWinEvents,
   getSingleGameRecords,
   getTierShowdownStats,
@@ -101,6 +102,46 @@ function formatPointLabel(count: number) {
 
 function formatMarginLabel(count: number) {
   return `${count}-point margin`;
+}
+
+function compareNullableIsoDesc(left: string | null, right: string | null) {
+  if (left === right) {
+    return 0;
+  }
+
+  if (left === null) {
+    return 1;
+  }
+
+  if (right === null) {
+    return -1;
+  }
+
+  return right.localeCompare(left);
+}
+
+function StreakPeriod({
+  startedAt,
+  endedAt,
+}: {
+  startedAt: string | null;
+  endedAt: string | null;
+}) {
+  if (!startedAt || !endedAt) {
+    return '—';
+  }
+
+  if (startedAt === endedAt) {
+    return <FormattedDate iso={startedAt} className="inline text-(--cream)/70" />;
+  }
+
+  return (
+    <span>
+      <FormattedDate iso={startedAt} className="inline text-(--cream)/70" />
+      <span className="text-(--cream)/45"> - </span>
+      <FormattedDate iso={endedAt} className="inline text-(--cream)/70" />
+    </span>
+  );
 }
 
 function SingleGameRecordRow({
@@ -237,6 +278,7 @@ export default async function StatsPage() {
     playerAttendanceEvents,
     currentWinStreaks,
     playerWinEvents,
+    playerStreakRecords,
     singleGameRecords,
   ] = await Promise.all([
     getPlayerWinRates(),
@@ -252,6 +294,7 @@ export default async function StatsPage() {
     getPlayerAttendanceEvents(),
     getPlayerCurrentWinStreaks(),
     getPlayerWinEvents(),
+    getPlayerStreakRecords(),
     getSingleGameRecords(),
   ]);
 
@@ -294,6 +337,15 @@ export default async function StatsPage() {
     (player) => player.participationRate,
   );
   const currentWinStreakRanks = rankWithTies(currentWinStreaks, (player) => player.streak);
+  const longestWinStreakRecords = [...playerStreakRecords].sort(
+    (a, b) => b.longestWinStreak - a.longestWinStreak
+      || compareNullableIsoDesc(a.longestWinStreakEndedAt, b.longestWinStreakEndedAt)
+      || a.name.localeCompare(b.name),
+  );
+  const longestWinStreakRanks = rankWithTies(
+    longestWinStreakRecords,
+    (player) => player.longestWinStreak,
+  );
 
   const statsCards: StatsCardMeta[] = [
     {
@@ -467,6 +519,13 @@ export default async function StatsPage() {
       id: 'single-game-records',
       title: 'Single-Game Records',
       description: 'Peak scores, squeaky wins, blowouts, and nail-biters from recorded games.',
+      badge: undefined,
+      span: 'single',
+    },
+    {
+      id: 'longest-win-streak-ever',
+      title: 'Longest Win Streak Ever',
+      description: 'Each player’s all-time record winning run and when it happened.',
       badge: undefined,
       span: 'single',
     },
@@ -1075,6 +1134,44 @@ export default async function StatsPage() {
 
         <StatsCard {...cardById['single-game-records']}>
           <SingleGameRecordsContent records={singleGameRecords} />
+        </StatsCard>
+
+        <StatsCard {...cardById['longest-win-streak-ever']}>
+          {longestWinStreakRecords.length > 0 ? (
+            <StatsLeaderboardTable
+              columns={[
+                { label: '#', align: 'center', widthClass: 'w-10' },
+                { label: 'Player' },
+                { label: 'Record', align: 'right' },
+                { label: 'Period', align: 'right' },
+              ]}
+            >
+              {longestWinStreakRecords.map((player, index) => (
+                <DataRow key={player.playerId}>
+                  <RankCell rank={longestWinStreakRanks[index]} />
+                  <td className="px-3 py-2 text-(--cream)">
+                    <PlayerName name={player.name} tier={player.tier} />
+                  </td>
+                  <td
+                    className="
+                      px-3 py-2 text-right font-semibold text-(--gold)
+                      tabular-nums
+                    "
+                  >
+                    {formatWinLabel(player.longestWinStreak)}
+                  </td>
+                  <td className="px-3 py-2 text-right text-(--cream)/70">
+                    <StreakPeriod
+                      startedAt={player.longestWinStreakStartedAt}
+                      endedAt={player.longestWinStreakEndedAt}
+                    />
+                  </td>
+                </DataRow>
+              ))}
+            </StatsLeaderboardTable>
+          ) : (
+            <EmptyState>No games recorded yet.</EmptyState>
+          )}
         </StatsCard>
       </div>
     </main>

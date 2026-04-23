@@ -13,6 +13,7 @@ import {
   getPlayerParticipationRates,
   getPlayerPodiumRates,
   getPlayerScoreStats,
+  getPlayerStreakRecords,
   getPlayerWinEvents,
   getPlayerWinRateByGameSize,
 } from '@/lib/stats'
@@ -40,6 +41,7 @@ vi.mock('@/lib/stats', () => ({
   getPlayerCurrentWinStreaks: vi.fn(),
   getPlayerExpectedVsActualWins: vi.fn(),
   getPlayerScoreStats: vi.fn(),
+  getPlayerStreakRecords: vi.fn(),
   getPlayerPodiumRates: vi.fn(),
   getPlayerFinishBreakdowns: vi.fn(),
   getPlayerMarginStats: vi.fn(),
@@ -260,6 +262,42 @@ describe('PlayerProfilePage', () => {
         tier: PlayerTier.Standard,
       },
     ])
+    vi.mocked(getPlayerStreakRecords).mockResolvedValue([
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+        longestWinStreak: 3,
+        longestWinStreakStartedAt: '2026-04-18T18:00:00.000Z',
+        longestWinStreakEndedAt: '2026-04-20T18:00:00.000Z',
+        currentLossStreak: 0,
+        currentLossStreakStartedAt: null,
+        currentLossStreakEndedAt: null,
+        longestLossStreak: 1,
+        longestLossStreakStartedAt: '2026-04-21T18:00:00.000Z',
+        longestLossStreakEndedAt: '2026-04-21T18:00:00.000Z',
+        attendanceStreak: 5,
+        attendanceStreakStartedAt: '2026-04-17T18:00:00.000Z',
+        attendanceStreakEndedAt: '2026-04-21T18:00:00.000Z',
+      },
+      {
+        playerId: 2,
+        name: 'Bea',
+        tier: PlayerTier.Standard,
+        longestWinStreak: 2,
+        longestWinStreakStartedAt: '2026-03-01T01:00:00.000Z',
+        longestWinStreakEndedAt: '2026-03-17T04:00:00.000Z',
+        currentLossStreak: 3,
+        currentLossStreakStartedAt: '2026-04-18T18:00:00.000Z',
+        currentLossStreakEndedAt: '2026-04-21T18:00:00.000Z',
+        longestLossStreak: 4,
+        longestLossStreakStartedAt: '2026-02-01T18:00:00.000Z',
+        longestLossStreakEndedAt: '2026-02-08T18:00:00.000Z',
+        attendanceStreak: 6,
+        attendanceStreakStartedAt: '2026-03-01T01:00:00.000Z',
+        attendanceStreakEndedAt: '2026-04-21T18:00:00.000Z',
+      },
+    ])
     vi.mocked(listGamesForPlayer).mockResolvedValue([
       {
         id: 12,
@@ -303,6 +341,9 @@ describe('PlayerProfilePage', () => {
     expect(markup).toContain('Current Win Streak')
     expect(markup).toContain('Most Wins in a Week')
     expect(markup).toContain('Most Wins in a Month')
+    expect(markup).toContain('Longest Win Streak Ever')
+    expect(markup).toContain('Current / Longest Loss Streak')
+    expect(markup).toContain('Attendance Streak')
     expect(markup).toContain('8.7')
     expect(markup).toContain('8.5')
     expect(markup).toContain('50.0%')
@@ -318,6 +359,10 @@ describe('PlayerProfilePage', () => {
     expect(markup).toContain('2 podiums in 4 games')
     expect(markup).toContain('4 appearances in 7 total games')
     expect(markup).toContain('0 wins')
+    expect(markup).toContain('2 wins')
+    expect(markup).toContain('Current: 3 losses')
+    expect(markup).toContain('Longest: 4 losses')
+    expect(markup).toContain('6 games')
     expect(markup).toContain('1.5')
     expect(markup).toContain('Across 4 losses')
     expect(markup).toContain('Loading your local-time view...')
@@ -473,6 +518,42 @@ describe('PlayerProfilePage', () => {
       },
     ])
     vi.mocked(getPlayerWinEvents).mockResolvedValue([])
+    vi.mocked(getPlayerStreakRecords).mockResolvedValue([
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+        longestWinStreak: 2,
+        longestWinStreakStartedAt: '2026-04-18T18:00:00.000Z',
+        longestWinStreakEndedAt: '2026-04-20T18:00:00.000Z',
+        currentLossStreak: 0,
+        currentLossStreakStartedAt: null,
+        currentLossStreakEndedAt: null,
+        longestLossStreak: 1,
+        longestLossStreakStartedAt: '2026-04-21T18:00:00.000Z',
+        longestLossStreakEndedAt: '2026-04-21T18:00:00.000Z',
+        attendanceStreak: 5,
+        attendanceStreakStartedAt: '2026-04-17T18:00:00.000Z',
+        attendanceStreakEndedAt: '2026-04-21T18:00:00.000Z',
+      },
+      {
+        playerId: 2,
+        name: 'Bea',
+        tier: PlayerTier.Standard,
+        longestWinStreak: 0,
+        longestWinStreakStartedAt: null,
+        longestWinStreakEndedAt: null,
+        currentLossStreak: 0,
+        currentLossStreakStartedAt: null,
+        currentLossStreakEndedAt: null,
+        longestLossStreak: 0,
+        longestLossStreakStartedAt: null,
+        longestLossStreakEndedAt: null,
+        attendanceStreak: 0,
+        attendanceStreakStartedAt: null,
+        attendanceStreakEndedAt: null,
+      },
+    ])
     vi.mocked(listGamesForPlayer).mockResolvedValue([])
 
     const element = await PlayerProfilePage({ params: Promise.resolve({ id: '2' }) })
@@ -490,9 +571,16 @@ describe('PlayerProfilePage', () => {
     expect(markup).toContain('Current Win Streak')
     expect(markup).toContain('Most Wins in a Week')
     expect(markup).toContain('Most Wins in a Month')
+    expect(markup).toContain('Longest Win Streak Ever')
+    expect(markup).toContain('Current / Longest Loss Streak')
+    expect(markup).toContain('Attendance Streak')
     expect(markup).toContain('View Games (0)')
     expect(markup).toContain('0.0%')
     expect(markup).toContain('0 appearances in 5 total games')
+    expect(markup).toContain('0 wins')
+    expect(markup).toContain('Current: 0 losses')
+    expect(markup).toContain('Longest: 0 losses')
+    expect(markup).toContain('0 games')
     expect(markup.match(/No games recorded yet\./g)).toHaveLength(22)
   })
 

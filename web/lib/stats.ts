@@ -1040,6 +1040,34 @@ export interface PlayerCurrentWinStreak extends PlayerIdentity {
   mostRecentWin: string | null
 }
 
+interface StreakAccumulator {
+  count: number
+  startedAt: Date | null
+  endedAt: Date | null
+}
+
+interface PlayerStreakAccumulator {
+  longestWin: StreakAccumulator
+  currentLoss: StreakAccumulator
+  longestLoss: StreakAccumulator
+  attendance: StreakAccumulator
+}
+
+export interface PlayerStreakRecord extends PlayerIdentity {
+  longestWinStreak: number
+  longestWinStreakStartedAt: string | null
+  longestWinStreakEndedAt: string | null
+  currentLossStreak: number
+  currentLossStreakStartedAt: string | null
+  currentLossStreakEndedAt: string | null
+  longestLossStreak: number
+  longestLossStreakStartedAt: string | null
+  longestLossStreakEndedAt: string | null
+  attendanceStreak: number
+  attendanceStreakStartedAt: string | null
+  attendanceStreakEndedAt: string | null
+}
+
 function compareNullableIsoDesc(left: string | null, right: string | null) {
   if (left === right) {
     return 0
@@ -1098,6 +1126,152 @@ export async function getPlayerCurrentWinStreaks(): Promise<PlayerCurrentWinStre
         || compareNullableIsoDesc(a.mostRecentWin, b.mostRecentWin)
         || a.name.localeCompare(b.name),
     )
+}
+
+function createEmptyStreak(): StreakAccumulator {
+  return {
+    count: 0,
+    startedAt: null,
+    endedAt: null,
+  }
+}
+
+function shouldReplaceStreak(candidate: StreakAccumulator, best: StreakAccumulator) {
+  if (candidate.count === 0 || !candidate.startedAt || !candidate.endedAt) {
+    return false
+  }
+
+  if (candidate.count !== best.count) {
+    return candidate.count > best.count
+  }
+
+  if (!best.endedAt) {
+    return true
+  }
+
+  return candidate.endedAt.getTime() >= best.endedAt.getTime()
+}
+
+function cloneStreak(streak: StreakAccumulator): StreakAccumulator {
+  return {
+    count: streak.count,
+    startedAt: streak.startedAt,
+    endedAt: streak.endedAt,
+  }
+}
+
+function serializeDate(date: Date | null) {
+  return date?.toISOString() ?? null
+}
+
+function sortOutcomeRowsChronologically(left: GameOutcomeRow, right: GameOutcomeRow) {
+  return left.playedAt.getTime() - right.playedAt.getTime()
+    || left.gameId - right.gameId
+    || left.name.localeCompare(right.name)
+}
+
+async function getOrderedGameRows(): Promise<{ gameId: number; playedAt: Date }[]> {
+  return db
+    .select({
+      gameId: games.id,
+      playedAt: games.playedAt,
+    })
+    .from(games)
+    .orderBy(games.playedAt, games.id)
+}
+
+export async function getPlayerStreakRecords(): Promise<PlayerStreakRecord[]> {
+  const [{ players: allPlayers, outcomeRows }, gameRows] = await Promise.all([
+    getOrderedGameOutcomeData(),
+    getOrderedGameRows(),
+  ])
+  const outcomeRowsByPlayerId = new Map<number, GameOutcomeRow[]>()
+  const playerIdsByGameId = new Map<number, Set<number>>()
+
+  outcomeRows.forEach((row) => {
+    const playerOutcomeRows = outcomeRowsByPlayerId.get(row.playerId) ?? []
+    playerOutcomeRows.push(row)
+    outcomeRowsByPlayerId.set(row.playerId, playerOutcomeRows)
+
+    const gamePlayerIds = playerIdsByGameId.get(row.gameId) ?? new Set<number>()
+    gamePlayerIds.add(row.playerId)
+    playerIdsByGameId.set(row.gameId, gamePlayerIds)
+  })
+
+  return allPlayers.map((player) => {
+    const accumulator: PlayerStreakAccumulator = {
+      longestWin: createEmptyStreak(),
+      currentLoss: createEmptyStreak(),
+      longestLoss: createEmptyStreak(),
+      attendance: createEmptyStreak(),
+    }
+    let activeWin = createEmptyStreak()
+    let activeLoss = createEmptyStreak()
+    let activeAttendance = createEmptyStreak()
+    const rows = [...(outcomeRowsByPlayerId.get(player.playerId) ?? [])].sort(
+      sortOutcomeRowsChronologically,
+    )
+
+    rows.forEach((row) => {
+      if (row.isWinner) {
+        activeWin = {
+          count: activeWin.count + 1,
+          startedAt: activeWin.startedAt ?? row.playedAt,
+          endedAt: row.playedAt,
+        }
+        activeLoss = createEmptyStreak()
+
+        if (shouldReplaceStreak(activeWin, accumulator.longestWin)) {
+          accumulator.longestWin = cloneStreak(activeWin)
+        }
+      } else {
+        activeLoss = {
+          count: activeLoss.count + 1,
+          startedAt: activeLoss.startedAt ?? row.playedAt,
+          endedAt: row.playedAt,
+        }
+        activeWin = createEmptyStreak()
+
+        if (shouldReplaceStreak(activeLoss, accumulator.longestLoss)) {
+          accumulator.longestLoss = cloneStreak(activeLoss)
+        }
+      }
+    })
+
+    accumulator.currentLoss = cloneStreak(activeLoss)
+
+    gameRows.forEach((game) => {
+      if (playerIdsByGameId.get(game.gameId)?.has(player.playerId)) {
+        activeAttendance = {
+          count: activeAttendance.count + 1,
+          startedAt: activeAttendance.startedAt ?? game.playedAt,
+          endedAt: game.playedAt,
+        }
+
+        if (shouldReplaceStreak(activeAttendance, accumulator.attendance)) {
+          accumulator.attendance = cloneStreak(activeAttendance)
+        }
+      } else {
+        activeAttendance = createEmptyStreak()
+      }
+    })
+
+    return {
+      ...player,
+      longestWinStreak: accumulator.longestWin.count,
+      longestWinStreakStartedAt: serializeDate(accumulator.longestWin.startedAt),
+      longestWinStreakEndedAt: serializeDate(accumulator.longestWin.endedAt),
+      currentLossStreak: accumulator.currentLoss.count,
+      currentLossStreakStartedAt: serializeDate(accumulator.currentLoss.startedAt),
+      currentLossStreakEndedAt: serializeDate(accumulator.currentLoss.endedAt),
+      longestLossStreak: accumulator.longestLoss.count,
+      longestLossStreakStartedAt: serializeDate(accumulator.longestLoss.startedAt),
+      longestLossStreakEndedAt: serializeDate(accumulator.longestLoss.endedAt),
+      attendanceStreak: accumulator.attendance.count,
+      attendanceStreakStartedAt: serializeDate(accumulator.attendance.startedAt),
+      attendanceStreakEndedAt: serializeDate(accumulator.attendance.endedAt),
+    }
+  })
 }
 
 export interface PlayerWinEvent extends PlayerIdentity {

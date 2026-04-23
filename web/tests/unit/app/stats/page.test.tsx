@@ -14,6 +14,7 @@ import {
   getPlayerParticipationRates,
   getPlayerPodiumRates,
   getPlayerScoreStats,
+  getPlayerStreakRecords,
   getPlayerWinEvents,
   getSingleGameRecords,
   getTierShowdownStats,
@@ -30,6 +31,7 @@ vi.mock('@/lib/stats', () => ({
   getSingleGameRecords: vi.fn(),
   getPlayerNormalizedScoreStats: vi.fn(),
   getPlayerScoreStats: vi.fn(),
+  getPlayerStreakRecords: vi.fn(),
   getPlayerParticipationRates: vi.fn(),
   getPlayerPodiumRates: vi.fn(),
   getPlayerFinishBreakdowns: vi.fn(),
@@ -253,6 +255,42 @@ describe('StatsPage', () => {
         tier: PlayerTier.Standard,
       },
     ])
+    vi.mocked(getPlayerStreakRecords).mockResolvedValue([
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+        longestWinStreak: 3,
+        longestWinStreakStartedAt: '2026-04-20T18:00:00.000Z',
+        longestWinStreakEndedAt: '2026-04-22T18:00:00.000Z',
+        currentLossStreak: 0,
+        currentLossStreakStartedAt: null,
+        currentLossStreakEndedAt: null,
+        longestLossStreak: 1,
+        longestLossStreakStartedAt: '2026-04-23T18:00:00.000Z',
+        longestLossStreakEndedAt: '2026-04-23T18:00:00.000Z',
+        attendanceStreak: 5,
+        attendanceStreakStartedAt: '2026-04-18T18:00:00.000Z',
+        attendanceStreakEndedAt: '2026-04-22T18:00:00.000Z',
+      },
+      {
+        playerId: 2,
+        name: 'Bea',
+        tier: PlayerTier.Standard,
+        longestWinStreak: 2,
+        longestWinStreakStartedAt: '2026-04-18T18:00:00.000Z',
+        longestWinStreakEndedAt: '2026-04-19T18:00:00.000Z',
+        currentLossStreak: 1,
+        currentLossStreakStartedAt: '2026-04-21T18:00:00.000Z',
+        currentLossStreakEndedAt: '2026-04-21T18:00:00.000Z',
+        longestLossStreak: 1,
+        longestLossStreakStartedAt: '2026-04-21T18:00:00.000Z',
+        longestLossStreakEndedAt: '2026-04-21T18:00:00.000Z',
+        attendanceStreak: 4,
+        attendanceStreakStartedAt: '2026-04-18T18:00:00.000Z',
+        attendanceStreakEndedAt: '2026-04-21T18:00:00.000Z',
+      },
+    ])
     vi.mocked(getSingleGameRecords).mockResolvedValue({
       highestScore: {
         gameId: 3,
@@ -327,6 +365,7 @@ describe('StatsPage', () => {
     const mostWinsInWeekIndex = markup.indexOf('id="most-wins-in-week"')
     const mostWinsInMonthIndex = markup.indexOf('id="most-wins-in-month"')
     const singleGameRecordsIndex = markup.indexOf('id="single-game-records"')
+    const longestWinStreakEverIndex = markup.indexOf('id="longest-win-streak-ever"')
 
     expect(totalWinsIndex).toBeGreaterThan(-1)
     expect(winRateIndex).toBeGreaterThan(totalWinsIndex)
@@ -352,6 +391,7 @@ describe('StatsPage', () => {
     expect(mostWinsInWeekIndex).toBeGreaterThan(currentWinStreakIndex)
     expect(mostWinsInMonthIndex).toBeGreaterThan(mostWinsInWeekIndex)
     expect(singleGameRecordsIndex).toBeGreaterThan(mostWinsInMonthIndex)
+    expect(longestWinStreakEverIndex).toBeGreaterThan(singleGameRecordsIndex)
 
     expect(markup).toContain('Finish Breakdown')
     expect(markup).toContain('>1st<')
@@ -384,6 +424,7 @@ describe('StatsPage', () => {
     expect(markup).toContain('Most Wins in a Week')
     expect(markup).toContain('Most Wins in a Month')
     expect(markup).toContain('Single-Game Records')
+    expect(markup).toContain('Longest Win Streak Ever')
     expect(markup).toContain('Highest Score')
     expect(markup).toContain('Lowest Winning Score')
     expect(markup).toContain('Biggest Blowout')
@@ -397,6 +438,8 @@ describe('StatsPage', () => {
     expect(markup).toContain('dateTime="2026-04-22T18:00:00.000Z"')
     expect(markup).toContain('>Last Win<')
     expect(markup).toContain('>Period<')
+    expect(markup).toContain('>Record<')
+    expect(markup).toContain('3 wins')
     expect(markup).toContain('2 wins')
     expect(markup).toContain('Loading your local-time view...')
     expect(markup).toContain('88.9%')
@@ -447,6 +490,9 @@ describe('StatsPage', () => {
     expect(markup.slice(singleGameRecordsIndex, singleGameRecordsIndex + 160)).not.toContain(
       'lg:col-span-2',
     )
+    expect(markup.slice(longestWinStreakEverIndex, longestWinStreakEverIndex + 160)).not.toContain(
+      'lg:col-span-2',
+    )
   })
 
   it('renders card empty states when no stats are available', async () => {
@@ -462,6 +508,7 @@ describe('StatsPage', () => {
     vi.mocked(getPlayerAttendanceEvents).mockResolvedValue([])
     vi.mocked(getPlayerCurrentWinStreaks).mockResolvedValue([])
     vi.mocked(getPlayerWinEvents).mockResolvedValue([])
+    vi.mocked(getPlayerStreakRecords).mockResolvedValue([])
     vi.mocked(getSingleGameRecords).mockResolvedValue({
       highestScore: null,
       lowestWinningScore: null,
@@ -493,7 +540,8 @@ describe('StatsPage', () => {
     expect(markup).toContain('Most Wins in a Week')
     expect(markup).toContain('Most Wins in a Month')
     expect(markup).toContain('Single-Game Records')
-    expect(markup.match(/No games recorded yet\./g)).toHaveLength(19)
+    expect(markup).toContain('Longest Win Streak Ever')
+    expect(markup.match(/No games recorded yet\./g)).toHaveLength(20)
   })
 
   it('filters the podium leaderboard using the podium threshold instead of the win-rate threshold', async () => {
@@ -543,6 +591,7 @@ describe('StatsPage', () => {
     vi.mocked(getPlayerAttendanceEvents).mockResolvedValue([])
     vi.mocked(getPlayerCurrentWinStreaks).mockResolvedValue([])
     vi.mocked(getPlayerWinEvents).mockResolvedValue([])
+    vi.mocked(getPlayerStreakRecords).mockResolvedValue([])
     vi.mocked(getSingleGameRecords).mockResolvedValue({
       highestScore: null,
       lowestWinningScore: null,

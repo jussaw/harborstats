@@ -9,6 +9,7 @@ import {
   getPlayerParticipationRates,
   getPlayerPodiumRates,
   getPlayerScoreStats,
+  getPlayerStreakRecords,
   getPlayerWinEvents,
   getPlayerWinRateByGameSize,
 } from '@/lib/stats'
@@ -27,6 +28,7 @@ export default async function PlayersPage() {
     expectedVsActualWins,
     currentWinStreaks,
     playerWinEvents,
+    playerStreakRecords,
   ] = await Promise.all([
     getPlayers(),
     getPlayerScoreStats(),
@@ -38,6 +40,7 @@ export default async function PlayersPage() {
     getPlayerExpectedVsActualWins(),
     getPlayerCurrentWinStreaks(),
     getPlayerWinEvents(),
+    getPlayerStreakRecords(),
   ])
   const selectedPlayer = players[0] ?? null
   const playerGames = selectedPlayer ? await listGamesForPlayer(selectedPlayer.id) : []
@@ -56,6 +59,7 @@ export default async function PlayersPage() {
       expectedVsActualWins={expectedVsActualWins}
       currentWinStreaks={currentWinStreaks}
       playerWinEvents={playerWinEvents}
+      playerStreakRecords={playerStreakRecords}
       playerGames={playerGames}
     />
   )

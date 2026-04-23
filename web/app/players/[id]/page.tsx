@@ -11,6 +11,7 @@ import {
   getPlayerParticipationRates,
   getPlayerPodiumRates,
   getPlayerScoreStats,
+  getPlayerStreakRecords,
   getPlayerWinEvents,
   getPlayerWinRateByGameSize,
 } from '@/lib/stats'
@@ -43,6 +44,7 @@ export default async function PlayerProfilePage({ params }: Props) {
     expectedVsActualWins,
     currentWinStreaks,
     playerWinEvents,
+    playerStreakRecords,
     playerGames,
   ] = await Promise.all([
     getPlayers(),
@@ -55,6 +57,7 @@ export default async function PlayerProfilePage({ params }: Props) {
     getPlayerExpectedVsActualWins(),
     getPlayerCurrentWinStreaks(),
     getPlayerWinEvents(),
+    getPlayerStreakRecords(),
     listGamesForPlayer(numericId),
   ])
   const player = players.find((candidate) => candidate.id === numericId) ?? null
@@ -74,6 +77,7 @@ export default async function PlayerProfilePage({ params }: Props) {
       expectedVsActualWins={expectedVsActualWins}
       currentWinStreaks={currentWinStreaks}
       playerWinEvents={playerWinEvents}
+      playerStreakRecords={playerStreakRecords}
       playerGames={playerGames}
     />
   )
