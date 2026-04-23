@@ -39,6 +39,7 @@ Always heed deprecation warnings from Next.js 16.
    - `player_id_<row>`, `score_<row>`, `is_winner_<row>`
 6. Keep `parseGameFormData` behavior intact unless intentionally changing product rules:
    - If no explicit winner and one unique highest score exists, mark that player as winner.
+   - Ties are not a supported outcome; preserve a single winning tier per recorded game.
 7. Public/admin list pages currently use `export const dynamic = 'force-dynamic'`; keep this unless caching strategy is intentionally changed.
 
 ## Admin/Auth Constraints
