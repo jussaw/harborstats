@@ -1,5 +1,7 @@
+import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
+import { FormattedDate } from '@/components/FormattedDate'
 import { StatsCard } from '@/components/StatsCard'
 import { formatAverage, formatPercent, formatSignedNumber } from '@/lib/format'
 import type { RecentGame } from '@/lib/games'
@@ -13,6 +15,7 @@ import type {
   PlayerParticipationRate,
   PlayerPodiumRate,
   PlayerScoreStats,
+  PlayerStreakRecord,
   PlayerWinEvent,
   PlayerWinRateByGameSize,
 } from '@/lib/stats'
@@ -36,6 +39,7 @@ interface Props {
   expectedVsActualWins: PlayerExpectedVsActualWins[]
   currentWinStreaks: PlayerCurrentWinStreak[]
   playerWinEvents: PlayerWinEvent[]
+  playerStreakRecords: PlayerStreakRecord[]
   playerGames: RecentGame[]
 }
 
@@ -119,7 +123,7 @@ interface ProfileMetricCardProps {
   title: string
   description: string
   value: string | null
-  detail: string | null
+  detail: ReactNode | null
 }
 
 function ProfileMetricCard({ id, title, description, value, detail }: ProfileMetricCardProps) {
@@ -146,6 +150,82 @@ function ProfileMetricCard({ id, title, description, value, detail }: ProfileMet
 
 function formatCount(value: number, singular: string, plural = `${singular}s`) {
   return `${value} ${value === 1 ? singular : plural}`
+}
+
+function StreakPeriodDetail({
+  startedAt,
+  endedAt,
+}: {
+  startedAt: string | null
+  endedAt: string | null
+}) {
+  if (!startedAt || !endedAt) {
+    return 'No recorded period yet.'
+  }
+
+  if (startedAt === endedAt) {
+    return <FormattedDate iso={startedAt} className="inline text-(--cream)/55" />
+  }
+
+  return (
+    <span>
+      <FormattedDate iso={startedAt} className="inline text-(--cream)/55" />
+      <span className="text-(--cream)/40"> - </span>
+      <FormattedDate iso={endedAt} className="inline text-(--cream)/55" />
+    </span>
+  )
+}
+
+function ProfileLossStreakCard({ streakRecord }: { streakRecord: PlayerStreakRecord | null }) {
+  return (
+    <StatsCard
+      id="player-loss-streak"
+      title="Current / Longest Loss Streak"
+      description="Active and all-time losing runs based on this player’s own appearances."
+      badge={undefined}
+      span="single"
+    >
+      {streakRecord ? (
+        <div className="space-y-4">
+          <div>
+            <p className="text-sm tracking-wide text-(--cream)">Current</p>
+            <p
+              style={cinzelStyle}
+              className="
+                mt-1 text-3xl leading-none font-semibold tracking-wide
+                text-(--gold)
+              "
+            >
+              {formatCount(streakRecord.currentLossStreak, 'loss', 'losses')}
+            </p>
+            <p className="mt-2 text-sm text-(--cream)/55">
+              Current: {formatCount(streakRecord.currentLossStreak, 'loss', 'losses')}
+            </p>
+            <p className="mt-1 text-xs text-(--cream)/45">
+              <StreakPeriodDetail
+                startedAt={streakRecord.currentLossStreakStartedAt}
+                endedAt={streakRecord.currentLossStreakEndedAt}
+              />
+            </p>
+          </div>
+          <div className="border-t border-(--gold)/10 pt-4">
+            <p className="text-sm tracking-wide text-(--cream)">Longest</p>
+            <p className="mt-2 text-sm text-(--cream)/55">
+              Longest: {formatCount(streakRecord.longestLossStreak, 'loss', 'losses')}
+            </p>
+            <p className="mt-1 text-xs text-(--cream)/45">
+              <StreakPeriodDetail
+                startedAt={streakRecord.longestLossStreakStartedAt}
+                endedAt={streakRecord.longestLossStreakEndedAt}
+              />
+            </p>
+          </div>
+        </div>
+      ) : (
+        <EmptyMetricState />
+      )}
+    </StatsCard>
+  )
 }
 
 function formatGameSizeLabel(playerCount: number) {
@@ -243,6 +323,7 @@ function PlayerDetail({
   expectedVsActualWins,
   currentWinStreaks,
   playerWinEvents,
+  playerStreakRecords,
   playerGames,
 }: {
   player: Player
@@ -255,6 +336,7 @@ function PlayerDetail({
   expectedVsActualWins: PlayerExpectedVsActualWins[]
   currentWinStreaks: PlayerCurrentWinStreak[]
   playerWinEvents: PlayerWinEvent[]
+  playerStreakRecords: PlayerStreakRecord[]
   playerGames: RecentGame[]
 }) {
   const scoreStat = scoreStats.find((candidate) => candidate.playerId === player.id) ?? null
@@ -267,6 +349,7 @@ function PlayerDetail({
     .sort((a, b) => a.playerCount - b.playerCount)
   const expectedVsActualStat = expectedVsActualWins.find((candidate) => candidate.playerId === player.id) ?? null
   const currentWinStreak = currentWinStreaks.find((candidate) => candidate.playerId === player.id) ?? null
+  const streakRecord = playerStreakRecords.find((candidate) => candidate.playerId === player.id) ?? null
 
   const hasGames = scoreStat !== null && scoreStat.games > 0
   const podiumHasGames = podiumStat !== null && podiumStat.games > 0
@@ -332,6 +415,35 @@ function PlayerDetail({
             (currentWinStreak?.streak ?? 0) > 0
               ? 'Current active streak'
               : 'No active streak right now.'
+          }
+        />
+        <ProfileMetricCard
+          id="player-longest-win-streak-ever"
+          title="Longest Win Streak Ever"
+          description="This player’s all-time record winning run."
+          value={streakRecord ? formatCount(streakRecord.longestWinStreak, 'win') : null}
+          detail={
+            streakRecord ? (
+              <StreakPeriodDetail
+                startedAt={streakRecord.longestWinStreakStartedAt}
+                endedAt={streakRecord.longestWinStreakEndedAt}
+              />
+            ) : null
+          }
+        />
+        <ProfileLossStreakCard streakRecord={streakRecord} />
+        <ProfileMetricCard
+          id="player-attendance-streak"
+          title="Attendance Streak"
+          description="Most consecutive recorded games this player joined without missing one."
+          value={streakRecord ? formatCount(streakRecord.attendanceStreak, 'game') : null}
+          detail={
+            streakRecord ? (
+              <StreakPeriodDetail
+                startedAt={streakRecord.attendanceStreakStartedAt}
+                endedAt={streakRecord.attendanceStreakEndedAt}
+              />
+            ) : null
           }
         />
         <ProfileFinishBreakdownCard breakdown={finishBreakdown} />
@@ -423,6 +535,7 @@ export function PlayersSection({
   expectedVsActualWins,
   currentWinStreaks,
   playerWinEvents,
+  playerStreakRecords,
   playerGames,
 }: Props) {
   if (players.length === 0) {
@@ -479,6 +592,7 @@ export function PlayersSection({
                 expectedVsActualWins={expectedVsActualWins}
                 currentWinStreaks={currentWinStreaks}
                 playerWinEvents={playerWinEvents}
+                playerStreakRecords={playerStreakRecords}
                 playerGames={playerGames}
               />
             ) : null}
@@ -506,6 +620,7 @@ export function PlayersSection({
               expectedVsActualWins={expectedVsActualWins}
               currentWinStreaks={currentWinStreaks}
               playerWinEvents={playerWinEvents}
+              playerStreakRecords={playerStreakRecords}
               playerGames={playerGames}
             />
           ) : (

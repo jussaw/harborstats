@@ -10,6 +10,7 @@ import {
   getPlayerPodiumRates,
   getPlayerParticipationRates,
   getPlayerScoreStats,
+  getPlayerStreakRecords,
   getReigningChampionSummary,
   getSingleGameRecords,
   getPlayerWinRateByGameSize,
@@ -120,6 +121,127 @@ describe('stats integration', () => {
     expect(streaks.find((player) => player.playerId === dana.id)).toMatchObject({
       streak: 0,
       mostRecentWin: null,
+    });
+  });
+
+  test('getPlayerStreakRecords tracks appearance-based outcome streaks and global attendance streaks', async () => {
+    const alice = await createTestPlayer({ name: 'Alice', tier: PlayerTier.Premium });
+    const bob = await createTestPlayer({ name: 'Bob', tier: PlayerTier.Standard });
+    const carol = await createTestPlayer({ name: 'Carol', tier: PlayerTier.Standard });
+    const dana = await createTestPlayer({ name: 'Dana', tier: PlayerTier.Standard });
+
+    await createTestGame({
+      playedAt: new Date('2026-04-20T18:00:00.000Z'),
+      players: [
+        { playerId: alice.id, score: 10, isWinner: true },
+        { playerId: bob.id, score: 8, isWinner: false },
+        { playerId: carol.id, score: 7, isWinner: false },
+      ],
+    });
+    await createTestGame({
+      playedAt: new Date('2026-04-21T18:00:00.000Z'),
+      players: [
+        { playerId: alice.id, score: 10, isWinner: true },
+        { playerId: bob.id, score: 8, isWinner: false },
+      ],
+    });
+    await createTestGame({
+      playedAt: new Date('2026-04-22T18:00:00.000Z'),
+      players: [
+        { playerId: bob.id, score: 10, isWinner: true },
+        { playerId: alice.id, score: 8, isWinner: false },
+        { playerId: carol.id, score: 7, isWinner: false },
+      ],
+    });
+    await createTestGame({
+      playedAt: new Date('2026-04-23T18:00:00.000Z'),
+      players: [
+        { playerId: bob.id, score: 10, isWinner: true },
+        { playerId: carol.id, score: 7, isWinner: false },
+      ],
+    });
+    await createTestGame({
+      playedAt: new Date('2026-04-24T18:00:00.000Z'),
+      players: [
+        { playerId: alice.id, score: 10, isWinner: true },
+        { playerId: bob.id, score: 8, isWinner: false },
+        { playerId: carol.id, score: 7, isWinner: false },
+      ],
+    });
+    await createTestGame({
+      playedAt: new Date('2026-04-25T18:00:00.000Z'),
+      players: [
+        { playerId: alice.id, score: 10, isWinner: true },
+        { playerId: carol.id, score: 7, isWinner: false },
+      ],
+    });
+    await createTestGame({
+      playedAt: new Date('2026-04-26T18:00:00.000Z'),
+      players: [
+        { playerId: bob.id, score: 10, isWinner: true },
+        { playerId: alice.id, score: 8, isWinner: false },
+        { playerId: carol.id, score: 7, isWinner: false },
+      ],
+    });
+
+    const records = await getPlayerStreakRecords();
+
+    expect(records.map((player) => player.name)).toEqual(['Alice', 'Bob', 'Carol', 'Dana']);
+    expect(records.find((player) => player.playerId === alice.id)).toMatchObject({
+      longestWinStreak: 2,
+      longestWinStreakStartedAt: '2026-04-24T18:00:00.000Z',
+      longestWinStreakEndedAt: '2026-04-25T18:00:00.000Z',
+      currentLossStreak: 1,
+      currentLossStreakStartedAt: '2026-04-26T18:00:00.000Z',
+      currentLossStreakEndedAt: '2026-04-26T18:00:00.000Z',
+      longestLossStreak: 1,
+      longestLossStreakStartedAt: '2026-04-26T18:00:00.000Z',
+      longestLossStreakEndedAt: '2026-04-26T18:00:00.000Z',
+      attendanceStreak: 3,
+      attendanceStreakStartedAt: '2026-04-24T18:00:00.000Z',
+      attendanceStreakEndedAt: '2026-04-26T18:00:00.000Z',
+    });
+    expect(records.find((player) => player.playerId === bob.id)).toMatchObject({
+      longestWinStreak: 2,
+      longestWinStreakStartedAt: '2026-04-22T18:00:00.000Z',
+      longestWinStreakEndedAt: '2026-04-23T18:00:00.000Z',
+      currentLossStreak: 0,
+      currentLossStreakStartedAt: null,
+      currentLossStreakEndedAt: null,
+      longestLossStreak: 2,
+      longestLossStreakStartedAt: '2026-04-20T18:00:00.000Z',
+      longestLossStreakEndedAt: '2026-04-21T18:00:00.000Z',
+      attendanceStreak: 5,
+      attendanceStreakStartedAt: '2026-04-20T18:00:00.000Z',
+      attendanceStreakEndedAt: '2026-04-24T18:00:00.000Z',
+    });
+    expect(records.find((player) => player.playerId === carol.id)).toMatchObject({
+      longestWinStreak: 0,
+      longestWinStreakStartedAt: null,
+      longestWinStreakEndedAt: null,
+      currentLossStreak: 6,
+      currentLossStreakStartedAt: '2026-04-20T18:00:00.000Z',
+      currentLossStreakEndedAt: '2026-04-26T18:00:00.000Z',
+      longestLossStreak: 6,
+      longestLossStreakStartedAt: '2026-04-20T18:00:00.000Z',
+      longestLossStreakEndedAt: '2026-04-26T18:00:00.000Z',
+      attendanceStreak: 5,
+      attendanceStreakStartedAt: '2026-04-22T18:00:00.000Z',
+      attendanceStreakEndedAt: '2026-04-26T18:00:00.000Z',
+    });
+    expect(records.find((player) => player.playerId === dana.id)).toMatchObject({
+      longestWinStreak: 0,
+      longestWinStreakStartedAt: null,
+      longestWinStreakEndedAt: null,
+      currentLossStreak: 0,
+      currentLossStreakStartedAt: null,
+      currentLossStreakEndedAt: null,
+      longestLossStreak: 0,
+      longestLossStreakStartedAt: null,
+      longestLossStreakEndedAt: null,
+      attendanceStreak: 0,
+      attendanceStreakStartedAt: null,
+      attendanceStreakEndedAt: null,
     });
   });
 

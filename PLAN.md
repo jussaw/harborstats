@@ -142,15 +142,15 @@ All activity and time-based stats in this section use the viewer's local time.
 - **Needs:** margin per game (share query from 3.6)
 
 ### 3.8 Longest win streak ever `[S]` `[P]`
-- [ ] Each player's all-time record win streak and the period it occurred.
+- [x] Each player's all-time record win streak and the period it occurred.
 - **Needs:** streak logic (extend query from 3.2)
 
 ### 3.9 Current / longest loss streak `[P]`
-- [ ] Each player's active and all-time worst losing run.
+- [x] Each player's active and all-time worst losing run.
 - **Needs:** streak logic (extend query from 3.8)
 
 ### 3.10 Attendance streak `[P]`
-- [ ] Most consecutive games played without missing one.
+- [x] Most consecutive games played without missing one.
 - **Needs:** game dates per player (extend approach from 3.9)
 
 ## 4. Score Patterns
