@@ -176,9 +176,6 @@ All activity and time-based stats in this section use the viewer's local time.
 - [x] Scatter or grouped bar chart of average winning score by game size.
 - **Needs:** winner score + game size (share queries from 4.1 and 1.9)
 
-### 4.7 % of games with a tied top score `[A]` `[S]`
-- [ ] Count games where two or more players share the highest score (currently `is_winner=false` for tied players).
-
 ## 5. Head-to-Head (rivalries)
 
 ### 5.1 Most-played-with partner `[P]`
