@@ -11,6 +11,7 @@ import {
   getPerPlayerScoreDistributions,
   getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
+  getPlayerHeadToHeadRecords,
   getPlayerMarginStats,
   getPlayerParticipationRates,
   getPlayerPodiumRates,
@@ -33,6 +34,7 @@ vi.mock('@/lib/stats', () => ({
   getPlayerCurrentWinStreaks: vi.fn(),
   getPlayerExpectedVsActualWins: vi.fn(),
   getPerPlayerScoreDistributions: vi.fn(),
+  getPlayerHeadToHeadRecords: vi.fn(),
   getPlayerScoreStats: vi.fn(),
   getPlayerStreakRecords: vi.fn(),
   getPlayerPodiumRates: vi.fn(),
@@ -47,6 +49,7 @@ describe('PlayersPage', () => {
   beforeEach(() => {
     vi.mocked(listGamesForPlayer).mockResolvedValue([]);
     vi.mocked(getPerPlayerScoreDistributions).mockResolvedValue([]);
+    vi.mocked(getPlayerHeadToHeadRecords).mockResolvedValue([]);
   });
 
   it('renders the first player profile alongside the players list when players exist', async () => {
@@ -316,6 +319,19 @@ describe('PlayersPage', () => {
         attendanceStreakEndedAt: '2026-04-20T18:00:00.000Z',
       },
     ]);
+    vi.mocked(getPlayerHeadToHeadRecords).mockResolvedValue([
+      {
+        playerId: 1,
+        playerName: 'Ada',
+        playerTier: PlayerTier.Premium,
+        opponentId: 2,
+        opponentName: 'Bea',
+        opponentTier: PlayerTier.Standard,
+        gamesTogether: 3,
+        winsAgainstOpponent: 2,
+        lossesToOpponent: 1,
+      },
+    ]);
     vi.mocked(listGamesForPlayer).mockResolvedValue([
       {
         id: 4,
@@ -358,6 +374,9 @@ describe('PlayersPage', () => {
     expect(markup).toContain('Longest Win Streak Ever');
     expect(markup).toContain('Current / Longest Loss Streak');
     expect(markup).toContain('Attendance Streak');
+    expect(markup).toContain('Most-Played-With Partner');
+    expect(markup).toContain('Nemesis');
+    expect(markup).toContain('Favorite Opponent');
     expect(markup).toContain('9.4');
     expect(markup).toContain('47');
     expect(markup).toContain('9.0');
@@ -380,6 +399,9 @@ describe('PlayersPage', () => {
     expect(markup).toContain('5 appearances in 7 total games');
     expect(markup).toContain('Across 2 wins');
     expect(markup).toContain('Across 3 losses');
+    expect(markup).toContain('3 shared games');
+    expect(markup).toContain('1 loss across 3 shared games');
+    expect(markup).toContain('2 wins across 3 shared games');
     expect(markup).toContain('Loading your local-time view...');
   });
 
@@ -396,6 +418,7 @@ describe('PlayersPage', () => {
     vi.mocked(getPlayerCurrentWinStreaks).mockResolvedValue([]);
     vi.mocked(getPlayerWinEvents).mockResolvedValue([]);
     vi.mocked(getPlayerStreakRecords).mockResolvedValue([]);
+    vi.mocked(getPlayerHeadToHeadRecords).mockResolvedValue([]);
 
     const element = await PlayersPage();
     const markup = renderToStaticMarkup(element);

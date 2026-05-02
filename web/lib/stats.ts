@@ -113,6 +113,18 @@ interface GameSizeAggregateData {
   tierShowdownStats: TierShowdownStats[];
 }
 
+export interface PlayerHeadToHeadRecord {
+  playerId: number;
+  playerName: string;
+  playerTier: PlayerTierType;
+  opponentId: number;
+  opponentName: string;
+  opponentTier: PlayerTierType;
+  gamesTogether: number;
+  winsAgainstOpponent: number;
+  lossesToOpponent: number;
+}
+
 async function getGameSizeAggregateData(): Promise<GameSizeAggregateData> {
   const [playerRows, participantRows] = await Promise.all([
     db
@@ -266,6 +278,98 @@ async function getGameSizeAggregateData(): Promise<GameSizeAggregateData> {
       }))
       .sort((a, b) => b.winRate - a.winRate || b.wins - a.wins || a.tier.localeCompare(b.tier)),
   };
+}
+
+export async function getPlayerHeadToHeadRecords(): Promise<PlayerHeadToHeadRecord[]> {
+  const [playerRows, participantRows] = await Promise.all([
+    db
+      .select({
+        playerId: players.id,
+        name: players.name,
+        tier: players.tier,
+      })
+      .from(players)
+      .orderBy(sql`CASE ${players.tier} WHEN 'premium' THEN 0 ELSE 1 END`, players.name),
+    db
+      .select({
+        gameId: gamePlayers.gameId,
+        playerId: gamePlayers.playerId,
+        isWinner: gamePlayers.isWinner,
+      })
+      .from(gamePlayers),
+  ]);
+
+  const playersById = new Map<number, PlayerIdentity>(
+    playerRows.map((player) => [
+      player.playerId,
+      {
+        playerId: player.playerId,
+        name: player.name,
+        tier: parsePlayerTier(player.tier),
+      },
+    ]),
+  );
+
+  const participantsByGameId = new Map<number, typeof participantRows>();
+  const recordsByKey = new Map<string, PlayerHeadToHeadRecord>();
+
+  participantRows.forEach((participant) => {
+    const existing = participantsByGameId.get(participant.gameId) ?? [];
+    existing.push(participant);
+    participantsByGameId.set(participant.gameId, existing);
+  });
+
+  participantsByGameId.forEach((participants) => {
+    participants.forEach((playerParticipant) => {
+      const player = playersById.get(playerParticipant.playerId);
+      if (!player) {
+        return;
+      }
+
+      participants.forEach((opponentParticipant) => {
+        if (playerParticipant.playerId === opponentParticipant.playerId) {
+          return;
+        }
+
+        const opponent = playersById.get(opponentParticipant.playerId);
+        if (!opponent) {
+          return;
+        }
+
+        const key = `${player.playerId}:${opponent.playerId}`;
+        const record = recordsByKey.get(key) ?? {
+          playerId: player.playerId,
+          playerName: player.name,
+          playerTier: player.tier,
+          opponentId: opponent.playerId,
+          opponentName: opponent.name,
+          opponentTier: opponent.tier,
+          gamesTogether: 0,
+          winsAgainstOpponent: 0,
+          lossesToOpponent: 0,
+        };
+
+        record.gamesTogether += 1;
+
+        if (playerParticipant.isWinner && !opponentParticipant.isWinner) {
+          record.winsAgainstOpponent += 1;
+        }
+
+        if (opponentParticipant.isWinner && !playerParticipant.isWinner) {
+          record.lossesToOpponent += 1;
+        }
+
+        recordsByKey.set(key, record);
+      });
+    });
+  });
+
+  return [...recordsByKey.values()].sort(
+    (left, right) =>
+      left.playerId - right.playerId ||
+      right.gamesTogether - left.gamesTogether ||
+      left.opponentName.localeCompare(right.opponentName),
+  );
 }
 
 export interface PlayerWinRate {

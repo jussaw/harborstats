@@ -7,6 +7,7 @@ import {
   getPerPlayerScoreDistributions,
   getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
+  getPlayerHeadToHeadRecords,
   getPlayerMarginStats,
   getPlayerParticipationRates,
   getPlayerPodiumRates,
@@ -33,6 +34,7 @@ export default async function PlayersPage() {
     currentWinStreaks,
     playerWinEvents,
     playerStreakRecords,
+    headToHeadRecords,
   ] = await Promise.all([
     getPlayers(),
     getPlayerScoreStats(),
@@ -47,6 +49,7 @@ export default async function PlayersPage() {
     getPlayerCurrentWinStreaks(),
     getPlayerWinEvents(),
     getPlayerStreakRecords(),
+    getPlayerHeadToHeadRecords(),
   ]);
   const selectedPlayer = players[0] ?? null;
   const playerGames = selectedPlayer ? await listGamesForPlayer(selectedPlayer.id) : [];
@@ -69,6 +72,7 @@ export default async function PlayersPage() {
       playerWinEvents={playerWinEvents}
       playerStreakRecords={playerStreakRecords}
       playerGames={playerGames}
+      headToHeadRecords={headToHeadRecords}
     />
   );
 }

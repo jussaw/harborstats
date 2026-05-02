@@ -11,6 +11,7 @@ import {
   getPerPlayerScoreDistributions,
   getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
+  getPlayerHeadToHeadRecords,
   getPlayerMarginStats,
   getPlayerParticipationRates,
   getPlayerPodiumRates,
@@ -44,6 +45,7 @@ vi.mock('@/lib/stats', () => ({
   getPlayerCurrentWinStreaks: vi.fn(),
   getPlayerExpectedVsActualWins: vi.fn(),
   getPerPlayerScoreDistributions: vi.fn(),
+  getPlayerHeadToHeadRecords: vi.fn(),
   getPlayerScoreStats: vi.fn(),
   getPlayerStreakRecords: vi.fn(),
   getPlayerPodiumRates: vi.fn(),
@@ -58,6 +60,7 @@ describe('PlayerProfilePage', () => {
   beforeEach(() => {
     vi.mocked(listGamesForPlayer).mockResolvedValue([]);
     vi.mocked(getPerPlayerScoreDistributions).mockResolvedValue([]);
+    vi.mocked(getPlayerHeadToHeadRecords).mockResolvedValue([]);
   });
 
   it('renders the selected player profile with a back link to the players list', async () => {
@@ -336,6 +339,19 @@ describe('PlayerProfilePage', () => {
         attendanceStreakEndedAt: '2026-04-21T18:00:00.000Z',
       },
     ]);
+    vi.mocked(getPlayerHeadToHeadRecords).mockResolvedValue([
+      {
+        playerId: 2,
+        playerName: 'Bea',
+        playerTier: PlayerTier.Standard,
+        opponentId: 1,
+        opponentName: 'Ada',
+        opponentTier: PlayerTier.Premium,
+        gamesTogether: 4,
+        winsAgainstOpponent: 1,
+        lossesToOpponent: 3,
+      },
+    ]);
     vi.mocked(listGamesForPlayer).mockResolvedValue([
       {
         id: 12,
@@ -384,6 +400,9 @@ describe('PlayerProfilePage', () => {
     expect(markup).toContain('Longest Win Streak Ever');
     expect(markup).toContain('Current / Longest Loss Streak');
     expect(markup).toContain('Attendance Streak');
+    expect(markup).toContain('Most-Played-With Partner');
+    expect(markup).toContain('Nemesis');
+    expect(markup).toContain('Favorite Opponent');
     const longestWinStreakSectionIndex = markup.indexOf('id="player-longest-win-streak-ever"');
     const longestWinStreakSection = markup.slice(
       longestWinStreakSectionIndex,
@@ -418,6 +437,10 @@ describe('PlayerProfilePage', () => {
     expect(markup).toContain('Across 4 losses');
     expect(markup).toContain('Loading your local-time view...');
     expect(markup.match(/No games recorded yet\./g)).toHaveLength(2);
+    expect(markup).toContain('href="/players/1"');
+    expect(markup).toContain('4 shared games');
+    expect(markup).toContain('3 losses across 4 shared games');
+    expect(markup).toContain('1 win across 4 shared games');
   });
 
   it('renders empty profile stat cards when the selected player has no recorded games', async () => {
@@ -625,6 +648,7 @@ describe('PlayerProfilePage', () => {
         attendanceStreakEndedAt: null,
       },
     ]);
+    vi.mocked(getPlayerHeadToHeadRecords).mockResolvedValue([]);
     vi.mocked(listGamesForPlayer).mockResolvedValue([]);
 
     const element = await PlayerProfilePage({ params: Promise.resolve({ id: '2' }) });
@@ -646,6 +670,9 @@ describe('PlayerProfilePage', () => {
     expect(markup).toContain('Longest Win Streak Ever');
     expect(markup).toContain('Current / Longest Loss Streak');
     expect(markup).toContain('Attendance Streak');
+    expect(markup).toContain('Most-Played-With Partner');
+    expect(markup).toContain('Nemesis');
+    expect(markup).toContain('Favorite Opponent');
     expect(markup).toContain('View Games (0)');
     expect(markup).toContain('0.0%');
     expect(markup).toContain('0 appearances in 5 total games');
@@ -653,7 +680,7 @@ describe('PlayerProfilePage', () => {
     expect(markup).toContain('Current: 0 losses');
     expect(markup).toContain('Longest: 0 losses');
     expect(markup).toContain('0 games');
-    expect(markup.match(/No games recorded yet\./g)).toHaveLength(24);
+    expect(markup.match(/No games recorded yet\./g)).toHaveLength(30);
   });
 
   it('calls notFound for invalid player ids', async () => {

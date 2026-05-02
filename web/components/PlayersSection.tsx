@@ -13,6 +13,7 @@ import type {
   PlayerCurrentWinStreak,
   PlayerExpectedVsActualWins,
   PlayerFinishBreakdown,
+  PlayerHeadToHeadRecord,
   PlayerMarginStats,
   PlayerParticipationRate,
   PlayerPodiumRate,
@@ -46,6 +47,7 @@ interface Props {
   playerWinEvents: PlayerWinEvent[];
   playerStreakRecords: PlayerStreakRecord[];
   playerGames: RecentGame[];
+  headToHeadRecords: PlayerHeadToHeadRecord[];
 }
 
 interface PlayersListProps {
@@ -326,6 +328,139 @@ function ProfileOpponentCountWinRateCard({ rows }: { rows: PlayerWinRateByGameSi
   );
 }
 
+function getMostPlayedWithRecord(records: PlayerHeadToHeadRecord[]): PlayerHeadToHeadRecord | null {
+  const [record] = [...records]
+    .filter((candidate) => candidate.gamesTogether > 0)
+    .sort(
+      (left, right) =>
+        right.gamesTogether - left.gamesTogether ||
+        left.opponentName.localeCompare(right.opponentName),
+    );
+
+  return record ?? null;
+}
+
+function getNemesisRecord(records: PlayerHeadToHeadRecord[]): PlayerHeadToHeadRecord | null {
+  const [record] = [...records]
+    .filter((candidate) => candidate.lossesToOpponent > 0)
+    .sort(
+      (left, right) =>
+        right.lossesToOpponent - left.lossesToOpponent ||
+        right.gamesTogether - left.gamesTogether ||
+        left.opponentName.localeCompare(right.opponentName),
+    );
+
+  return record ?? null;
+}
+
+function getFavoriteOpponentRecord(records: PlayerHeadToHeadRecord[]): PlayerHeadToHeadRecord | null {
+  const [record] = [...records]
+    .filter((candidate) => candidate.winsAgainstOpponent > 0)
+    .sort(
+      (left, right) =>
+        right.winsAgainstOpponent - left.winsAgainstOpponent ||
+        right.gamesTogether - left.gamesTogether ||
+        left.opponentName.localeCompare(right.opponentName),
+    );
+
+  return record ?? null;
+}
+
+interface ProfileHeadToHeadCardProps {
+  id: string;
+  title: string;
+  description: string;
+  record: PlayerHeadToHeadRecord | null;
+  detail: string | null;
+}
+
+function ProfileHeadToHeadCard({
+  id,
+  title,
+  description,
+  record,
+  detail,
+}: ProfileHeadToHeadCardProps) {
+  return (
+    <StatsCard id={id} title={title} description={description} badge={undefined} span="single">
+      {record && detail ? (
+        <div className="space-y-2">
+          <Link
+            href={`/players/${record.opponentId}`}
+            style={cinzelStyle}
+            className="
+              block text-3xl/tight font-semibold tracking-wide text-(--gold)
+              transition-colors
+              hover:text-(--cream)
+            "
+          >
+            {record.opponentName}
+          </Link>
+          <p className="text-sm text-(--cream)/55">{detail}</p>
+        </div>
+      ) : (
+        <EmptyMetricState />
+      )}
+    </StatsCard>
+  );
+}
+
+function ProfileMostPlayedWithCard({ records }: { records: PlayerHeadToHeadRecord[] }) {
+  const record = getMostPlayedWithRecord(records);
+
+  return (
+    <ProfileHeadToHeadCard
+      id="player-most-played-with"
+      title="Most-Played-With Partner"
+      description="The opponent this player has shared the most recorded games with."
+      record={record}
+      detail={record ? formatCount(record.gamesTogether, 'shared game') : null}
+    />
+  );
+}
+
+function ProfileNemesisCard({ records }: { records: PlayerHeadToHeadRecord[] }) {
+  const record = getNemesisRecord(records);
+
+  return (
+    <ProfileHeadToHeadCard
+      id="player-nemesis"
+      title="Nemesis"
+      description="The opponent who has beaten this player the most across shared games."
+      record={record}
+      detail={
+        record
+          ? `${formatCount(record.lossesToOpponent, 'loss', 'losses')} across ${formatCount(
+              record.gamesTogether,
+              'shared game',
+            )}`
+          : null
+      }
+    />
+  );
+}
+
+function ProfileFavoriteOpponentCard({ records }: { records: PlayerHeadToHeadRecord[] }) {
+  const record = getFavoriteOpponentRecord(records);
+
+  return (
+    <ProfileHeadToHeadCard
+      id="player-favorite-opponent"
+      title="Favorite Opponent"
+      description="The opponent this player has beaten the most across shared games."
+      record={record}
+      detail={
+        record
+          ? `${formatCount(record.winsAgainstOpponent, 'win')} across ${formatCount(
+              record.gamesTogether,
+              'shared game',
+            )}`
+          : null
+      }
+    />
+  );
+}
+
 function PlayerDetail({
   player,
   scoreStats,
@@ -341,6 +476,7 @@ function PlayerDetail({
   playerWinEvents,
   playerStreakRecords,
   playerGames,
+  headToHeadRecords,
 }: {
   player: Player;
   scoreStats: PlayerScoreStats[];
@@ -356,6 +492,7 @@ function PlayerDetail({
   playerWinEvents: PlayerWinEvent[];
   playerStreakRecords: PlayerStreakRecord[];
   playerGames: RecentGame[];
+  headToHeadRecords: PlayerHeadToHeadRecord[];
 }) {
   const scoreStat = scoreStats.find((candidate) => candidate.playerId === player.id) ?? null;
   const scoreDistribution =
@@ -377,6 +514,7 @@ function PlayerDetail({
     currentWinStreaks.find((candidate) => candidate.playerId === player.id) ?? null;
   const streakRecord =
     playerStreakRecords.find((candidate) => candidate.playerId === player.id) ?? null;
+  const playerH2H = headToHeadRecords.filter((candidate) => candidate.playerId === player.id);
 
   const hasGames = scoreStat !== null && scoreStat.games > 0;
   const hasCumulativeScore = cumulativeScoreStat !== null && cumulativeScoreStat.games > 0;
@@ -499,6 +637,9 @@ function PlayerDetail({
         />
         <ProfileFinishBreakdownCard breakdown={finishBreakdown} />
         <ProfileOpponentCountWinRateCard rows={opponentCountStats} />
+        <ProfileMostPlayedWithCard records={playerH2H} />
+        <ProfileNemesisCard records={playerH2H} />
+        <ProfileFavoriteOpponentCard records={playerH2H} />
         <ProfileMetricCard
           id="player-expected-vs-actual-wins"
           title="Expected vs Actual Wins"
@@ -592,6 +733,7 @@ export function PlayersSection({
   playerWinEvents,
   playerStreakRecords,
   playerGames,
+  headToHeadRecords,
 }: Props) {
   if (players.length === 0) {
     return (
@@ -656,6 +798,7 @@ export function PlayersSection({
                 playerWinEvents={playerWinEvents}
                 playerStreakRecords={playerStreakRecords}
                 playerGames={playerGames}
+                headToHeadRecords={headToHeadRecords}
               />
             ) : null}
           </div>
@@ -690,6 +833,7 @@ export function PlayersSection({
               playerWinEvents={playerWinEvents}
               playerStreakRecords={playerStreakRecords}
               playerGames={playerGames}
+              headToHeadRecords={headToHeadRecords}
             />
           ) : (
             <PlayersDetailEmptyState />

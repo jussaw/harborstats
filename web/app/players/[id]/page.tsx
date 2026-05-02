@@ -9,6 +9,7 @@ import {
   getPerPlayerScoreDistributions,
   getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
+  getPlayerHeadToHeadRecords,
   getPlayerMarginStats,
   getPlayerParticipationRates,
   getPlayerPodiumRates,
@@ -50,6 +51,7 @@ export default async function PlayerProfilePage({ params }: Props) {
     playerWinEvents,
     playerStreakRecords,
     playerGames,
+    headToHeadRecords,
   ] = await Promise.all([
     getPlayers(),
     getPlayerScoreStats(),
@@ -65,6 +67,7 @@ export default async function PlayerProfilePage({ params }: Props) {
     getPlayerWinEvents(),
     getPlayerStreakRecords(),
     listGamesForPlayer(numericId),
+    getPlayerHeadToHeadRecords(),
   ]);
   const player = players.find((candidate) => candidate.id === numericId) ?? null;
   if (!player) notFound();
@@ -87,6 +90,7 @@ export default async function PlayerProfilePage({ params }: Props) {
       playerWinEvents={playerWinEvents}
       playerStreakRecords={playerStreakRecords}
       playerGames={playerGames}
+      headToHeadRecords={headToHeadRecords}
     />
   );
 }
