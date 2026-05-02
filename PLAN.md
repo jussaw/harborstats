@@ -166,10 +166,10 @@ All activity and time-based stats in this section use the viewer's local time.
 - **Needs:** total VP and game count (share queries from 4.2 and 1.1)
 
 ### 4.4 Score histogram `[S]`
-- [ ] Histogram of all individual scores across every `game_players` row.
+- [x] Histogram of all individual scores across every `game_players` row.
 
 ### 4.5 Per-player score distribution `[S]` `[P]`
-- [ ] Side-by-side box or violin plots showing each player's score spread.
+- [x] Side-by-side box or violin plots showing each player's score spread.
 - **Needs:** per-player score list (share query from 4.4)
 
 ### 4.6 Does winning score scale with player count? `[S]`
