@@ -179,14 +179,14 @@ All activity and time-based stats in this section use the viewer's local time.
 ## 5. Head-to-Head (rivalries)
 
 ### 5.1 Most-played-with partner `[P]`
-- [ ] For each player, show who they have shared the most games with.
+- [x] For each player, show who they have shared the most games with.
 
 ### 5.2 Nemesis `[P]`
-- [ ] The opponent who beats a given player most often in head-to-head matchups.
+- [x] The opponent who beats a given player most often in head-to-head matchups.
 - **Needs:** H2H win/loss records (extend query from 5.1)
 
 ### 5.3 Favorite opponent `[P]`
-- [ ] The opponent a given player beats most often in head-to-head matchups.
+- [x] The opponent a given player beats most often in head-to-head matchups.
 - **Needs:** H2H win/loss records (share query from 5.2)
 
 ### 5.4 Closest rivalry `[S]`
