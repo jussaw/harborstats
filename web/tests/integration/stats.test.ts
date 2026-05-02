@@ -5,6 +5,7 @@ import {
   getPlayerCumulativeScoreStats,
   getPlayerCurrentWinStreaks,
   getPlayerHeadToHeadRecords,
+  getRivalryAggregates,
   getPerPlayerScoreDistributions,
   getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
@@ -510,6 +511,8 @@ describe('stats integration', () => {
         gamesTogether: 1,
         winsAgainstOpponent: 1,
         lossesToOpponent: 0,
+        timesOutscoredOpponent: 1,
+        timesOutscoredByOpponent: 0,
       },
       {
         playerId: bob.id,
@@ -521,6 +524,8 @@ describe('stats integration', () => {
         gamesTogether: 1,
         winsAgainstOpponent: 0,
         lossesToOpponent: 1,
+        timesOutscoredOpponent: 0,
+        timesOutscoredByOpponent: 1,
       },
     ]);
   });
@@ -550,6 +555,8 @@ describe('stats integration', () => {
       gamesTogether: 1,
       winsAgainstOpponent: 1,
       lossesToOpponent: 0,
+      timesOutscoredOpponent: 1,
+      timesOutscoredByOpponent: 0,
     });
     expect(records).toContainEqual({
       playerId: alice.id,
@@ -561,6 +568,8 @@ describe('stats integration', () => {
       gamesTogether: 1,
       winsAgainstOpponent: 1,
       lossesToOpponent: 0,
+      timesOutscoredOpponent: 1,
+      timesOutscoredByOpponent: 0,
     });
     expect(records).toContainEqual({
       playerId: bob.id,
@@ -572,6 +581,8 @@ describe('stats integration', () => {
       gamesTogether: 1,
       winsAgainstOpponent: 0,
       lossesToOpponent: 0,
+      timesOutscoredOpponent: 1,
+      timesOutscoredByOpponent: 0,
     });
     expect(records).toContainEqual({
       playerId: carol.id,
@@ -583,6 +594,8 @@ describe('stats integration', () => {
       gamesTogether: 1,
       winsAgainstOpponent: 0,
       lossesToOpponent: 0,
+      timesOutscoredOpponent: 0,
+      timesOutscoredByOpponent: 1,
     });
   });
 
@@ -630,6 +643,198 @@ describe('stats integration', () => {
 
     expect(aliceRecords.map((record) => record.opponentName)).toEqual(['Bob', 'Carol']);
     expect(aliceRecords.map((record) => record.gamesTogether)).toEqual([1, 1]);
+  });
+
+  test('getPlayerHeadToHeadRecords tracks score comparisons separately from wins and ignores tied scores', async () => {
+    const alice = await createTestPlayer({ name: 'Alice', tier: PlayerTier.Premium });
+    const bob = await createTestPlayer({ name: 'Bob', tier: PlayerTier.Standard });
+    const carol = await createTestPlayer({ name: 'Carol', tier: PlayerTier.Standard });
+
+    await createTestGame({
+      playedAt: new Date('2026-04-20T18:00:00.000Z'),
+      players: [
+        { playerId: alice.id, score: 10, isWinner: true },
+        { playerId: bob.id, score: 8, isWinner: false },
+        { playerId: carol.id, score: 8, isWinner: false },
+      ],
+    });
+
+    await createTestGame({
+      playedAt: new Date('2026-04-21T18:00:00.000Z'),
+      players: [
+        { playerId: bob.id, score: 9, isWinner: true },
+        { playerId: alice.id, score: 9, isWinner: true },
+        { playerId: carol.id, score: 7, isWinner: false },
+      ],
+    });
+
+    const records = await getPlayerHeadToHeadRecords();
+
+    expect(records).toContainEqual({
+      playerId: alice.id,
+      playerName: 'Alice',
+      playerTier: PlayerTier.Premium,
+      opponentId: bob.id,
+      opponentName: 'Bob',
+      opponentTier: PlayerTier.Standard,
+      gamesTogether: 2,
+      winsAgainstOpponent: 1,
+      lossesToOpponent: 0,
+      timesOutscoredOpponent: 1,
+      timesOutscoredByOpponent: 0,
+    });
+    expect(records).toContainEqual({
+      playerId: bob.id,
+      playerName: 'Bob',
+      playerTier: PlayerTier.Standard,
+      opponentId: alice.id,
+      opponentName: 'Alice',
+      opponentTier: PlayerTier.Premium,
+      gamesTogether: 2,
+      winsAgainstOpponent: 0,
+      lossesToOpponent: 1,
+      timesOutscoredOpponent: 0,
+      timesOutscoredByOpponent: 1,
+    });
+    expect(records).toContainEqual({
+      playerId: bob.id,
+      playerName: 'Bob',
+      playerTier: PlayerTier.Standard,
+      opponentId: carol.id,
+      opponentName: 'Carol',
+      opponentTier: PlayerTier.Standard,
+      gamesTogether: 2,
+      winsAgainstOpponent: 1,
+      lossesToOpponent: 0,
+      timesOutscoredOpponent: 1,
+      timesOutscoredByOpponent: 0,
+    });
+    expect(records).toContainEqual({
+      playerId: carol.id,
+      playerName: 'Carol',
+      playerTier: PlayerTier.Standard,
+      opponentId: alice.id,
+      opponentName: 'Alice',
+      opponentTier: PlayerTier.Premium,
+      gamesTogether: 2,
+      winsAgainstOpponent: 0,
+      lossesToOpponent: 2,
+      timesOutscoredOpponent: 0,
+      timesOutscoredByOpponent: 2,
+    });
+  });
+
+  describe('getRivalryAggregates', () => {
+    test('deduplicates directional head-to-head rows into one pair aggregate', async () => {
+      const alice = await createTestPlayer({ name: 'Alice', tier: PlayerTier.Premium });
+      const bob = await createTestPlayer({ name: 'Bob', tier: PlayerTier.Standard });
+
+      await createTestGame({
+        playedAt: new Date('2026-04-20T18:00:00.000Z'),
+        players: [
+          { playerId: alice.id, score: 10, isWinner: true },
+          { playerId: bob.id, score: 8, isWinner: false },
+        ],
+      });
+
+      await createTestGame({
+        playedAt: new Date('2026-04-21T18:00:00.000Z'),
+        players: [
+          { playerId: bob.id, score: 10, isWinner: true },
+          { playerId: alice.id, score: 7, isWinner: false },
+        ],
+      });
+
+      await expect(getRivalryAggregates()).resolves.toEqual([
+        {
+          playerA: {
+            playerId: alice.id,
+            name: 'Alice',
+            tier: PlayerTier.Premium,
+          },
+          playerB: {
+            playerId: bob.id,
+            name: 'Bob',
+            tier: PlayerTier.Standard,
+          },
+          gamesTogether: 2,
+          playerAWins: 1,
+          playerBWins: 1,
+          decidedGames: 2,
+          closenessScore: 0,
+        },
+      ]);
+    });
+
+    test('bases closeness on decided games so tied winner flags do not bias the rivalry rate', async () => {
+      const alice = await createTestPlayer({ name: 'Alice', tier: PlayerTier.Premium });
+      const bob = await createTestPlayer({ name: 'Bob', tier: PlayerTier.Standard });
+
+      await createTestGame({
+        playedAt: new Date('2026-04-20T18:00:00.000Z'),
+        players: [
+          { playerId: alice.id, score: 10, isWinner: true },
+          { playerId: bob.id, score: 8, isWinner: false },
+        ],
+      });
+
+      await createTestGame({
+        playedAt: new Date('2026-04-21T18:00:00.000Z'),
+        players: [
+          { playerId: alice.id, score: 9, isWinner: false },
+          { playerId: bob.id, score: 9, isWinner: false },
+        ],
+      });
+
+      const [aggregate] = await getRivalryAggregates();
+
+      expect(aggregate).toMatchObject({
+        gamesTogether: 2,
+        playerAWins: 1,
+        playerBWins: 0,
+        decidedGames: 1,
+        closenessScore: 0.5,
+      });
+    });
+
+    test('marks pairs with no decided games as ineligible so they sort last', async () => {
+      const alice = await createTestPlayer({ name: 'Alice', tier: PlayerTier.Premium });
+      const bob = await createTestPlayer({ name: 'Bob', tier: PlayerTier.Standard });
+      const carol = await createTestPlayer({ name: 'Carol', tier: PlayerTier.Standard });
+      const dana = await createTestPlayer({ name: 'Dana', tier: PlayerTier.Standard });
+
+      await createTestGame({
+        playedAt: new Date('2026-04-20T18:00:00.000Z'),
+        players: [
+          { playerId: alice.id, score: 9, isWinner: false },
+          { playerId: bob.id, score: 9, isWinner: false },
+        ],
+      });
+
+      await createTestGame({
+        playedAt: new Date('2026-04-21T18:00:00.000Z'),
+        players: [
+          { playerId: carol.id, score: 10, isWinner: true },
+          { playerId: dana.id, score: 8, isWinner: false },
+        ],
+      });
+
+      const aggregates = await getRivalryAggregates();
+
+      expect(aggregates).toHaveLength(2);
+      expect(aggregates[0]).toMatchObject({
+        playerA: { playerId: carol.id, name: 'Carol', tier: PlayerTier.Standard },
+        playerB: { playerId: dana.id, name: 'Dana', tier: PlayerTier.Standard },
+        decidedGames: 1,
+        closenessScore: 0.5,
+      });
+      expect(aggregates[1]).toMatchObject({
+        playerA: { playerId: alice.id, name: 'Alice', tier: PlayerTier.Premium },
+        playerB: { playerId: bob.id, name: 'Bob', tier: PlayerTier.Standard },
+        decidedGames: 0,
+      });
+      expect(aggregates[1]?.closenessScore).toBe(Number.POSITIVE_INFINITY);
+    });
   });
 
   test('getPlayerNormalizedScoreStats normalizes by winning score, falls back to max score, and excludes zero-target games', async () => {

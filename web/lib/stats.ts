@@ -81,7 +81,7 @@ function toUtcDateKey(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
-interface PlayerIdentity {
+export interface PlayerIdentity {
   playerId: number;
   name: string;
   tier: PlayerTierType;
@@ -123,6 +123,18 @@ export interface PlayerHeadToHeadRecord {
   gamesTogether: number;
   winsAgainstOpponent: number;
   lossesToOpponent: number;
+  timesOutscoredOpponent: number;
+  timesOutscoredByOpponent: number;
+}
+
+export interface RivalryAggregate {
+  playerA: PlayerIdentity;
+  playerB: PlayerIdentity;
+  gamesTogether: number;
+  playerAWins: number;
+  playerBWins: number;
+  decidedGames: number;
+  closenessScore: number;
 }
 
 async function getGameSizeAggregateData(): Promise<GameSizeAggregateData> {
@@ -139,6 +151,7 @@ async function getGameSizeAggregateData(): Promise<GameSizeAggregateData> {
       .select({
         gameId: gamePlayers.gameId,
         playerId: gamePlayers.playerId,
+        score: gamePlayers.score,
         isWinner: gamePlayers.isWinner,
       })
       .from(gamePlayers),
@@ -294,6 +307,7 @@ export async function getPlayerHeadToHeadRecords(): Promise<PlayerHeadToHeadReco
       .select({
         gameId: gamePlayers.gameId,
         playerId: gamePlayers.playerId,
+        score: gamePlayers.score,
         isWinner: gamePlayers.isWinner,
       })
       .from(gamePlayers),
@@ -347,6 +361,8 @@ export async function getPlayerHeadToHeadRecords(): Promise<PlayerHeadToHeadReco
           gamesTogether: 0,
           winsAgainstOpponent: 0,
           lossesToOpponent: 0,
+          timesOutscoredOpponent: 0,
+          timesOutscoredByOpponent: 0,
         };
 
         record.gamesTogether += 1;
@@ -357,6 +373,14 @@ export async function getPlayerHeadToHeadRecords(): Promise<PlayerHeadToHeadReco
 
         if (opponentParticipant.isWinner && !playerParticipant.isWinner) {
           record.lossesToOpponent += 1;
+        }
+
+        if (playerParticipant.score > opponentParticipant.score) {
+          record.timesOutscoredOpponent += 1;
+        }
+
+        if (opponentParticipant.score > playerParticipant.score) {
+          record.timesOutscoredByOpponent += 1;
         }
 
         recordsByKey.set(key, record);
@@ -370,6 +394,79 @@ export async function getPlayerHeadToHeadRecords(): Promise<PlayerHeadToHeadReco
       right.gamesTogether - left.gamesTogether ||
       left.opponentName.localeCompare(right.opponentName),
   );
+}
+
+export async function getRivalryAggregates(): Promise<RivalryAggregate[]> {
+  const records = await getPlayerHeadToHeadRecords();
+  const aggregatesByKey = new Map<string, RivalryAggregate>();
+
+  records.forEach((record) => {
+    const playerAId = Math.min(record.playerId, record.opponentId);
+    const playerBId = Math.max(record.playerId, record.opponentId);
+    const key = `${playerAId}:${playerBId}`;
+
+    const aggregate = aggregatesByKey.get(key) ?? {
+      playerA:
+        record.playerId === playerAId
+          ? {
+              playerId: record.playerId,
+              name: record.playerName,
+              tier: record.playerTier,
+            }
+          : {
+              playerId: record.opponentId,
+              name: record.opponentName,
+              tier: record.opponentTier,
+            },
+      playerB:
+        record.playerId === playerAId
+          ? {
+              playerId: record.opponentId,
+              name: record.opponentName,
+              tier: record.opponentTier,
+            }
+          : {
+              playerId: record.playerId,
+              name: record.playerName,
+              tier: record.playerTier,
+            },
+      gamesTogether: record.gamesTogether,
+      playerAWins: 0,
+      playerBWins: 0,
+      decidedGames: 0,
+      closenessScore: Number.POSITIVE_INFINITY,
+    };
+
+    aggregate.gamesTogether = Math.max(aggregate.gamesTogether, record.gamesTogether);
+
+    if (record.playerId === playerAId) {
+      aggregate.playerAWins += record.winsAgainstOpponent;
+    } else {
+      aggregate.playerBWins += record.winsAgainstOpponent;
+    }
+
+    aggregatesByKey.set(key, aggregate);
+  });
+
+  return [...aggregatesByKey.values()]
+    .map((aggregate) => {
+      const decidedGames = aggregate.playerAWins + aggregate.playerBWins;
+      const winRateForA = decidedGames > 0 ? aggregate.playerAWins / decidedGames : null;
+
+      return {
+        ...aggregate,
+        decidedGames,
+        closenessScore:
+          winRateForA === null ? Number.POSITIVE_INFINITY : Math.abs(winRateForA - 0.5),
+      };
+    })
+    .sort(
+      (left, right) =>
+        left.closenessScore - right.closenessScore ||
+        right.gamesTogether - left.gamesTogether ||
+        left.playerA.name.localeCompare(right.playerA.name) ||
+        left.playerB.name.localeCompare(right.playerB.name),
+    );
 }
 
 export interface PlayerWinRate {

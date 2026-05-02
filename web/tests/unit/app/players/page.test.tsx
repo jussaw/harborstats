@@ -330,6 +330,8 @@ describe('PlayersPage', () => {
         gamesTogether: 3,
         winsAgainstOpponent: 2,
         lossesToOpponent: 1,
+        timesOutscoredOpponent: 2,
+        timesOutscoredByOpponent: 1,
       },
     ]);
     vi.mocked(listGamesForPlayer).mockResolvedValue([

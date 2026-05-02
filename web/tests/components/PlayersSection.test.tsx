@@ -65,6 +65,8 @@ describe('PlayersSection head-to-head cards', () => {
         gamesTogether: 5,
         winsAgainstOpponent: 3,
         lossesToOpponent: 1,
+        timesOutscoredOpponent: 4,
+        timesOutscoredByOpponent: 1,
       },
       {
         playerId: 1,
@@ -76,6 +78,8 @@ describe('PlayersSection head-to-head cards', () => {
         gamesTogether: 4,
         winsAgainstOpponent: 1,
         lossesToOpponent: 2,
+        timesOutscoredOpponent: 2,
+        timesOutscoredByOpponent: 2,
       },
     ]);
 
@@ -119,6 +123,8 @@ describe('PlayersSection head-to-head cards', () => {
         gamesTogether: 0,
         winsAgainstOpponent: 0,
         lossesToOpponent: 0,
+        timesOutscoredOpponent: 0,
+        timesOutscoredByOpponent: 0,
       },
     ]);
 
@@ -141,6 +147,8 @@ describe('PlayersSection head-to-head cards', () => {
         gamesTogether: 2,
         winsAgainstOpponent: 1,
         lossesToOpponent: 0,
+        timesOutscoredOpponent: 1,
+        timesOutscoredByOpponent: 0,
       },
       {
         playerId: 1,
@@ -152,6 +160,8 @@ describe('PlayersSection head-to-head cards', () => {
         gamesTogether: 2,
         winsAgainstOpponent: 1,
         lossesToOpponent: 1,
+        timesOutscoredOpponent: 1,
+        timesOutscoredByOpponent: 1,
       },
     ]);
 

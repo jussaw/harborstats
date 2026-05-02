@@ -190,19 +190,19 @@ All activity and time-based stats in this section use the viewer's local time.
 - **Needs:** H2H win/loss records (share query from 5.2)
 
 ### 5.4 Closest rivalry `[S]`
-- [ ] The player pair with the most even head-to-head win/loss record.
+- [x] The player pair with the most even head-to-head win/loss record.
 - **Needs:** H2H records (share query from 5.2)
 
 ### 5.5 Most lopsided rivalry `[S]`
-- [ ] The player pair with the most one-sided head-to-head record.
+- [x] The player pair with the most one-sided head-to-head record.
 - **Needs:** H2H records (share query from 5.4)
 
 ### 5.6 H2H matrix `[HH]` `[S]`
-- [ ] Full grid of players × players showing win counts and win rates.
+- [x] Full grid of players × players showing win counts and win rates.
 - **Needs:** full H2H records (share query from 5.2)
 
 ### 5.7 "Beat X specifically" tally `[HH]`
-- [ ] Count how often one player out-scored a specific opponent head-to-head, even in games neither won overall.
+- [x] Count how often one player out-scored a specific opponent head-to-head, even in games neither won overall.
 - **Needs:** per-game score comparison (extend query from 5.6)
 
 ## 6. Fun Curiosities

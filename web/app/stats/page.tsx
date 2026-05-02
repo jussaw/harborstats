@@ -8,6 +8,8 @@ import { CalendarHeatmap } from '@/components/CalendarHeatmap';
 import { CumulativeGamesAreaChart } from '@/components/CumulativeGamesAreaChart';
 import { FormattedDate } from '@/components/FormattedDate';
 import { GamesOverTimeChart } from '@/components/GamesOverTimeChart';
+import { HeadToHeadMatrix } from '@/components/HeadToHeadMatrix';
+import { RivalryCard } from '@/components/RivalryCard';
 import { LongestGapCard } from '@/components/LongestGapCard';
 import { PlayerAttendanceChart } from '@/components/PlayerAttendanceChart';
 import { PlayerScoreBoxPlot } from '@/components/PlayerScoreBoxPlot';
@@ -24,6 +26,7 @@ import {
   getPlayerAttendanceEvents,
   getPlayerCumulativeScoreStats,
   getPlayerCurrentWinStreaks,
+  getPlayerHeadToHeadRecords,
   getPerPlayerScoreDistributions,
   getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
@@ -31,6 +34,7 @@ import {
   getPlayerParticipationRates,
   getPlayerPodiumRates,
   getPlayerScoreStats,
+  getRivalryAggregates,
   getScoreHistogramBuckets,
   getPlayerStreakRecords,
   getPlayerWinEvents,
@@ -39,6 +43,8 @@ import {
   getWinningScoreByGameSize,
   getWinningScoreComparison,
   getPlayerWinRates,
+  type PlayerIdentity,
+  type RivalryAggregate,
   type SingleGameRecords,
 } from '@/lib/stats';
 
@@ -129,6 +135,41 @@ function formatPointLabel(count: number) {
 
 function formatMarginLabel(count: number) {
   return `${count}-point margin`;
+}
+
+function comparePlayerIdentity(left: PlayerIdentity, right: PlayerIdentity) {
+  if (left.tier !== right.tier) {
+    return left.tier === PlayerTier.Premium ? -1 : 1;
+  }
+
+  return left.name.localeCompare(right.name) || left.playerId - right.playerId;
+}
+
+function getRivalrySortNames(pair: RivalryAggregate) {
+  return [pair.playerA.name, pair.playerB.name].sort((left, right) => left.localeCompare(right));
+}
+
+function compareRivalriesAlphabetically(left: RivalryAggregate, right: RivalryAggregate) {
+  const [leftFirst, leftSecond] = getRivalrySortNames(left);
+  const [rightFirst, rightSecond] = getRivalrySortNames(right);
+
+  return leftFirst.localeCompare(rightFirst) || leftSecond.localeCompare(rightSecond);
+}
+
+function compareClosestRivalries(left: RivalryAggregate, right: RivalryAggregate) {
+  return (
+    left.closenessScore - right.closenessScore ||
+    right.gamesTogether - left.gamesTogether ||
+    compareRivalriesAlphabetically(left, right)
+  );
+}
+
+function compareLopsidedRivalries(left: RivalryAggregate, right: RivalryAggregate) {
+  return (
+    right.closenessScore - left.closenessScore ||
+    right.gamesTogether - left.gamesTogether ||
+    compareRivalriesAlphabetically(left, right)
+  );
 }
 
 function compareNullableIsoDesc(left: string | null, right: string | null) {
@@ -311,6 +352,8 @@ export default async function StatsPage() {
     singleGameRecords,
     winningScoreComparison,
     winningScoreByGameSize,
+    headToHeadRecords,
+    rivalryAggregates,
   ] = await Promise.all([
     getPlayerWinRates(),
     getSettings(),
@@ -332,6 +375,8 @@ export default async function StatsPage() {
     getSingleGameRecords(),
     getWinningScoreComparison(),
     getWinningScoreByGameSize(),
+    getPlayerHeadToHeadRecords(),
+    getRivalryAggregates(),
   ]);
 
   const winRateQualified = winRates
@@ -380,6 +425,21 @@ export default async function StatsPage() {
     ) : (
       <EmptyState>No games recorded yet.</EmptyState>
     );
+  const headToHeadPlayers = winRates
+    .map((player) => ({
+      playerId: player.playerId,
+      name: player.name,
+      tier: player.tier,
+    }))
+    .sort(comparePlayerIdentity);
+  const qualifiedRivalries = rivalryAggregates.filter(
+    (pair) => pair.gamesTogether >= settings.winRateMinGames && Number.isFinite(pair.closenessScore),
+  );
+  const [closestRivalry] = [...qualifiedRivalries].sort(compareClosestRivalries);
+  const [lopsidedRivalry] = [...qualifiedRivalries].sort(compareLopsidedRivalries);
+  const rivalryEmptyMessage = settings.winRateMinGames > 0
+    ? 'No rivalries meet the minimum game threshold yet.'
+    : 'No decided rivalries recorded yet.';
 
   const totalWinsRanks = rankWithTies(winRates, (player) => player.wins);
   const winRateRanks = rankWithTies(winRateQualified, (player) => player.winRate);
@@ -517,6 +577,33 @@ export default async function StatsPage() {
       title: 'Expected vs Actual Wins',
       description: 'Actual wins versus the baseline 1/N expectation for each game played.',
       badge: undefined,
+      span: 'single',
+    },
+    {
+      id: 'head-to-head-matrix',
+      title: 'Head-to-Head Matrix',
+      description: 'Directional records against every opponent, including how often each player outscored them.',
+      badge: undefined,
+      span: 'full',
+    },
+    {
+      id: 'closest-rivalry',
+      title: 'Closest Rivalry',
+      description: 'The most evenly matched qualifying pair by decided head-to-head rate.',
+      badge:
+        settings.winRateMinGames > 0
+          ? `Min ${settings.winRateMinGames} game${settings.winRateMinGames === 1 ? '' : 's'}`
+          : undefined,
+      span: 'single',
+    },
+    {
+      id: 'lopsided-rivalry',
+      title: 'Most Lopsided Rivalry',
+      description: 'The qualifying pair with the biggest decided head-to-head edge.',
+      badge:
+        settings.winRateMinGames > 0
+          ? `Min ${settings.winRateMinGames} game${settings.winRateMinGames === 1 ? '' : 's'}`
+          : undefined,
       span: 'single',
     },
     {
@@ -1134,6 +1221,34 @@ export default async function StatsPage() {
           ) : (
             <EmptyState>No games recorded yet.</EmptyState>
           )}
+        </StatsCard>
+
+        <StatsCard {...cardById['head-to-head-matrix']}>
+          {headToHeadPlayers.length > 0 ? (
+            <HeadToHeadMatrix records={headToHeadRecords} players={headToHeadPlayers} />
+          ) : (
+            <EmptyState>No players recorded yet.</EmptyState>
+          )}
+        </StatsCard>
+
+        <StatsCard {...cardById['closest-rivalry']}>
+          <RivalryCard
+            title="Closest Rivalry"
+            description="The most evenly matched qualifying pair by decided head-to-head rate."
+            badge={cardById['closest-rivalry'].badge}
+            pair={closestRivalry ?? null}
+            emptyMessage={rivalryEmptyMessage}
+          />
+        </StatsCard>
+
+        <StatsCard {...cardById['lopsided-rivalry']}>
+          <RivalryCard
+            title="Most Lopsided Rivalry"
+            description="The qualifying pair with the biggest decided head-to-head edge."
+            badge={cardById['lopsided-rivalry'].badge}
+            pair={lopsidedRivalry ?? null}
+            emptyMessage={rivalryEmptyMessage}
+          />
         </StatsCard>
 
         <StatsCard {...cardById['tier-showdown']}>

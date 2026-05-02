@@ -9,6 +9,7 @@ import {
   getPlayerAttendanceEvents,
   getPlayerCumulativeScoreStats,
   getPlayerCurrentWinStreaks,
+  getPlayerHeadToHeadRecords,
   getPerPlayerScoreDistributions,
   getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
@@ -16,6 +17,7 @@ import {
   getPlayerParticipationRates,
   getPlayerPodiumRates,
   getPlayerScoreStats,
+  getRivalryAggregates,
   getScoreHistogramBuckets,
   getPlayerStreakRecords,
   getPlayerWinEvents,
@@ -31,9 +33,11 @@ vi.mock('@/lib/stats', () => ({
   getPlayerAttendanceEvents: vi.fn(),
   getPlayerCumulativeScoreStats: vi.fn(),
   getPlayerCurrentWinStreaks: vi.fn(),
+  getPlayerHeadToHeadRecords: vi.fn(),
   getPlayerExpectedVsActualWins: vi.fn(),
   getPlayerWinRates: vi.fn(),
   getPlayerWinEvents: vi.fn(),
+  getRivalryAggregates: vi.fn(),
   getSingleGameRecords: vi.fn(),
   getPlayerNormalizedScoreStats: vi.fn(),
   getPlayerScoreStats: vi.fn(),
@@ -54,7 +58,9 @@ vi.mock('@/lib/settings', () => ({
 
 describe('StatsPage', () => {
   beforeEach(() => {
+    vi.mocked(getPlayerHeadToHeadRecords).mockResolvedValue([]);
     vi.mocked(getPerPlayerScoreDistributions).mockResolvedValue([]);
+    vi.mocked(getRivalryAggregates).mockResolvedValue([]);
     vi.mocked(getScoreHistogramBuckets).mockResolvedValue([]);
   });
 
@@ -403,6 +409,54 @@ describe('StatsPage', () => {
         participantCount: 3,
       },
     });
+    vi.mocked(getPlayerHeadToHeadRecords).mockResolvedValue([
+      {
+        playerId: 1,
+        playerName: 'Ada',
+        playerTier: PlayerTier.Premium,
+        opponentId: 2,
+        opponentName: 'Bea',
+        opponentTier: PlayerTier.Standard,
+        gamesTogether: 4,
+        winsAgainstOpponent: 2,
+        lossesToOpponent: 1,
+        timesOutscoredOpponent: 3,
+        timesOutscoredByOpponent: 1,
+      },
+      {
+        playerId: 2,
+        playerName: 'Bea',
+        playerTier: PlayerTier.Standard,
+        opponentId: 1,
+        opponentName: 'Ada',
+        opponentTier: PlayerTier.Premium,
+        gamesTogether: 4,
+        winsAgainstOpponent: 1,
+        lossesToOpponent: 2,
+        timesOutscoredOpponent: 1,
+        timesOutscoredByOpponent: 3,
+      },
+    ]);
+    vi.mocked(getRivalryAggregates).mockResolvedValue([
+      {
+        playerA: { playerId: 1, name: 'Ada', tier: PlayerTier.Premium },
+        playerB: { playerId: 2, name: 'Bea', tier: PlayerTier.Standard },
+        gamesTogether: 4,
+        playerAWins: 2,
+        playerBWins: 1,
+        decidedGames: 3,
+        closenessScore: 0.167,
+      },
+      {
+        playerA: { playerId: 1, name: 'Ada', tier: PlayerTier.Premium },
+        playerB: { playerId: 3, name: 'Cara', tier: PlayerTier.Standard },
+        gamesTogether: 5,
+        playerAWins: 5,
+        playerBWins: 0,
+        decidedGames: 5,
+        closenessScore: 0.5,
+      },
+    ]);
     vi.mocked(getSettings).mockResolvedValue({ winRateMinGames: 3, podiumRateMinGames: 4 });
 
     const element = await StatsPage();
@@ -429,6 +483,9 @@ describe('StatsPage', () => {
     const winningScoreByGameSizeIndex = markup.indexOf('id="winning-score-by-game-size"');
     const podiumRateIndex = markup.indexOf('id="podium-rate"');
     const expectedVsActualWinsIndex = markup.indexOf('id="expected-vs-actual-wins"');
+    const headToHeadMatrixIndex = markup.indexOf('id="head-to-head-matrix"');
+    const closestRivalryIndex = markup.indexOf('id="closest-rivalry"');
+    const lopsidedRivalryIndex = markup.indexOf('id="lopsided-rivalry"');
     const tierShowdownIndex = markup.indexOf('id="tier-showdown"');
     const finishBreakdownIndex = markup.indexOf('id="finish-breakdown"');
     const gamesOverTimeIndex = markup.indexOf('id="games-over-time"');
@@ -459,7 +516,10 @@ describe('StatsPage', () => {
     expect(winningScoreByGameSizeIndex).toBeGreaterThan(normalizedMedianScoreIndex);
     expect(podiumRateIndex).toBeGreaterThan(normalizedMedianScoreIndex);
     expect(expectedVsActualWinsIndex).toBeGreaterThan(podiumRateIndex);
-    expect(tierShowdownIndex).toBeGreaterThan(expectedVsActualWinsIndex);
+    expect(headToHeadMatrixIndex).toBeGreaterThan(expectedVsActualWinsIndex);
+    expect(closestRivalryIndex).toBeGreaterThan(headToHeadMatrixIndex);
+    expect(lopsidedRivalryIndex).toBeGreaterThan(closestRivalryIndex);
+    expect(tierShowdownIndex).toBeGreaterThan(lopsidedRivalryIndex);
     expect(finishBreakdownIndex).toBeGreaterThan(tierShowdownIndex);
     expect(gamesOverTimeIndex).toBeGreaterThan(finishBreakdownIndex);
     expect(participationRateIndex).toBeGreaterThan(gamesOverTimeIndex);
@@ -487,6 +547,9 @@ describe('StatsPage', () => {
     expect(markup).toContain('>Appearances<');
     expect(markup).toContain('>Players<');
     expect(markup).toContain('Expected vs Actual Wins');
+    expect(markup).toContain('Head-to-Head Matrix');
+    expect(markup).toContain('Closest Rivalry');
+    expect(markup).toContain('Most Lopsided Rivalry');
     expect(markup).toContain('Winning vs Losing Score');
     expect(markup).toContain('Winning Score by Game Size');
     expect(markup).toContain('Score Histogram');
@@ -552,10 +615,23 @@ describe('StatsPage', () => {
     expect(markup).toContain('66.7%');
     expect(markup).toContain('+1.2');
     expect(markup).toContain('-0.5');
+    expect(markup).toContain('2-1');
+    expect(markup).toContain('Outscored: 3/4');
+    expect(markup).toContain('2 wins - 1 losses');
+    expect(markup).toContain('5 wins - 0 losses');
 
     expect(markup.slice(totalWinsIndex, totalWinsIndex + 160)).not.toContain('lg:col-span-2');
     expect(markup.slice(winRateIndex, winRateIndex + 160)).not.toContain('lg:col-span-2');
     expect(markup.slice(expectedVsActualWinsIndex, expectedVsActualWinsIndex + 160)).not.toContain(
+      'lg:col-span-2',
+    );
+    expect(markup.slice(headToHeadMatrixIndex, headToHeadMatrixIndex + 160)).toContain(
+      'lg:col-span-2',
+    );
+    expect(markup.slice(closestRivalryIndex, closestRivalryIndex + 160)).not.toContain(
+      'lg:col-span-2',
+    );
+    expect(markup.slice(lopsidedRivalryIndex, lopsidedRivalryIndex + 160)).not.toContain(
       'lg:col-span-2',
     );
     expect(markup.slice(winningVsLosingScoreIndex, winningVsLosingScoreIndex + 160)).not.toContain(
@@ -642,6 +718,8 @@ describe('StatsPage', () => {
       biggestBlowout: null,
       closestGame: null,
     });
+    vi.mocked(getPlayerHeadToHeadRecords).mockResolvedValue([]);
+    vi.mocked(getRivalryAggregates).mockResolvedValue([]);
     vi.mocked(getSettings).mockResolvedValue({ winRateMinGames: 2, podiumRateMinGames: 5 });
 
     const element = await StatsPage();
@@ -672,6 +750,11 @@ describe('StatsPage', () => {
     expect(markup).toContain('Most Wins in a Month');
     expect(markup).toContain('Single-Game Records');
     expect(markup).toContain('Longest Win Streak Ever');
+    expect(markup).toContain('Head-to-Head Matrix');
+    expect(markup).toContain('Closest Rivalry');
+    expect(markup).toContain('Most Lopsided Rivalry');
+    expect(markup).toContain('No players recorded yet.');
+    expect(markup).toContain('No rivalries meet the minimum game threshold yet.');
     expect(markup.match(/No games recorded yet\./g)).toHaveLength(24);
   });
 
@@ -755,6 +838,8 @@ describe('StatsPage', () => {
       biggestBlowout: null,
       closestGame: null,
     });
+    vi.mocked(getPlayerHeadToHeadRecords).mockResolvedValue([]);
+    vi.mocked(getRivalryAggregates).mockResolvedValue([]);
     vi.mocked(getSettings).mockResolvedValue({ winRateMinGames: 2, podiumRateMinGames: 4 });
 
     const element = await StatsPage();
