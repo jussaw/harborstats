@@ -4,6 +4,7 @@ import {
   getPlayerAttendanceEvents,
   getPlayerCumulativeScoreStats,
   getPlayerCurrentWinStreaks,
+  getPerPlayerScoreDistributions,
   getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
   getPlayerMarginStats,
@@ -11,6 +12,7 @@ import {
   getPlayerPodiumRates,
   getPlayerParticipationRates,
   getPlayerScoreStats,
+  getScoreHistogramBuckets,
   getPlayerStreakRecords,
   getReigningChampionSummary,
   getSingleGameRecords,
@@ -305,13 +307,21 @@ describe('stats integration', () => {
     const alice = await createTestPlayer({ name: 'Alice' });
     const bob = await createTestPlayer({ name: 'Bob' });
 
-    await Promise.all([7, 7, 7, 8].map((score) => createTestGame({
-        players: [{ playerId: alice.id, score, isWinner: true }],
-      })));
+    await Promise.all(
+      [7, 7, 7, 8].map((score) =>
+        createTestGame({
+          players: [{ playerId: alice.id, score, isWinner: true }],
+        }),
+      ),
+    );
 
-    await Promise.all([6, 7, 8, 9].map((score) => createTestGame({
-        players: [{ playerId: bob.id, score, isWinner: true }],
-      })));
+    await Promise.all(
+      [6, 7, 8, 9].map((score) =>
+        createTestGame({
+          players: [{ playerId: bob.id, score, isWinner: true }],
+        }),
+      ),
+    );
 
     const scoreStats = await getPlayerScoreStats();
     const aliceStats = scoreStats.find((player) => player.playerId === alice.id);
@@ -332,6 +342,90 @@ describe('stats integration', () => {
     expect(scoreStats.findIndex((player) => player.playerId === bob.id)).toBeLessThan(
       scoreStats.findIndex((player) => player.playerId === alice.id),
     );
+  });
+
+  test('getScoreHistogramBuckets counts every recorded score and preserves the score range', async () => {
+    const alice = await createTestPlayer({ name: 'Alice' });
+    const bob = await createTestPlayer({ name: 'Bob' });
+
+    await createTestGame({
+      players: [
+        { playerId: alice.id, score: 5, isWinner: false },
+        { playerId: bob.id, score: 8, isWinner: true },
+      ],
+    });
+
+    await createTestGame({
+      players: [
+        { playerId: alice.id, score: 8, isWinner: true },
+        { playerId: bob.id, score: 11, isWinner: false },
+      ],
+    });
+
+    await createTestGame({
+      players: [
+        { playerId: alice.id, score: 12, isWinner: true },
+        { playerId: bob.id, score: 8, isWinner: false },
+      ],
+    });
+
+    await expect(getScoreHistogramBuckets()).resolves.toEqual([
+      { score: 5, count: 1 },
+      { score: 8, count: 3 },
+      { score: 11, count: 1 },
+      { score: 12, count: 1 },
+    ]);
+  });
+
+  test('getPerPlayerScoreDistributions computes quartiles with interpolation, excludes players with no scores, and keeps ordering stable', async () => {
+    const alice = await createTestPlayer({ name: 'Alice', tier: PlayerTier.Premium });
+    const bob = await createTestPlayer({ name: 'Bob', tier: PlayerTier.Standard });
+    const cara = await createTestPlayer({ name: 'Cara', tier: PlayerTier.Standard });
+
+    await Promise.all(
+      [1, 2, 3, 4].map((score) =>
+        createTestGame({
+          players: [{ playerId: alice.id, score, isWinner: true }],
+        }),
+      ),
+    );
+
+    await Promise.all(
+      [7, 7, 8, 9, 12].map((score) =>
+        createTestGame({
+          players: [{ playerId: bob.id, score, isWinner: true }],
+        }),
+      ),
+    );
+
+    const distributions = await getPerPlayerScoreDistributions();
+
+    expect(distributions.map((player) => player.name)).toEqual(['Alice', 'Bob']);
+    expect(distributions.find((player) => player.playerId === cara.id)).toBeUndefined();
+
+    expect(distributions.find((player) => player.playerId === alice.id)).toMatchObject({
+      playerId: alice.id,
+      name: 'Alice',
+      tier: PlayerTier.Premium,
+      count: 4,
+      min: 1,
+      q1: 1.8,
+      median: 2.5,
+      q3: 3.3,
+      max: 4,
+    });
+
+    expect(distributions.find((player) => player.playerId === bob.id)).toMatchObject({
+      playerId: bob.id,
+      name: 'Bob',
+      tier: PlayerTier.Standard,
+      count: 5,
+      min: 7,
+      q1: 7,
+      median: 8,
+      q3: 9,
+      max: 12,
+    });
   });
 
   test('getPlayerCumulativeScoreStats returns totals, rounded points per game, zero-game players, and stable total-score ordering', async () => {
@@ -357,9 +451,7 @@ describe('stats integration', () => {
     });
 
     await createTestGame({
-      players: [
-        { playerId: bob.id, score: 0, isWinner: false },
-      ],
+      players: [{ playerId: bob.id, score: 0, isWinner: false }],
     });
 
     const cumulativeStats = await getPlayerCumulativeScoreStats();
@@ -1180,7 +1272,6 @@ describe('stats integration', () => {
     ]);
   });
 
-
   test('new activity stats return empty structures when no games exist', async () => {
     await createTestPlayer({ name: 'Alice' });
 
@@ -1207,9 +1298,7 @@ describe('stats integration', () => {
       ],
     });
     await createTestGame({
-      players: [
-        { playerId: alice.id, score: 9, isWinner: true },
-      ],
+      players: [{ playerId: alice.id, score: 9, isWinner: true }],
     });
     await createTestGame({
       players: [

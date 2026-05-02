@@ -10,6 +10,8 @@ import { FormattedDate } from '@/components/FormattedDate';
 import { GamesOverTimeChart } from '@/components/GamesOverTimeChart';
 import { LongestGapCard } from '@/components/LongestGapCard';
 import { PlayerAttendanceChart } from '@/components/PlayerAttendanceChart';
+import { PlayerScoreBoxPlot } from '@/components/PlayerScoreBoxPlot';
+import { ScoreHistogramChart } from '@/components/ScoreHistogramChart';
 import { StatsCard } from '@/components/StatsCard';
 import { StatsLeaderboardTable } from '@/components/StatsLeaderboardTable';
 import { WinningScoreByGameSizeChart } from '@/components/WinningScoreByGameSizeChart';
@@ -22,12 +24,14 @@ import {
   getPlayerAttendanceEvents,
   getPlayerCumulativeScoreStats,
   getPlayerCurrentWinStreaks,
+  getPerPlayerScoreDistributions,
   getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
   getPlayerNormalizedScoreStats,
   getPlayerParticipationRates,
   getPlayerPodiumRates,
   getPlayerScoreStats,
+  getScoreHistogramBuckets,
   getPlayerStreakRecords,
   getPlayerWinEvents,
   getSingleGameRecords,
@@ -53,13 +57,9 @@ interface StatsCardMeta {
 function PlayerName({ name, tier }: { name: string; tier: PlayerTier }) {
   return (
     <div className="min-w-0">
-      <span
-        className={
-          tier === PlayerTier.Premium
-            ? `font-semibold text-(--gold)`
-            : ''
-        }
-      >
+      <span className={tier === PlayerTier.Premium ? `
+        font-semibold text-(--gold)
+      ` : ''}>
         {name}
       </span>
     </div>
@@ -120,7 +120,7 @@ function formatTierLabel(tier: PlayerTier) {
 }
 
 function formatWinLabel(count: number) {
-  return `${count} win${count === 1 ? '' : 's'}`
+  return `${count} win${count === 1 ? '' : 's'}`;
 }
 
 function formatPointLabel(count: number) {
@@ -202,10 +202,9 @@ function SingleGameRecordRow({
           {value}
         </p>
       </div>
-      <FormattedDate
-        iso={playedAt}
-        className="mt-2 block text-xs text-(--cream)/50"
-      />
+      <FormattedDate iso={playedAt} className="
+        mt-2 block text-xs text-(--cream)/50
+      " />
     </div>
   );
 }
@@ -214,60 +213,60 @@ function SingleGameRecordsContent({ records }: { records: SingleGameRecords }) {
   const recordRows = [
     records.highestScore
       ? {
-        key: 'highest-score',
-        label: 'Highest Score',
-        value: formatPointLabel(records.highestScore.score),
-        detail: <PlayerName name={records.highestScore.name} tier={records.highestScore.tier} />,
-        playedAt: records.highestScore.playedAt,
-      }
+          key: 'highest-score',
+          label: 'Highest Score',
+          value: formatPointLabel(records.highestScore.score),
+          detail: <PlayerName name={records.highestScore.name} tier={records.highestScore.tier} />,
+          playedAt: records.highestScore.playedAt,
+        }
       : null,
     records.lowestWinningScore
       ? {
-        key: 'lowest-winning-score',
-        label: 'Lowest Winning Score',
-        value: formatPointLabel(records.lowestWinningScore.score),
-        detail: (
-          <PlayerName
-            name={records.lowestWinningScore.name}
-            tier={records.lowestWinningScore.tier}
-          />
-        ),
-        playedAt: records.lowestWinningScore.playedAt,
-      }
+          key: 'lowest-winning-score',
+          label: 'Lowest Winning Score',
+          value: formatPointLabel(records.lowestWinningScore.score),
+          detail: (
+            <PlayerName
+              name={records.lowestWinningScore.name}
+              tier={records.lowestWinningScore.tier}
+            />
+          ),
+          playedAt: records.lowestWinningScore.playedAt,
+        }
       : null,
     records.biggestBlowout
       ? {
-        key: 'biggest-blowout',
-        label: 'Biggest Blowout',
-        value: formatMarginLabel(records.biggestBlowout.margin),
-        detail: (
-          <span>
-            {records.biggestBlowout.winner}
-            <span className="text-(--cream)/50">
-              {' '}
-              ({records.biggestBlowout.winnerScore}-{records.biggestBlowout.runnerUpScore})
+          key: 'biggest-blowout',
+          label: 'Biggest Blowout',
+          value: formatMarginLabel(records.biggestBlowout.margin),
+          detail: (
+            <span>
+              {records.biggestBlowout.winner}
+              <span className="text-(--cream)/50">
+                {' '}
+                ({records.biggestBlowout.winnerScore}-{records.biggestBlowout.runnerUpScore})
+              </span>
             </span>
-          </span>
-        ),
-        playedAt: records.biggestBlowout.playedAt,
-      }
+          ),
+          playedAt: records.biggestBlowout.playedAt,
+        }
       : null,
     records.closestGame
       ? {
-        key: 'closest-game',
-        label: 'Closest Game',
-        value: formatMarginLabel(records.closestGame.margin),
-        detail: (
-          <span>
-            {records.closestGame.winner}
-            <span className="text-(--cream)/50">
-              {' '}
-              ({records.closestGame.winnerScore}-{records.closestGame.runnerUpScore})
+          key: 'closest-game',
+          label: 'Closest Game',
+          value: formatMarginLabel(records.closestGame.margin),
+          detail: (
+            <span>
+              {records.closestGame.winner}
+              <span className="text-(--cream)/50">
+                {' '}
+                ({records.closestGame.winnerScore}-{records.closestGame.runnerUpScore})
+              </span>
             </span>
-          </span>
-        ),
-        playedAt: records.closestGame.playedAt,
-      }
+          ),
+          playedAt: records.closestGame.playedAt,
+        }
       : null,
   ].filter((record): record is NonNullable<typeof record> => record !== null);
 
@@ -295,6 +294,8 @@ export default async function StatsPage() {
     winRates,
     settings,
     scoreStats,
+    scoreHistogramBuckets,
+    perPlayerScoreDistributions,
     cumulativeScoreStats,
     normalizedScoreStats,
     podiumRates,
@@ -314,6 +315,8 @@ export default async function StatsPage() {
     getPlayerWinRates(),
     getSettings(),
     getPlayerScoreStats(),
+    getScoreHistogramBuckets(),
+    getPerPlayerScoreDistributions(),
     getPlayerCumulativeScoreStats(),
     getPlayerNormalizedScoreStats(),
     getPlayerPodiumRates(),
@@ -342,14 +345,32 @@ export default async function StatsPage() {
   const pointsPerGameSorted = cumulativeScoreStats
     .filter((player) => player.games > 0)
     .sort(
-      (a, b) => b.pointsPerGame - a.pointsPerGame
-        || b.totalScore - a.totalScore
-        || b.games - a.games
-        || a.name.localeCompare(b.name),
+      (a, b) =>
+        b.pointsPerGame - a.pointsPerGame ||
+        b.totalScore - a.totalScore ||
+        b.games - a.games ||
+        a.name.localeCompare(b.name),
     );
   const normalizedMedianSorted = [...normalizedScoreStats].sort(
     (a, b) => b.medianScore - a.medianScore,
   );
+  const minGamesForScoreDistribution = 5;
+  const qualifiedScoreDistributions = perPlayerScoreDistributions.filter(
+    (player) => player.count >= minGamesForScoreDistribution,
+  );
+  const filteredScoreDistributionCount =
+    perPlayerScoreDistributions.length - qualifiedScoreDistributions.length;
+  const scoreDistributionEmptyState =
+    filteredScoreDistributionCount > 0 ? (
+      <EmptyState>
+        Not enough data yet. {filteredScoreDistributionCount} player
+        {filteredScoreDistributionCount === 1 ? '' : 's'}{' '}
+        {filteredScoreDistributionCount === 1 ? 'was' : 'were'} filtered out for having fewer than{' '}
+        {minGamesForScoreDistribution} games.
+      </EmptyState>
+    ) : (
+      <EmptyState>No scores recorded yet.</EmptyState>
+    );
   const podiumRateEmptyState =
     settings.podiumRateMinGames > 0 ? (
       <EmptyState>
@@ -381,9 +402,10 @@ export default async function StatsPage() {
   );
   const currentWinStreakRanks = rankWithTies(currentWinStreaks, (player) => player.streak);
   const longestWinStreakRecords = [...playerStreakRecords].sort(
-    (a, b) => b.longestWinStreak - a.longestWinStreak
-      || compareNullableIsoDesc(a.longestWinStreakEndedAt, b.longestWinStreakEndedAt)
-      || a.name.localeCompare(b.name),
+    (a, b) =>
+      b.longestWinStreak - a.longestWinStreak ||
+      compareNullableIsoDesc(a.longestWinStreakEndedAt, b.longestWinStreakEndedAt) ||
+      a.name.localeCompare(b.name),
   );
   const longestWinStreakRanks = rankWithTies(
     longestWinStreakRecords,
@@ -425,7 +447,8 @@ export default async function StatsPage() {
     {
       id: 'winning-vs-losing-score',
       title: 'Winning vs Losing Score',
-      description: 'Average score for winner rows versus non-winner rows across all recorded games.',
+      description:
+        'Average score for winner rows versus non-winner rows across all recorded games.',
       badge: undefined,
       span: 'single',
     },
@@ -453,7 +476,8 @@ export default async function StatsPage() {
     {
       id: 'normalized-median-score',
       title: 'Normalized Median Score',
-      description: 'Typical share of each game’s winning score, using medians to smooth out spikes.',
+      description:
+        'Typical share of each game’s winning score, using medians to smooth out spikes.',
       badge: 'Winner = 100%',
       span: 'single',
     },
@@ -463,6 +487,20 @@ export default async function StatsPage() {
       description: 'Average winning score grouped by game size, from 3P to 6P and beyond.',
       badge: undefined,
       span: 'single',
+    },
+    {
+      id: 'score-histogram',
+      title: 'Score Histogram',
+      description: 'Distribution of every recorded individual score across the full game history.',
+      badge: undefined,
+      span: 'full',
+    },
+    {
+      id: 'score-distribution-by-player',
+      title: 'Score Distribution by Player',
+      description: 'Per-player score spread using quartiles, medians, and min/max whiskers.',
+      badge: 'Min 5 games',
+      span: 'full',
     },
     {
       id: 'podium-rate',
@@ -498,7 +536,8 @@ export default async function StatsPage() {
     {
       id: 'games-over-time',
       title: 'Games Over Time',
-      description: 'Game frequency plotted across weekly or monthly activity buckets in your local time.',
+      description:
+        'Game frequency plotted across weekly or monthly activity buckets in your local time.',
       badge: undefined,
       span: 'full',
     },
@@ -512,21 +551,24 @@ export default async function StatsPage() {
     {
       id: 'player-attendance-over-time',
       title: 'Player Attendance Over Time',
-      description: 'Stacked appearance totals showing who participated in each activity bucket in your local time.',
+      description:
+        'Stacked appearance totals showing who participated in each activity bucket in your local time.',
       badge: undefined,
       span: 'full',
     },
     {
       id: 'cumulative-games',
       title: 'Cumulative Games',
-      description: 'Running total of recorded games over time, bucketed by week or month in your local time.',
+      description:
+        'Running total of recorded games over time, bucketed by week or month in your local time.',
       badge: undefined,
       span: 'full',
     },
     {
       id: 'calendar-heatmap',
       title: 'Calendar Heatmap',
-      description: 'Daily game frequency across the last 12 months or any recorded year in your local time.',
+      description:
+        'Daily game frequency across the last 12 months or any recorded year in your local time.',
       badge: undefined,
       span: 'full',
     },
@@ -638,9 +680,9 @@ export default async function StatsPage() {
                   <td className="px-3 py-2 text-(--cream)">
                     <PlayerName name={player.name} tier={player.tier} />
                   </td>
-                  <td
-                    className="px-3 py-2 text-right text-(--cream) tabular-nums"
-                  >
+                  <td className="
+                    px-3 py-2 text-right text-(--cream) tabular-nums
+                  ">
                     {player.wins}
                   </td>
                   <td
@@ -686,9 +728,9 @@ export default async function StatsPage() {
                   >
                     {formatPercent(player.winRate, 1)}
                   </td>
-                  <td
-                    className="px-3 py-2 text-right text-(--cream) tabular-nums"
-                  >
+                  <td className="
+                    px-3 py-2 text-right text-(--cream) tabular-nums
+                  ">
                     {player.wins}
                   </td>
                   <td
@@ -890,9 +932,9 @@ export default async function StatsPage() {
                   >
                     {formatAverage(player.pointsPerGame)}
                   </td>
-                  <td className="
-                    px-3 py-2 text-right text-(--cream) tabular-nums
-                  ">
+                  <td
+                    className="px-3 py-2 text-right text-(--cream) tabular-nums"
+                  >
                     {player.totalScore}
                   </td>
                   <td
@@ -990,6 +1032,18 @@ export default async function StatsPage() {
           <WinningScoreByGameSizeChart buckets={winningScoreByGameSize} />
         </StatsCard>
 
+        <StatsCard {...cardById['score-histogram']}>
+          <ScoreHistogramChart buckets={scoreHistogramBuckets} />
+        </StatsCard>
+
+        <StatsCard {...cardById['score-distribution-by-player']}>
+          {qualifiedScoreDistributions.length > 0 ? (
+            <PlayerScoreBoxPlot distributions={qualifiedScoreDistributions} />
+          ) : (
+            scoreDistributionEmptyState
+          )}
+        </StatsCard>
+
         <StatsCard {...cardById['podium-rate']}>
           {podiumRateQualified.length === 0 ? (
             podiumRateEmptyState
@@ -1017,9 +1071,9 @@ export default async function StatsPage() {
                   >
                     {formatPercent(player.podiumRate, 1)}
                   </td>
-                  <td
-                    className="px-3 py-2 text-right text-(--cream) tabular-nums"
-                  >
+                  <td className="
+                    px-3 py-2 text-right text-(--cream) tabular-nums
+                  ">
                     {player.podiums}
                   </td>
                   <td
@@ -1055,18 +1109,16 @@ export default async function StatsPage() {
                   <td
                     className={`
                       px-3 py-2 text-right font-semibold tabular-nums
-                      ${
-                        player.winDelta >= 0
-                          ? 'text-(--gold)'
-                          : `text-(--cream)`
-                      }
+                      ${player.winDelta >= 0 ? 'text-(--gold)' : `
+                        text-(--cream)
+                      `}
                     `}
                   >
                     {formatSignedNumber(player.winDelta)}
                   </td>
-                  <td
-                    className="px-3 py-2 text-right text-(--cream) tabular-nums"
-                  >
+                  <td className="
+                    px-3 py-2 text-right text-(--cream) tabular-nums
+                  ">
                     {player.wins}
                   </td>
                   <td
@@ -1102,9 +1154,9 @@ export default async function StatsPage() {
                   <td className="px-3 py-2 text-(--cream)">
                     <span
                       className={
-                        row.tier === PlayerTier.Premium
-                          ? `font-semibold text-(--gold)`
-                          : ''
+                        row.tier === PlayerTier.Premium ? `
+                          font-semibold text-(--gold)
+                        ` : ''
                       }
                     >
                       {formatTierLabel(row.tier)}
@@ -1118,14 +1170,12 @@ export default async function StatsPage() {
                   >
                     {formatPercent(row.winRate, 1)}
                   </td>
-                  <td
-                    className="px-3 py-2 text-right text-(--cream) tabular-nums"
-                  >
-                    {row.wins}
-                  </td>
-                  <td
-                    className="px-3 py-2 text-right text-(--cream) tabular-nums"
-                  >
+                  <td className="
+                    px-3 py-2 text-right text-(--cream) tabular-nums
+                  ">{row.wins}</td>
+                  <td className="
+                    px-3 py-2 text-right text-(--cream) tabular-nums
+                  ">
                     {row.appearances}
                   </td>
                   <td
@@ -1172,19 +1222,19 @@ export default async function StatsPage() {
                   >
                     {formatPercent(player.firstRate, 1)}
                   </td>
-                  <td
-                    className="px-3 py-2 text-right text-(--cream) tabular-nums"
-                  >
+                  <td className="
+                    px-3 py-2 text-right text-(--cream) tabular-nums
+                  ">
                     {formatPercent(player.secondRate, 1)}
                   </td>
-                  <td
-                    className="px-3 py-2 text-right text-(--cream) tabular-nums"
-                  >
+                  <td className="
+                    px-3 py-2 text-right text-(--cream) tabular-nums
+                  ">
                     {formatPercent(player.thirdRate, 1)}
                   </td>
-                  <td
-                    className="px-3 py-2 text-right text-(--cream) tabular-nums"
-                  >
+                  <td className="
+                    px-3 py-2 text-right text-(--cream) tabular-nums
+                  ">
                     {formatPercent(player.lastRate, 1)}
                   </td>
                   <td

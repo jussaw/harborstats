@@ -1,9 +1,10 @@
-import { PlayersSection } from '@/components/PlayersSection'
-import { listGamesForPlayer } from '@/lib/games'
-import { getPlayers } from '@/lib/players'
+import { PlayersSection } from '@/components/PlayersSection';
+import { listGamesForPlayer } from '@/lib/games';
+import { getPlayers } from '@/lib/players';
 import {
   getPlayerCumulativeScoreStats,
   getPlayerCurrentWinStreaks,
+  getPerPlayerScoreDistributions,
   getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
   getPlayerMarginStats,
@@ -13,14 +14,15 @@ import {
   getPlayerStreakRecords,
   getPlayerWinEvents,
   getPlayerWinRateByGameSize,
-} from '@/lib/stats'
+} from '@/lib/stats';
 
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic';
 
 export default async function PlayersPage() {
   const [
     players,
     scoreStats,
+    scoreDistributions,
     cumulativeScoreStats,
     podiumRates,
     finishBreakdowns,
@@ -34,6 +36,7 @@ export default async function PlayersPage() {
   ] = await Promise.all([
     getPlayers(),
     getPlayerScoreStats(),
+    getPerPlayerScoreDistributions(),
     getPlayerCumulativeScoreStats(),
     getPlayerPodiumRates(),
     getPlayerFinishBreakdowns(),
@@ -44,9 +47,9 @@ export default async function PlayersPage() {
     getPlayerCurrentWinStreaks(),
     getPlayerWinEvents(),
     getPlayerStreakRecords(),
-  ])
-  const selectedPlayer = players[0] ?? null
-  const playerGames = selectedPlayer ? await listGamesForPlayer(selectedPlayer.id) : []
+  ]);
+  const selectedPlayer = players[0] ?? null;
+  const playerGames = selectedPlayer ? await listGamesForPlayer(selectedPlayer.id) : [];
 
   return (
     <PlayersSection
@@ -54,6 +57,7 @@ export default async function PlayersPage() {
       selectedPlayer={selectedPlayer}
       mobileMode="list"
       scoreStats={scoreStats}
+      scoreDistributions={scoreDistributions}
       cumulativeScoreStats={cumulativeScoreStats}
       podiumRates={podiumRates}
       finishBreakdowns={finishBreakdowns}
@@ -66,5 +70,5 @@ export default async function PlayersPage() {
       playerStreakRecords={playerStreakRecords}
       playerGames={playerGames}
     />
-  )
+  );
 }

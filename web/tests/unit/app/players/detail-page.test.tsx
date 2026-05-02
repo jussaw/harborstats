@@ -1,13 +1,14 @@
-import { renderToStaticMarkup } from 'react-dom/server'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderToStaticMarkup } from 'react-dom/server';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import PlayerProfilePage, { generateMetadata } from '@/app/players/[id]/page'
-import { listGamesForPlayer } from '@/lib/games'
-import { getPlayerById, getPlayers } from '@/lib/players'
-import { PlayerTier } from '@/lib/player-tier'
+import PlayerProfilePage, { generateMetadata } from '@/app/players/[id]/page';
+import { listGamesForPlayer } from '@/lib/games';
+import { getPlayerById, getPlayers } from '@/lib/players';
+import { PlayerTier } from '@/lib/player-tier';
 import {
   getPlayerCumulativeScoreStats,
   getPlayerCurrentWinStreaks,
+  getPerPlayerScoreDistributions,
   getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
   getPlayerMarginStats,
@@ -17,31 +18,32 @@ import {
   getPlayerStreakRecords,
   getPlayerWinEvents,
   getPlayerWinRateByGameSize,
-} from '@/lib/stats'
+} from '@/lib/stats';
 
 const { notFoundMock } = vi.hoisted(() => ({
   notFoundMock: vi.fn(() => {
-    throw new Error('NEXT_NOT_FOUND')
+    throw new Error('NEXT_NOT_FOUND');
   }),
-}))
+}));
 
 vi.mock('next/navigation', () => ({
   notFound: notFoundMock,
-}))
+}));
 
 vi.mock('@/lib/players', () => ({
   getPlayers: vi.fn(),
   getPlayerById: vi.fn(),
-}))
+}));
 
 vi.mock('@/lib/games', () => ({
   listGamesForPlayer: vi.fn(),
-}))
+}));
 
 vi.mock('@/lib/stats', () => ({
   getPlayerCumulativeScoreStats: vi.fn(),
   getPlayerCurrentWinStreaks: vi.fn(),
   getPlayerExpectedVsActualWins: vi.fn(),
+  getPerPlayerScoreDistributions: vi.fn(),
   getPlayerScoreStats: vi.fn(),
   getPlayerStreakRecords: vi.fn(),
   getPlayerPodiumRates: vi.fn(),
@@ -50,12 +52,13 @@ vi.mock('@/lib/stats', () => ({
   getPlayerParticipationRates: vi.fn(),
   getPlayerWinEvents: vi.fn(),
   getPlayerWinRateByGameSize: vi.fn(),
-}))
+}));
 
 describe('PlayerProfilePage', () => {
   beforeEach(() => {
-    vi.mocked(listGamesForPlayer).mockResolvedValue([])
-  })
+    vi.mocked(listGamesForPlayer).mockResolvedValue([]);
+    vi.mocked(getPerPlayerScoreDistributions).mockResolvedValue([]);
+  });
 
   it('renders the selected player profile with a back link to the players list', async () => {
     vi.mocked(getPlayers).mockResolvedValue([
@@ -71,7 +74,7 @@ describe('PlayerProfilePage', () => {
         tier: PlayerTier.Standard,
         createdAt: new Date('2026-01-02T00:00:00.000Z'),
       },
-    ])
+    ]);
     vi.mocked(getPlayerScoreStats).mockResolvedValue([
       {
         playerId: 1,
@@ -89,7 +92,7 @@ describe('PlayerProfilePage', () => {
         avgScore: 8.7,
         medianScore: 8.5,
       },
-    ])
+    ]);
     vi.mocked(getPlayerCumulativeScoreStats).mockResolvedValue([
       {
         playerId: 1,
@@ -107,7 +110,7 @@ describe('PlayerProfilePage', () => {
         totalScore: 35,
         pointsPerGame: 8.8,
       },
-    ])
+    ]);
     vi.mocked(getPlayerPodiumRates).mockResolvedValue([
       {
         playerId: 1,
@@ -125,7 +128,7 @@ describe('PlayerProfilePage', () => {
         podiums: 2,
         podiumRate: 0.5,
       },
-    ])
+    ]);
     vi.mocked(getPlayerFinishBreakdowns).mockResolvedValue([
       {
         playerId: 1,
@@ -155,7 +158,7 @@ describe('PlayerProfilePage', () => {
         thirdRate: 0.25,
         lastRate: 0.5,
       },
-    ])
+    ]);
     vi.mocked(getPlayerMarginStats).mockResolvedValue([
       {
         playerId: 1,
@@ -175,7 +178,7 @@ describe('PlayerProfilePage', () => {
         averageVictoryMargin: null,
         averageDefeatMargin: 1.5,
       },
-    ])
+    ]);
     vi.mocked(getPlayerWinRateByGameSize).mockResolvedValue([
       {
         playerId: 1,
@@ -213,7 +216,7 @@ describe('PlayerProfilePage', () => {
         wins: 1,
         winRate: 1 / 3,
       },
-    ])
+    ]);
     vi.mocked(getPlayerExpectedVsActualWins).mockResolvedValue([
       {
         playerId: 1,
@@ -233,7 +236,20 @@ describe('PlayerProfilePage', () => {
         expectedWins: 1.6,
         winDelta: -0.6,
       },
-    ])
+    ]);
+    vi.mocked(getPerPlayerScoreDistributions).mockResolvedValue([
+      {
+        playerId: 2,
+        name: 'Bea',
+        tier: PlayerTier.Standard,
+        count: 4,
+        min: 6,
+        q1: 7.5,
+        median: 8,
+        q3: 10,
+        max: 11,
+      },
+    ]);
     vi.mocked(getPlayerParticipationRates).mockResolvedValue([
       {
         playerId: 1,
@@ -251,7 +267,7 @@ describe('PlayerProfilePage', () => {
         totalGames: 7,
         participationRate: 4 / 7,
       },
-    ])
+    ]);
     vi.mocked(getPlayerCurrentWinStreaks).mockResolvedValue([
       {
         playerId: 1,
@@ -269,7 +285,7 @@ describe('PlayerProfilePage', () => {
         mostRecentAppearance: '2026-04-21T18:00:00.000Z',
         mostRecentWin: '2026-04-18T18:00:00.000Z',
       },
-    ])
+    ]);
     vi.mocked(getPlayerWinEvents).mockResolvedValue([
       {
         playedAt: '2026-03-01T01:00:00.000Z',
@@ -283,7 +299,7 @@ describe('PlayerProfilePage', () => {
         name: 'Bea',
         tier: PlayerTier.Standard,
       },
-    ])
+    ]);
     vi.mocked(getPlayerStreakRecords).mockResolvedValue([
       {
         playerId: 1,
@@ -319,7 +335,7 @@ describe('PlayerProfilePage', () => {
         attendanceStreakStartedAt: '2026-03-01T01:00:00.000Z',
         attendanceStreakEndedAt: '2026-04-21T18:00:00.000Z',
       },
-    ])
+    ]);
     vi.mocked(listGamesForPlayer).mockResolvedValue([
       {
         id: 12,
@@ -339,69 +355,70 @@ describe('PlayerProfilePage', () => {
           { playerName: 'Cara', score: 6, isWinner: false },
         ],
       },
-    ])
+    ]);
 
-    const element = await PlayerProfilePage({ params: Promise.resolve({ id: '2' }) })
-    const markup = renderToStaticMarkup(element)
+    const element = await PlayerProfilePage({ params: Promise.resolve({ id: '2' }) });
+    const markup = renderToStaticMarkup(element);
 
-    expect(markup).toContain('Ada')
-    expect(markup).toContain('Bea')
-    expect(markup).toContain('href="/players"')
-    expect(markup).toContain('View Games (2)')
-    expect(markup).not.toContain('PREMIUM')
-    expect(markup).not.toContain('lucide-user')
-    expect(markup).not.toContain('size-16 shrink-0')
-    expect(markup).toContain('Average Score')
-    expect(markup).toContain('Median Score')
-    expect(markup).toContain('Total VP')
-    expect(markup).toContain('Podium Rate')
-    expect(markup).toContain('Participation Rate')
-    expect(markup).toContain('Finish Breakdown')
-    expect(markup).toContain('Win Rate by Opponent Count')
-    expect(markup).toContain('Average Margin of Victory')
-    expect(markup).toContain('Average Margin of Defeat')
-    expect(markup).toContain('Expected vs Actual Wins')
-    expect(markup).toContain('Current Win Streak')
-    expect(markup).toContain('Most Wins in a Week')
-    expect(markup).toContain('Most Wins in a Month')
-    expect(markup).toContain('Longest Win Streak Ever')
-    expect(markup).toContain('Current / Longest Loss Streak')
-    expect(markup).toContain('Attendance Streak')
-    const longestWinStreakSectionIndex = markup.indexOf('id="player-longest-win-streak-ever"')
+    expect(markup).toContain('Ada');
+    expect(markup).toContain('Bea');
+    expect(markup).toContain('href="/players"');
+    expect(markup).toContain('View Games (2)');
+    expect(markup).not.toContain('PREMIUM');
+    expect(markup).not.toContain('lucide-user');
+    expect(markup).not.toContain('size-16 shrink-0');
+    expect(markup).toContain('Average Score');
+    expect(markup).toContain('Median Score');
+    expect(markup).toContain('Total VP');
+    expect(markup).toContain('Podium Rate');
+    expect(markup).toContain('Participation Rate');
+    expect(markup).toContain('Finish Breakdown');
+    expect(markup).toContain('Win Rate by Opponent Count');
+    expect(markup).toContain('Average Margin of Victory');
+    expect(markup).toContain('Average Margin of Defeat');
+    expect(markup).toContain('Expected vs Actual Wins');
+    expect(markup).toContain('Score Distribution');
+    expect(markup).toContain('Current Win Streak');
+    expect(markup).toContain('Most Wins in a Week');
+    expect(markup).toContain('Most Wins in a Month');
+    expect(markup).toContain('Longest Win Streak Ever');
+    expect(markup).toContain('Current / Longest Loss Streak');
+    expect(markup).toContain('Attendance Streak');
+    const longestWinStreakSectionIndex = markup.indexOf('id="player-longest-win-streak-ever"');
     const longestWinStreakSection = markup.slice(
       longestWinStreakSectionIndex,
       longestWinStreakSectionIndex + 2200,
-    )
-    expect(longestWinStreakSection).toContain('dateTime="2026-03-01T01:00:00.000Z"')
-    expect(longestWinStreakSection).toContain('dateTime="2026-03-17T04:00:00.000Z"')
-    expect(longestWinStreakSection).toContain('>...<')
-    expect(longestWinStreakSection).not.toContain('1:00 AM')
-    expect(longestWinStreakSection).not.toContain('12:00 AM')
-    expect(markup).toContain('8.7')
-    expect(markup).toContain('35')
-    expect(markup).toContain('8.5')
-    expect(markup).toContain('50.0%')
-    expect(markup).toContain('57.1%')
-    expect(markup).toContain('25.0% (1)')
-    expect(markup).toContain('50.0% (2)')
-    expect(markup).toContain('2p')
-    expect(markup).toContain('4p')
-    expect(markup).toContain('33.3%')
-    expect(markup).toContain('-0.6')
-    expect(markup).toContain('1 actual win vs 1.6 expected across 4 games')
-    expect(markup).toContain('Across 4 games')
-    expect(markup).toContain('2 podiums in 4 games')
-    expect(markup).toContain('4 appearances in 7 total games')
-    expect(markup).toContain('0 wins')
-    expect(markup).toContain('2 wins')
-    expect(markup).toContain('Current: 3 losses')
-    expect(markup).toContain('Longest: 4 losses')
-    expect(markup).toContain('6 games')
-    expect(markup).toContain('1.5')
-    expect(markup).toContain('Across 4 losses')
-    expect(markup).toContain('Loading your local-time view...')
-    expect(markup.match(/No games recorded yet\./g)).toHaveLength(2)
-  })
+    );
+    expect(longestWinStreakSection).toContain('dateTime="2026-03-01T01:00:00.000Z"');
+    expect(longestWinStreakSection).toContain('dateTime="2026-03-17T04:00:00.000Z"');
+    expect(longestWinStreakSection).toContain('>...<');
+    expect(longestWinStreakSection).not.toContain('1:00 AM');
+    expect(longestWinStreakSection).not.toContain('12:00 AM');
+    expect(markup).toContain('8.7');
+    expect(markup).toContain('35');
+    expect(markup).toContain('8.5');
+    expect(markup).toContain('50.0%');
+    expect(markup).toContain('57.1%');
+    expect(markup).toContain('25.0% (1)');
+    expect(markup).toContain('50.0% (2)');
+    expect(markup).toContain('2p');
+    expect(markup).toContain('4p');
+    expect(markup).toContain('33.3%');
+    expect(markup).toContain('-0.6');
+    expect(markup).toContain('1 actual win vs 1.6 expected across 4 games');
+    expect(markup).toContain('Across 4 games');
+    expect(markup).toContain('2 podiums in 4 games');
+    expect(markup).toContain('4 appearances in 7 total games');
+    expect(markup).toContain('0 wins');
+    expect(markup).toContain('2 wins');
+    expect(markup).toContain('Current: 3 losses');
+    expect(markup).toContain('Longest: 4 losses');
+    expect(markup).toContain('6 games');
+    expect(markup).toContain('1.5');
+    expect(markup).toContain('Across 4 losses');
+    expect(markup).toContain('Loading your local-time view...');
+    expect(markup.match(/No games recorded yet\./g)).toHaveLength(2);
+  });
 
   it('renders empty profile stat cards when the selected player has no recorded games', async () => {
     vi.mocked(getPlayers).mockResolvedValue([
@@ -417,7 +434,7 @@ describe('PlayerProfilePage', () => {
         tier: PlayerTier.Standard,
         createdAt: new Date('2026-01-02T00:00:00.000Z'),
       },
-    ])
+    ]);
     vi.mocked(getPlayerScoreStats).mockResolvedValue([
       {
         playerId: 1,
@@ -427,7 +444,7 @@ describe('PlayerProfilePage', () => {
         avgScore: 9.4,
         medianScore: 9,
       },
-    ])
+    ]);
     vi.mocked(getPlayerCumulativeScoreStats).mockResolvedValue([
       {
         playerId: 1,
@@ -445,7 +462,7 @@ describe('PlayerProfilePage', () => {
         totalScore: 0,
         pointsPerGame: 0,
       },
-    ])
+    ]);
     vi.mocked(getPlayerPodiumRates).mockResolvedValue([
       {
         playerId: 1,
@@ -463,7 +480,7 @@ describe('PlayerProfilePage', () => {
         podiums: 0,
         podiumRate: 0,
       },
-    ])
+    ]);
     vi.mocked(getPlayerFinishBreakdowns).mockResolvedValue([
       {
         playerId: 1,
@@ -493,7 +510,7 @@ describe('PlayerProfilePage', () => {
         thirdRate: 0,
         lastRate: 0,
       },
-    ])
+    ]);
     vi.mocked(getPlayerMarginStats).mockResolvedValue([
       {
         playerId: 1,
@@ -513,8 +530,8 @@ describe('PlayerProfilePage', () => {
         averageVictoryMargin: null,
         averageDefeatMargin: null,
       },
-    ])
-    vi.mocked(getPlayerWinRateByGameSize).mockResolvedValue([])
+    ]);
+    vi.mocked(getPlayerWinRateByGameSize).mockResolvedValue([]);
     vi.mocked(getPlayerExpectedVsActualWins).mockResolvedValue([
       {
         playerId: 1,
@@ -534,7 +551,7 @@ describe('PlayerProfilePage', () => {
         expectedWins: 0,
         winDelta: 0,
       },
-    ])
+    ]);
     vi.mocked(getPlayerParticipationRates).mockResolvedValue([
       {
         playerId: 1,
@@ -552,7 +569,7 @@ describe('PlayerProfilePage', () => {
         totalGames: 5,
         participationRate: 0,
       },
-    ])
+    ]);
     vi.mocked(getPlayerCurrentWinStreaks).mockResolvedValue([
       {
         playerId: 1,
@@ -570,8 +587,8 @@ describe('PlayerProfilePage', () => {
         mostRecentAppearance: null,
         mostRecentWin: null,
       },
-    ])
-    vi.mocked(getPlayerWinEvents).mockResolvedValue([])
+    ]);
+    vi.mocked(getPlayerWinEvents).mockResolvedValue([]);
     vi.mocked(getPlayerStreakRecords).mockResolvedValue([
       {
         playerId: 1,
@@ -607,43 +624,43 @@ describe('PlayerProfilePage', () => {
         attendanceStreakStartedAt: null,
         attendanceStreakEndedAt: null,
       },
-    ])
-    vi.mocked(listGamesForPlayer).mockResolvedValue([])
+    ]);
+    vi.mocked(listGamesForPlayer).mockResolvedValue([]);
 
-    const element = await PlayerProfilePage({ params: Promise.resolve({ id: '2' }) })
-    const markup = renderToStaticMarkup(element)
+    const element = await PlayerProfilePage({ params: Promise.resolve({ id: '2' }) });
+    const markup = renderToStaticMarkup(element);
 
-    expect(markup).toContain('Average Score')
-    expect(markup).toContain('Median Score')
-    expect(markup).toContain('Total VP')
-    expect(markup).toContain('Podium Rate')
-    expect(markup).toContain('Participation Rate')
-    expect(markup).toContain('Finish Breakdown')
-    expect(markup).toContain('Win Rate by Opponent Count')
-    expect(markup).toContain('Average Margin of Victory')
-    expect(markup).toContain('Average Margin of Defeat')
-    expect(markup).toContain('Expected vs Actual Wins')
-    expect(markup).toContain('Current Win Streak')
-    expect(markup).toContain('Most Wins in a Week')
-    expect(markup).toContain('Most Wins in a Month')
-    expect(markup).toContain('Longest Win Streak Ever')
-    expect(markup).toContain('Current / Longest Loss Streak')
-    expect(markup).toContain('Attendance Streak')
-    expect(markup).toContain('View Games (0)')
-    expect(markup).toContain('0.0%')
-    expect(markup).toContain('0 appearances in 5 total games')
-    expect(markup).toContain('0 wins')
-    expect(markup).toContain('Current: 0 losses')
-    expect(markup).toContain('Longest: 0 losses')
-    expect(markup).toContain('0 games')
-    expect(markup.match(/No games recorded yet\./g)).toHaveLength(24)
-  })
+    expect(markup).toContain('Average Score');
+    expect(markup).toContain('Median Score');
+    expect(markup).toContain('Total VP');
+    expect(markup).toContain('Podium Rate');
+    expect(markup).toContain('Participation Rate');
+    expect(markup).toContain('Finish Breakdown');
+    expect(markup).toContain('Win Rate by Opponent Count');
+    expect(markup).toContain('Average Margin of Victory');
+    expect(markup).toContain('Average Margin of Defeat');
+    expect(markup).toContain('Expected vs Actual Wins');
+    expect(markup).toContain('Current Win Streak');
+    expect(markup).toContain('Most Wins in a Week');
+    expect(markup).toContain('Most Wins in a Month');
+    expect(markup).toContain('Longest Win Streak Ever');
+    expect(markup).toContain('Current / Longest Loss Streak');
+    expect(markup).toContain('Attendance Streak');
+    expect(markup).toContain('View Games (0)');
+    expect(markup).toContain('0.0%');
+    expect(markup).toContain('0 appearances in 5 total games');
+    expect(markup).toContain('0 wins');
+    expect(markup).toContain('Current: 0 losses');
+    expect(markup).toContain('Longest: 0 losses');
+    expect(markup).toContain('0 games');
+    expect(markup.match(/No games recorded yet\./g)).toHaveLength(24);
+  });
 
   it('calls notFound for invalid player ids', async () => {
     await expect(PlayerProfilePage({ params: Promise.resolve({ id: 'abc' }) })).rejects.toThrow(
       'NEXT_NOT_FOUND',
-    )
-  })
+    );
+  });
 
   it('calls notFound when the player does not exist', async () => {
     vi.mocked(getPlayers).mockResolvedValue([
@@ -653,12 +670,12 @@ describe('PlayerProfilePage', () => {
         tier: PlayerTier.Premium,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
       },
-    ])
+    ]);
 
     await expect(PlayerProfilePage({ params: Promise.resolve({ id: '999' }) })).rejects.toThrow(
       'NEXT_NOT_FOUND',
-    )
-  })
+    );
+  });
 
   it('uses the selected player for metadata titles', async () => {
     vi.mocked(getPlayerById).mockResolvedValue({
@@ -666,10 +683,10 @@ describe('PlayerProfilePage', () => {
       name: 'Ada',
       tier: PlayerTier.Premium,
       createdAt: new Date('2026-01-01T00:00:00.000Z'),
-    })
+    });
 
     await expect(generateMetadata({ params: Promise.resolve({ id: '1' }) })).resolves.toEqual({
       title: 'Ada — HarborStats',
-    })
-  })
-})
+    });
+  });
+});

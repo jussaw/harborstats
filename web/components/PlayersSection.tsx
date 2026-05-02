@@ -1,12 +1,13 @@
-import type { ReactNode } from 'react'
-import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
-import { FormattedDate } from '@/components/FormattedDate'
-import { StatsCard } from '@/components/StatsCard'
-import { formatAverage, formatPercent, formatSignedNumber } from '@/lib/format'
-import type { RecentGame } from '@/lib/games'
-import { PlayerTier } from '@/lib/player-tier'
-import type { Player } from '@/lib/players'
+import type { ReactNode } from 'react';
+import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
+import { FormattedDate } from '@/components/FormattedDate';
+import { PlayerScoreBoxPlot } from '@/components/PlayerScoreBoxPlot';
+import { StatsCard } from '@/components/StatsCard';
+import { formatAverage, formatPercent, formatSignedNumber } from '@/lib/format';
+import type { RecentGame } from '@/lib/games';
+import { PlayerTier } from '@/lib/player-tier';
+import type { Player } from '@/lib/players';
 import type {
   PlayerCumulativeScoreStats,
   PlayerCurrentWinStreak,
@@ -15,63 +16,69 @@ import type {
   PlayerMarginStats,
   PlayerParticipationRate,
   PlayerPodiumRate,
+  PlayerScoreDistribution,
   PlayerScoreStats,
   PlayerStreakRecord,
   PlayerWinEvent,
   PlayerWinRateByGameSize,
-} from '@/lib/stats'
-import { PlayerProfileCard } from './PlayerProfileCard'
-import { PlayerBestWinRecordCard } from './PlayerBestWinRecordCard'
+} from '@/lib/stats';
+import { PlayerProfileCard } from './PlayerProfileCard';
+import { PlayerBestWinRecordCard } from './PlayerBestWinRecordCard';
 
 const cinzelStyle = {
   fontFamily: 'var(--font-cinzel), Georgia, serif',
-}
+};
 
 interface Props {
-  players: Player[]
-  selectedPlayer: Player | null
-  mobileMode: 'list' | 'detail'
-  scoreStats: PlayerScoreStats[]
-  cumulativeScoreStats: PlayerCumulativeScoreStats[]
-  podiumRates: PlayerPodiumRate[]
-  finishBreakdowns: PlayerFinishBreakdown[]
-  marginStats: PlayerMarginStats[]
-  participationRates: PlayerParticipationRate[]
-  winRateByGameSize: PlayerWinRateByGameSize[]
-  expectedVsActualWins: PlayerExpectedVsActualWins[]
-  currentWinStreaks: PlayerCurrentWinStreak[]
-  playerWinEvents: PlayerWinEvent[]
-  playerStreakRecords: PlayerStreakRecord[]
-  playerGames: RecentGame[]
+  players: Player[];
+  selectedPlayer: Player | null;
+  mobileMode: 'list' | 'detail';
+  scoreStats: PlayerScoreStats[];
+  scoreDistributions: PlayerScoreDistribution[];
+  cumulativeScoreStats: PlayerCumulativeScoreStats[];
+  podiumRates: PlayerPodiumRate[];
+  finishBreakdowns: PlayerFinishBreakdown[];
+  marginStats: PlayerMarginStats[];
+  participationRates: PlayerParticipationRate[];
+  winRateByGameSize: PlayerWinRateByGameSize[];
+  expectedVsActualWins: PlayerExpectedVsActualWins[];
+  currentWinStreaks: PlayerCurrentWinStreak[];
+  playerWinEvents: PlayerWinEvent[];
+  playerStreakRecords: PlayerStreakRecord[];
+  playerGames: RecentGame[];
 }
 
 interface PlayersListProps {
-  players: Player[]
-  selectedPlayerId: number | null
+  players: Player[];
+  selectedPlayerId: number | null;
 }
 
 function PlayersList({ players, selectedPlayerId }: PlayersListProps) {
   return (
-    <aside className="
-      rounded-2xl border border-(--gold)/20 bg-(--navy-900)/40 p-4
-      sm:p-5
-    ">
+    <aside
+      className="
+        rounded-2xl border border-(--gold)/20 bg-(--navy-900)/40 p-4
+        sm:p-5
+      "
+    >
       <div className="mb-4 border-b border-(--gold)/10 pb-3">
-        <p style={cinzelStyle} className="
-          text-xs tracking-[0.3em] text-(--cream)/40 uppercase
-        ">
+        <p
+          style={cinzelStyle}
+          className="text-xs tracking-[0.3em] text-(--cream)/40 uppercase"
+        >
           Players
         </p>
-        <h1 style={cinzelStyle} className="
-          mt-2 text-xl tracking-wide text-(--gold)
-        ">
+        <h1
+          style={cinzelStyle}
+          className="mt-2 text-xl tracking-wide text-(--gold)"
+        >
           Select a player
         </h1>
       </div>
 
       <div className="space-y-2">
         {players.map((player) => {
-          const active = player.id === selectedPlayerId
+          const active = player.id === selectedPlayerId;
 
           return (
             <Link
@@ -81,13 +88,13 @@ function PlayersList({ players, selectedPlayerId }: PlayersListProps) {
               className={`
                 block rounded-xl border p-3 text-sm transition-colors
                 ${
-                active
-                  ? `border-(--gold)/45 bg-(--gold)/10 text-(--gold)`
-                  : `
-                    border-transparent bg-(--navy-800)/35 text-(--cream)/70
-                    hover:border-(--gold)/20 hover:text-(--cream)
-                  `
-              }
+                  active
+                    ? `border-(--gold)/45 bg-(--gold)/10 text-(--gold)`
+                    : `
+                      border-transparent bg-(--navy-800)/35 text-(--cream)/70
+                      hover:border-(--gold)/20 hover:text-(--cream)
+                    `
+                }
               `}
             >
               <div className="min-w-0">
@@ -95,37 +102,38 @@ function PlayersList({ players, selectedPlayerId }: PlayersListProps) {
                   style={cinzelStyle}
                   className={`
                     truncate tracking-widest uppercase
-                    ${
-                    player.tier === PlayerTier.Premium ? 'text-(--gold)' : ''
-                  }
+                    ${player.tier === PlayerTier.Premium ? 'text-(--gold)' : ''}
                   `}
                 >
                   {player.name}
                 </p>
-                <p className="
-                  mt-1 text-[11px] tracking-[0.2em] text-(--cream)/35 uppercase
-                ">
+                <p
+                  className="
+                    mt-1 text-[11px] tracking-[0.2em] text-(--cream)/35
+                    uppercase
+                  "
+                >
                   {player.tier === PlayerTier.Premium ? 'Premium' : 'Standard'}
                 </p>
               </div>
             </Link>
-          )
+          );
         })}
       </div>
     </aside>
-  )
+  );
 }
 
 function EmptyMetricState() {
-  return <p className="py-8 text-center text-sm text-(--cream)/50">No games recorded yet.</p>
+  return <p className="py-8 text-center text-sm text-(--cream)/50">No games recorded yet.</p>;
 }
 
 interface ProfileMetricCardProps {
-  id: string
-  title: string
-  description: string
-  value: string | null
-  detail: ReactNode | null
+  id: string;
+  title: string;
+  description: string;
+  value: string | null;
+  detail: ReactNode | null;
 }
 
 function ProfileMetricCard({ id, title, description, value, detail }: ProfileMetricCardProps) {
@@ -147,11 +155,11 @@ function ProfileMetricCard({ id, title, description, value, detail }: ProfileMet
         <EmptyMetricState />
       )}
     </StatsCard>
-  )
+  );
 }
 
 function formatCount(value: number, singular: string, plural = `${singular}s`) {
-  return `${value} ${value === 1 ? singular : plural}`
+  return `${value} ${value === 1 ? singular : plural}`;
 }
 
 function StreakPeriodDetail({
@@ -159,16 +167,18 @@ function StreakPeriodDetail({
   endedAt,
   dateOnly = false,
 }: {
-  startedAt: string | null
-  endedAt: string | null
-  dateOnly?: boolean
+  startedAt: string | null;
+  endedAt: string | null;
+  dateOnly?: boolean;
 }) {
   if (!startedAt || !endedAt) {
-    return 'No recorded period yet.'
+    return 'No recorded period yet.';
   }
 
   if (startedAt === endedAt) {
-    return <FormattedDate iso={startedAt} className="inline text-(--cream)/55" dateOnly={dateOnly} />
+    return (
+      <FormattedDate iso={startedAt} className="inline text-(--cream)/55" dateOnly={dateOnly} />
+    );
   }
 
   return (
@@ -177,12 +187,12 @@ function StreakPeriodDetail({
       <span className="text-(--cream)/40"> - </span>
       <FormattedDate iso={endedAt} className="inline text-(--cream)/55" dateOnly={dateOnly} />
     </span>
-  )
+  );
 }
 
 StreakPeriodDetail.defaultProps = {
   dateOnly: false,
-}
+};
 
 function ProfileLossStreakCard({ streakRecord }: { streakRecord: PlayerStreakRecord | null }) {
   return (
@@ -233,11 +243,11 @@ function ProfileLossStreakCard({ streakRecord }: { streakRecord: PlayerStreakRec
         <EmptyMetricState />
       )}
     </StatsCard>
-  )
+  );
 }
 
 function formatGameSizeLabel(playerCount: number) {
-  return `${playerCount}p`
+  return `${playerCount}p`;
 }
 
 function ProfileFinishBreakdownCard({ breakdown }: { breakdown: PlayerFinishBreakdown | null }) {
@@ -275,14 +285,10 @@ function ProfileFinishBreakdownCard({ breakdown }: { breakdown: PlayerFinishBrea
         <EmptyMetricState />
       )}
     </StatsCard>
-  )
+  );
 }
 
-function ProfileOpponentCountWinRateCard({
-  rows,
-}: {
-  rows: PlayerWinRateByGameSize[]
-}) {
+function ProfileOpponentCountWinRateCard({ rows }: { rows: PlayerWinRateByGameSize[] }) {
   return (
     <StatsCard
       id="player-win-rate-by-opponent-count"
@@ -317,12 +323,13 @@ function ProfileOpponentCountWinRateCard({
         <EmptyMetricState />
       )}
     </StatsCard>
-  )
+  );
 }
 
 function PlayerDetail({
   player,
   scoreStats,
+  scoreDistributions,
   cumulativeScoreStats,
   podiumRates,
   finishBreakdowns,
@@ -335,48 +342,59 @@ function PlayerDetail({
   playerStreakRecords,
   playerGames,
 }: {
-  player: Player
-  scoreStats: PlayerScoreStats[]
-  cumulativeScoreStats: PlayerCumulativeScoreStats[]
-  podiumRates: PlayerPodiumRate[]
-  finishBreakdowns: PlayerFinishBreakdown[]
-  marginStats: PlayerMarginStats[]
-  participationRates: PlayerParticipationRate[]
-  winRateByGameSize: PlayerWinRateByGameSize[]
-  expectedVsActualWins: PlayerExpectedVsActualWins[]
-  currentWinStreaks: PlayerCurrentWinStreak[]
-  playerWinEvents: PlayerWinEvent[]
-  playerStreakRecords: PlayerStreakRecord[]
-  playerGames: RecentGame[]
+  player: Player;
+  scoreStats: PlayerScoreStats[];
+  scoreDistributions: PlayerScoreDistribution[];
+  cumulativeScoreStats: PlayerCumulativeScoreStats[];
+  podiumRates: PlayerPodiumRate[];
+  finishBreakdowns: PlayerFinishBreakdown[];
+  marginStats: PlayerMarginStats[];
+  participationRates: PlayerParticipationRate[];
+  winRateByGameSize: PlayerWinRateByGameSize[];
+  expectedVsActualWins: PlayerExpectedVsActualWins[];
+  currentWinStreaks: PlayerCurrentWinStreak[];
+  playerWinEvents: PlayerWinEvent[];
+  playerStreakRecords: PlayerStreakRecord[];
+  playerGames: RecentGame[];
 }) {
-  const scoreStat = scoreStats.find((candidate) => candidate.playerId === player.id) ?? null
-  const cumulativeScoreStat = cumulativeScoreStats.find((candidate) => candidate.playerId === player.id) ?? null
-  const podiumStat = podiumRates.find((candidate) => candidate.playerId === player.id) ?? null
-  const finishBreakdown = finishBreakdowns.find((candidate) => candidate.playerId === player.id) ?? null
-  const marginStat = marginStats.find((candidate) => candidate.playerId === player.id) ?? null
-  const participationStat = participationRates.find((candidate) => candidate.playerId === player.id) ?? null
+  const scoreStat = scoreStats.find((candidate) => candidate.playerId === player.id) ?? null;
+  const scoreDistribution =
+    scoreDistributions.find((candidate) => candidate.playerId === player.id) ?? null;
+  const cumulativeScoreStat =
+    cumulativeScoreStats.find((candidate) => candidate.playerId === player.id) ?? null;
+  const podiumStat = podiumRates.find((candidate) => candidate.playerId === player.id) ?? null;
+  const finishBreakdown =
+    finishBreakdowns.find((candidate) => candidate.playerId === player.id) ?? null;
+  const marginStat = marginStats.find((candidate) => candidate.playerId === player.id) ?? null;
+  const participationStat =
+    participationRates.find((candidate) => candidate.playerId === player.id) ?? null;
   const opponentCountStats = winRateByGameSize
     .filter((candidate) => candidate.playerId === player.id)
-    .sort((a, b) => a.playerCount - b.playerCount)
-  const expectedVsActualStat = expectedVsActualWins.find((candidate) => candidate.playerId === player.id) ?? null
-  const currentWinStreak = currentWinStreaks.find((candidate) => candidate.playerId === player.id) ?? null
-  const streakRecord = playerStreakRecords.find((candidate) => candidate.playerId === player.id) ?? null
+    .sort((a, b) => a.playerCount - b.playerCount);
+  const expectedVsActualStat =
+    expectedVsActualWins.find((candidate) => candidate.playerId === player.id) ?? null;
+  const currentWinStreak =
+    currentWinStreaks.find((candidate) => candidate.playerId === player.id) ?? null;
+  const streakRecord =
+    playerStreakRecords.find((candidate) => candidate.playerId === player.id) ?? null;
 
-  const hasGames = scoreStat !== null && scoreStat.games > 0
-  const hasCumulativeScore = cumulativeScoreStat !== null && cumulativeScoreStat.games > 0
-  const podiumHasGames = podiumStat !== null && podiumStat.games > 0
-  const expectedVsActualHasGames = expectedVsActualStat !== null && expectedVsActualStat.games > 0
-  const hasParticipationData = participationStat !== null && participationStat.totalGames > 0
-  const victoryMarginValue = marginStat?.averageVictoryMargin ?? null
-  const defeatMarginValue = marginStat?.averageDefeatMargin ?? null
+  const hasGames = scoreStat !== null && scoreStat.games > 0;
+  const hasCumulativeScore = cumulativeScoreStat !== null && cumulativeScoreStat.games > 0;
+  const podiumHasGames = podiumStat !== null && podiumStat.games > 0;
+  const expectedVsActualHasGames = expectedVsActualStat !== null && expectedVsActualStat.games > 0;
+  const hasParticipationData = participationStat !== null && participationStat.totalGames > 0;
+  const victoryMarginValue = marginStat?.averageVictoryMargin ?? null;
+  const defeatMarginValue = marginStat?.averageDefeatMargin ?? null;
 
   return (
     <div className="space-y-5">
       <PlayerProfileCard player={player} games={playerGames} />
-      <div className="
-        grid grid-cols-1 gap-5
-        lg:grid-cols-3
-      ">
+      <div
+        className="
+          grid grid-cols-1 gap-5
+          lg:grid-cols-3
+        "
+      >
         <ProfileMetricCard
           id="player-avg-score"
           title="Average Score"
@@ -400,6 +418,15 @@ function PlayerDetail({
             hasCumulativeScore ? `Across ${formatCount(cumulativeScoreStat.games, 'game')}` : null
           }
         />
+        <StatsCard
+          id="player-score-distribution"
+          title="Score Distribution"
+          description="This player’s score spread across all recorded games."
+          badge={undefined}
+          span="single"
+        >
+          <PlayerScoreBoxPlot distributions={scoreDistribution ? [scoreDistribution] : []} />
+        </StatsCard>
         <ProfileMetricCard
           id="player-podium-rate"
           title="Podium Rate"
@@ -418,7 +445,9 @@ function PlayerDetail({
           id="player-participation-rate"
           title="Participation Rate"
           description="Share of all recorded games this player has appeared in."
-          value={hasParticipationData ? formatPercent(participationStat.participationRate, 1) : null}
+          value={
+            hasParticipationData ? formatPercent(participationStat.participationRate, 1) : null
+          }
           detail={
             hasParticipationData
               ? `${participationStat.gamesPlayed} appearance${
@@ -474,7 +503,9 @@ function PlayerDetail({
           id="player-expected-vs-actual-wins"
           title="Expected vs Actual Wins"
           description="Actual wins minus the baseline 1/N expectation for each game size."
-          value={expectedVsActualHasGames ? formatSignedNumber(expectedVsActualStat.winDelta) : null}
+          value={
+            expectedVsActualHasGames ? formatSignedNumber(expectedVsActualStat.winDelta) : null
+          }
           detail={
             expectedVsActualHasGames
               ? `${expectedVsActualStat.wins} actual ${
@@ -528,20 +559,20 @@ function PlayerDetail({
         />
       </div>
     </div>
-  )
+  );
 }
 
 function PlayersDetailEmptyState() {
   return (
-    <div className="
-      flex min-h-full items-center justify-center rounded-xl border
-      border-dashed border-(--gold)/15 bg-(--navy-900)/20 p-8
-    ">
-      <p className="text-center text-sm text-(--cream)/45">
-        Choose a player to see their profile.
-      </p>
+    <div
+      className="
+        flex min-h-full items-center justify-center rounded-xl border
+        border-dashed border-(--gold)/15 bg-(--navy-900)/20 p-8
+      "
+    >
+      <p className="text-center text-sm text-(--cream)/45">Choose a player to see their profile.</p>
     </div>
-  )
+  );
 }
 
 export function PlayersSection({
@@ -549,6 +580,7 @@ export function PlayersSection({
   selectedPlayer,
   mobileMode,
   scoreStats,
+  scoreDistributions,
   cumulativeScoreStats,
   podiumRates,
   finishBreakdowns,
@@ -564,27 +596,32 @@ export function PlayersSection({
   if (players.length === 0) {
     return (
       <main className="mx-auto max-w-3xl px-4 py-12">
-        <div className="
-          rounded-lg border border-(--gold)/30 bg-(--navy-900)/60 p-8
-          text-center
-        ">
-          <h1 style={cinzelStyle} className="
-            text-2xl tracking-wide text-(--gold)
-          ">
+        <div
+          className="
+            rounded-lg border border-(--gold)/30 bg-(--navy-900)/60 p-8
+            text-center
+          "
+        >
+          <h1
+            style={cinzelStyle}
+            className="text-2xl tracking-wide text-(--gold)"
+          >
             Players
           </h1>
           <p className="mt-4 text-sm text-(--cream)/70">No players yet.</p>
           <p className="mt-2 text-sm text-(--cream)/50">Add your first player in admin.</p>
         </div>
       </main>
-    )
+    );
   }
 
   return (
-    <main className="
-      mx-auto max-w-6xl px-4 py-6
-      sm:px-6 sm:py-10
-    ">
+    <main
+      className="
+        mx-auto max-w-6xl px-4 py-6
+        sm:px-6 sm:py-10
+      "
+    >
       <div className="sm:hidden">
         {mobileMode === 'list' ? (
           <PlayersList players={players} selectedPlayerId={null} />
@@ -607,6 +644,7 @@ export function PlayersSection({
               <PlayerDetail
                 player={selectedPlayer}
                 scoreStats={scoreStats}
+                scoreDistributions={scoreDistributions}
                 cumulativeScoreStats={cumulativeScoreStats}
                 podiumRates={podiumRates}
                 finishBreakdowns={finishBreakdowns}
@@ -624,18 +662,23 @@ export function PlayersSection({
         )}
       </div>
 
-      <div className="
-        hidden min-h-136
-        sm:grid sm:grid-cols-[18rem_minmax(0,1fr)] sm:gap-6
-      ">
+      <div
+        className="
+          hidden min-h-136
+          sm:grid sm:grid-cols-[18rem_minmax(0,1fr)] sm:gap-6
+        "
+      >
         <PlayersList players={players} selectedPlayerId={selectedPlayer?.id ?? null} />
-        <div className="
-          rounded-2xl border border-(--gold)/20 bg-(--navy-900)/30 p-6
-        ">
+        <div
+          className="
+            rounded-2xl border border-(--gold)/20 bg-(--navy-900)/30 p-6
+          "
+        >
           {selectedPlayer ? (
             <PlayerDetail
               player={selectedPlayer}
               scoreStats={scoreStats}
+              scoreDistributions={scoreDistributions}
               cumulativeScoreStats={cumulativeScoreStats}
               podiumRates={podiumRates}
               finishBreakdowns={finishBreakdowns}
@@ -654,5 +697,5 @@ export function PlayersSection({
         </div>
       </div>
     </main>
-  )
+  );
 }

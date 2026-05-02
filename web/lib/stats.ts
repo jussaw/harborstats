@@ -1,55 +1,55 @@
-import { count, desc, eq, sql } from 'drizzle-orm'
-import { gamePlayers, games, players } from '@/db/schema'
-import { parsePlayerTier, PlayerTier, type PlayerTier as PlayerTierType } from '@/lib/player-tier'
-import { db } from './db'
+import { count, desc, eq, sql } from 'drizzle-orm';
+import { gamePlayers, games, players } from '@/db/schema';
+import { parsePlayerTier, PlayerTier, type PlayerTier as PlayerTierType } from '@/lib/player-tier';
+import { db } from './db';
 
 function round1(value: number): number {
-  return Math.round(value * 10) / 10
+  return Math.round(value * 10) / 10;
 }
 
 function round3(value: number): number {
-  return Math.round(value * 1000) / 1000
+  return Math.round(value * 1000) / 1000;
 }
 
 function getMedian(values: number[]): number {
   if (values.length === 0) {
-    return 0
+    return 0;
   }
 
-  const sorted = [...values].sort((a, b) => a - b)
-  const middle = Math.floor(sorted.length / 2)
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
 
   if (sorted.length % 2 === 0) {
-    return (sorted[middle - 1] + sorted[middle]) / 2
+    return (sorted[middle - 1] + sorted[middle]) / 2;
   }
 
-  return sorted[middle]
+  return sorted[middle];
 }
 
 function startOfUtcDay(date: Date): Date {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 }
 
 function getIsoWeekStart(date: Date): Date {
-  const start = startOfUtcDay(date)
-  const day = start.getUTCDay()
-  const offset = day === 0 ? 6 : day - 1
-  start.setUTCDate(start.getUTCDate() - offset)
-  return start
+  const start = startOfUtcDay(date);
+  const day = start.getUTCDay();
+  const offset = day === 0 ? 6 : day - 1;
+  start.setUTCDate(start.getUTCDate() - offset);
+  return start;
 }
 
 function getUtcMonthStart(date: Date): Date {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1))
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
 }
 
 function addUtcDays(date: Date, days: number): Date {
-  const next = new Date(date)
-  next.setUTCDate(next.getUTCDate() + days)
-  return next
+  const next = new Date(date);
+  next.setUTCDate(next.getUTCDate() + days);
+  return next;
 }
 
 function addUtcMonths(date: Date, months: number): Date {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, 1))
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, 1));
 }
 
 function formatShortUtcDate(date: Date): string {
@@ -57,7 +57,7 @@ function formatShortUtcDate(date: Date): string {
     timeZone: 'UTC',
     month: 'short',
     day: 'numeric',
-  })
+  });
 }
 
 function formatShortUtcMonth(date: Date): string {
@@ -65,7 +65,7 @@ function formatShortUtcMonth(date: Date): string {
     timeZone: 'UTC',
     month: 'short',
     year: 'numeric',
-  })
+  });
 }
 
 function formatLongUtcDate(date: Date): string {
@@ -74,43 +74,43 @@ function formatLongUtcDate(date: Date): string {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
-  })
+  });
 }
 
 function toUtcDateKey(date: Date): string {
-  return date.toISOString().slice(0, 10)
+  return date.toISOString().slice(0, 10);
 }
 
 interface PlayerIdentity {
-  playerId: number
-  name: string
-  tier: PlayerTierType
+  playerId: number;
+  name: string;
+  tier: PlayerTierType;
 }
 
 interface PlayerGameSizeAccumulator extends PlayerIdentity {
-  playerCount: number
-  games: number
-  wins: number
-  expectedWins: number
+  playerCount: number;
+  games: number;
+  wins: number;
+  expectedWins: number;
 }
 
 interface PlayerExpectedWinsAccumulator extends PlayerIdentity {
-  games: number
-  wins: number
-  expectedWins: number
+  games: number;
+  wins: number;
+  expectedWins: number;
 }
 
 interface TierShowdownAccumulator {
-  tier: PlayerTierType
-  players: number
-  appearances: number
-  wins: number
+  tier: PlayerTierType;
+  players: number;
+  appearances: number;
+  wins: number;
 }
 
 interface GameSizeAggregateData {
-  playerWinRateByGameSize: PlayerWinRateByGameSize[]
-  playerExpectedVsActualWins: PlayerExpectedVsActualWins[]
-  tierShowdownStats: TierShowdownStats[]
+  playerWinRateByGameSize: PlayerWinRateByGameSize[];
+  playerExpectedVsActualWins: PlayerExpectedVsActualWins[];
+  tierShowdownStats: TierShowdownStats[];
 }
 
 async function getGameSizeAggregateData(): Promise<GameSizeAggregateData> {
@@ -130,7 +130,7 @@ async function getGameSizeAggregateData(): Promise<GameSizeAggregateData> {
         isWinner: gamePlayers.isWinner,
       })
       .from(gamePlayers),
-  ])
+  ]);
 
   const playersById = new Map<number, PlayerIdentity>(
     playerRows.map((player) => [
@@ -141,7 +141,7 @@ async function getGameSizeAggregateData(): Promise<GameSizeAggregateData> {
         tier: parsePlayerTier(player.tier),
       },
     ]),
-  )
+  );
 
   const expectedWinsByPlayerId = new Map<number, PlayerExpectedWinsAccumulator>(
     playerRows.map((player) => [
@@ -155,73 +155,75 @@ async function getGameSizeAggregateData(): Promise<GameSizeAggregateData> {
         expectedWins: 0,
       },
     ]),
-  )
+  );
 
   const tierStats: Record<PlayerTier, TierShowdownAccumulator> = {
     [PlayerTier.Premium]: {
       tier: PlayerTier.Premium,
-      players: playerRows.filter((player) => parsePlayerTier(player.tier) === PlayerTier.Premium).length,
+      players: playerRows.filter((player) => parsePlayerTier(player.tier) === PlayerTier.Premium)
+        .length,
       appearances: 0,
       wins: 0,
     },
     [PlayerTier.Standard]: {
       tier: PlayerTier.Standard,
-      players: playerRows.filter((player) => parsePlayerTier(player.tier) === PlayerTier.Standard).length,
+      players: playerRows.filter((player) => parsePlayerTier(player.tier) === PlayerTier.Standard)
+        .length,
       appearances: 0,
       wins: 0,
     },
-  }
+  };
 
-  const gameSizeBuckets = new Map<string, PlayerGameSizeAccumulator>()
-  const participantsByGameId = new Map<number, typeof participantRows>()
+  const gameSizeBuckets = new Map<string, PlayerGameSizeAccumulator>();
+  const participantsByGameId = new Map<number, typeof participantRows>();
 
   participantRows.forEach((participant) => {
-    const existing = participantsByGameId.get(participant.gameId) ?? []
-    existing.push(participant)
-    participantsByGameId.set(participant.gameId, existing)
-  })
+    const existing = participantsByGameId.get(participant.gameId) ?? [];
+    existing.push(participant);
+    participantsByGameId.set(participant.gameId, existing);
+  });
 
   participantsByGameId.forEach((participants) => {
-    const playerCount = participants.length
+    const playerCount = participants.length;
     if (playerCount === 0) {
-      return
+      return;
     }
 
-    const expectedWinShare = 1 / playerCount
+    const expectedWinShare = 1 / playerCount;
 
     participants.forEach((participant) => {
-      const player = playersById.get(participant.playerId)
-      const expectedWins = expectedWinsByPlayerId.get(participant.playerId)
+      const player = playersById.get(participant.playerId);
+      const expectedWins = expectedWinsByPlayerId.get(participant.playerId);
       if (!player || !expectedWins) {
-        return
+        return;
       }
 
-      expectedWins.games += 1
-      expectedWins.wins += participant.isWinner ? 1 : 0
-      expectedWins.expectedWins += expectedWinShare
+      expectedWins.games += 1;
+      expectedWins.wins += participant.isWinner ? 1 : 0;
+      expectedWins.expectedWins += expectedWinShare;
 
-      const tier = tierStats[player.tier]
+      const tier = tierStats[player.tier];
       if (tier) {
-        tier.appearances += 1
-        tier.wins += participant.isWinner ? 1 : 0
+        tier.appearances += 1;
+        tier.wins += participant.isWinner ? 1 : 0;
       }
 
-      const key = `${participant.playerId}:${playerCount}`
+      const key = `${participant.playerId}:${playerCount}`;
       const bucket = gameSizeBuckets.get(key) ?? {
         ...player,
         playerCount,
         games: 0,
         wins: 0,
         expectedWins: 0,
-      }
+      };
 
-      bucket.games += 1
-      bucket.wins += participant.isWinner ? 1 : 0
-      bucket.expectedWins += expectedWinShare
+      bucket.games += 1;
+      bucket.wins += participant.isWinner ? 1 : 0;
+      bucket.expectedWins += expectedWinShare;
 
-      gameSizeBuckets.set(key, bucket)
-    })
-  })
+      gameSizeBuckets.set(key, bucket);
+    });
+  });
 
   return {
     playerWinRateByGameSize: [...gameSizeBuckets.values()]
@@ -235,9 +237,7 @@ async function getGameSizeAggregateData(): Promise<GameSizeAggregateData> {
         winRate: bucket.games > 0 ? bucket.wins / bucket.games : 0,
       }))
       .sort(
-        (a, b) => a.playerId - b.playerId
-          || a.playerCount - b.playerCount
-          || b.winRate - a.winRate,
+        (a, b) => a.playerId - b.playerId || a.playerCount - b.playerCount || b.winRate - a.winRate,
       ),
     playerExpectedVsActualWins: [...expectedWinsByPlayerId.values()]
       .map((player) => ({
@@ -250,10 +250,11 @@ async function getGameSizeAggregateData(): Promise<GameSizeAggregateData> {
         winDelta: round1(player.wins - player.expectedWins),
       }))
       .sort(
-        (a, b) => b.winDelta - a.winDelta
-          || b.wins - a.wins
-          || b.expectedWins - a.expectedWins
-          || a.name.localeCompare(b.name),
+        (a, b) =>
+          b.winDelta - a.winDelta ||
+          b.wins - a.wins ||
+          b.expectedWins - a.expectedWins ||
+          a.name.localeCompare(b.name),
       ),
     tierShowdownStats: Object.values(tierStats)
       .map((tier) => ({
@@ -263,21 +264,17 @@ async function getGameSizeAggregateData(): Promise<GameSizeAggregateData> {
         wins: tier.wins,
         winRate: tier.appearances > 0 ? tier.wins / tier.appearances : 0,
       }))
-      .sort(
-        (a, b) => b.winRate - a.winRate
-          || b.wins - a.wins
-          || a.tier.localeCompare(b.tier),
-      ),
-  }
+      .sort((a, b) => b.winRate - a.winRate || b.wins - a.wins || a.tier.localeCompare(b.tier)),
+  };
 }
 
 export interface PlayerWinRate {
-  playerId: number
-  name: string
-  tier: PlayerTierType
-  games: number
-  wins: number
-  winRate: number // 0.0–1.0
+  playerId: number;
+  name: string;
+  tier: PlayerTierType;
+  games: number;
+  wins: number;
+  winRate: number; // 0.0–1.0
 }
 
 export async function getPlayerWinRates(): Promise<PlayerWinRate[]> {
@@ -291,7 +288,7 @@ export async function getPlayerWinRates(): Promise<PlayerWinRate[]> {
     })
     .from(players)
     .leftJoin(gamePlayers, eq(gamePlayers.playerId, players.id))
-    .groupBy(players.id)
+    .groupBy(players.id);
 
   return rows
     .map((row) => ({
@@ -299,16 +296,73 @@ export async function getPlayerWinRates(): Promise<PlayerWinRate[]> {
       tier: parsePlayerTier(row.tier),
       winRate: row.games > 0 ? row.wins / row.games : 0,
     }))
-    .sort((a, b) => b.wins - a.wins || b.winRate - a.winRate)
+    .sort((a, b) => b.wins - a.wins || b.winRate - a.winRate);
+}
+
+interface PlayerScoreRow extends PlayerIdentity {
+  score: number;
+}
+
+function comparePlayersByTierAndName(a: PlayerIdentity, b: PlayerIdentity) {
+  if (a.tier !== b.tier) {
+    return a.tier === PlayerTier.Premium ? -1 : 1;
+  }
+
+  return a.name.localeCompare(b.name) || a.playerId - b.playerId;
+}
+
+function getInterpolatedPercentile(values: number[], percentile: number) {
+  if (values.length === 0) {
+    return 0;
+  }
+
+  const sorted = [...values].sort((a, b) => a - b);
+  const index = (sorted.length - 1) * percentile;
+  const lowerIndex = Math.floor(index);
+  const upperIndex = Math.ceil(index);
+
+  if (lowerIndex === upperIndex) {
+    return sorted[lowerIndex];
+  }
+
+  const lowerValue = sorted[lowerIndex];
+  const upperValue = sorted[upperIndex];
+  const weight = index - lowerIndex;
+
+  return lowerValue + (upperValue - lowerValue) * weight;
+}
+
+async function getPlayerScoreRows(): Promise<PlayerScoreRow[]> {
+  const rows = await db
+    .select({
+      playerId: players.id,
+      name: players.name,
+      tier: players.tier,
+      score: gamePlayers.score,
+    })
+    .from(gamePlayers)
+    .innerJoin(players, eq(players.id, gamePlayers.playerId))
+    .orderBy(
+      sql`CASE ${players.tier} WHEN 'premium' THEN 0 ELSE 1 END`,
+      players.name,
+      gamePlayers.score,
+    );
+
+  return rows.map((row) => ({
+    playerId: row.playerId,
+    name: row.name,
+    tier: parsePlayerTier(row.tier),
+    score: row.score,
+  }));
 }
 
 export interface PlayerScoreStats {
-  playerId: number
-  name: string
-  tier: PlayerTierType
-  games: number
-  avgScore: number
-  medianScore: number
+  playerId: number;
+  name: string;
+  tier: PlayerTierType;
+  games: number;
+  avgScore: number;
+  medianScore: number;
 }
 
 export async function getPlayerScoreStats(): Promise<PlayerScoreStats[]> {
@@ -323,7 +377,7 @@ export async function getPlayerScoreStats(): Promise<PlayerScoreStats[]> {
     })
     .from(players)
     .innerJoin(gamePlayers, eq(gamePlayers.playerId, players.id))
-    .groupBy(players.id)
+    .groupBy(players.id);
 
   return rows
     .map((row) => ({
@@ -332,16 +386,84 @@ export async function getPlayerScoreStats(): Promise<PlayerScoreStats[]> {
       avgScore: round1(row.avgScore),
       medianScore: round1(row.medianScore),
     }))
-    .sort((a, b) => b.avgScore - a.avgScore)
+    .sort((a, b) => b.avgScore - a.avgScore);
+}
+
+export interface ScoreHistogramBucket {
+  score: number;
+  count: number;
+}
+
+export async function getScoreHistogramBuckets(): Promise<ScoreHistogramBucket[]> {
+  const rows = await getPlayerScoreRows();
+  const bucketCounts = new Map<number, number>();
+
+  rows.forEach((row) => {
+    bucketCounts.set(row.score, (bucketCounts.get(row.score) ?? 0) + 1);
+  });
+
+  return [...bucketCounts.entries()]
+    .map(([score, bucketCount]) => ({
+      score,
+      count: bucketCount,
+    }))
+    .sort((a, b) => a.score - b.score);
+}
+
+export interface PlayerScoreDistribution {
+  playerId: number;
+  name: string;
+  tier: PlayerTierType;
+  count: number;
+  min: number;
+  q1: number;
+  median: number;
+  q3: number;
+  max: number;
+}
+
+export async function getPerPlayerScoreDistributions(): Promise<PlayerScoreDistribution[]> {
+  const rows = await getPlayerScoreRows();
+  const scoresByPlayerId = new Map<number, PlayerIdentity & { scores: number[] }>();
+
+  rows.forEach((row) => {
+    const existing = scoresByPlayerId.get(row.playerId) ?? {
+      playerId: row.playerId,
+      name: row.name,
+      tier: row.tier,
+      scores: [],
+    };
+
+    existing.scores.push(row.score);
+    scoresByPlayerId.set(row.playerId, existing);
+  });
+
+  return [...scoresByPlayerId.values()]
+    .map((player) => {
+      const sortedScores = [...player.scores].sort((a, b) => a - b);
+
+      return {
+        playerId: player.playerId,
+        name: player.name,
+        tier: player.tier,
+        count: sortedScores.length,
+        min: sortedScores[0],
+        q1: round1(getInterpolatedPercentile(sortedScores, 0.25)),
+        median: round1(getInterpolatedPercentile(sortedScores, 0.5)),
+        q3: round1(getInterpolatedPercentile(sortedScores, 0.75)),
+        max: sortedScores[sortedScores.length - 1],
+      };
+    })
+    .sort(comparePlayersByTierAndName);
 }
 
 export interface PlayerCumulativeScoreStats {
-  playerId: number
-  name: string
-  tier: PlayerTierType
-  games: number
-  totalScore: number
-  pointsPerGame: number
+  playerId: number;
+  name: string;
+  tier: PlayerTierType;
+  games: number;
+  totalScore: number;
+  pointsPerGame: number;
 }
 
 export async function getPlayerCumulativeScoreStats(): Promise<PlayerCumulativeScoreStats[]> {
@@ -355,7 +477,7 @@ export async function getPlayerCumulativeScoreStats(): Promise<PlayerCumulativeS
     })
     .from(players)
     .leftJoin(gamePlayers, eq(gamePlayers.playerId, players.id))
-    .groupBy(players.id)
+    .groupBy(players.id);
 
   return rows
     .map((row) => ({
@@ -367,28 +489,26 @@ export async function getPlayerCumulativeScoreStats(): Promise<PlayerCumulativeS
       pointsPerGame: row.games > 0 ? round1(Number(row.totalScore) / row.games) : 0,
     }))
     .sort(
-      (a, b) => b.totalScore - a.totalScore
-        || b.games - a.games
-        || a.name.localeCompare(b.name),
-    )
+      (a, b) => b.totalScore - a.totalScore || b.games - a.games || a.name.localeCompare(b.name),
+    );
 }
 
 interface PlayerNormalizedScoreAccumulator extends PlayerIdentity {
-  normalizedScores: number[]
+  normalizedScores: number[];
 }
 
 interface GameScoreParticipantRow {
-  gameId: number
-  score: number
-  isWinner: boolean
+  gameId: number;
+  score: number;
+  isWinner: boolean;
 }
 
 interface WinningScoreSummary {
-  gameId: number
-  playerCount: number
-  winningScore: number
-  winnerRowScores: number[]
-  nonWinnerRowScores: number[]
+  gameId: number;
+  playerCount: number;
+  winningScore: number;
+  winnerRowScores: number[];
+  nonWinnerRowScores: number[];
 }
 
 async function getWinningScoreSummaries(): Promise<WinningScoreSummary[]> {
@@ -399,25 +519,27 @@ async function getWinningScoreSummaries(): Promise<WinningScoreSummary[]> {
       isWinner: gamePlayers.isWinner,
     })
     .from(gamePlayers)
-    .orderBy(gamePlayers.gameId, desc(gamePlayers.score), desc(gamePlayers.isWinner))
+    .orderBy(gamePlayers.gameId, desc(gamePlayers.score), desc(gamePlayers.isWinner));
 
-  const participantsByGameId = new Map<number, GameScoreParticipantRow[]>()
+  const participantsByGameId = new Map<number, GameScoreParticipantRow[]>();
 
   rows.forEach((row) => {
-    const existing = participantsByGameId.get(row.gameId) ?? []
-    existing.push(row)
-    participantsByGameId.set(row.gameId, existing)
-  })
+    const existing = participantsByGameId.get(row.gameId) ?? [];
+    existing.push(row);
+    participantsByGameId.set(row.gameId, existing);
+  });
 
   return [...participantsByGameId.values()].map((participants) => {
-    const explicitWinners = participants.filter((participant) => participant.isWinner)
-    const winningScore = explicitWinners.length > 0
-      ? Math.max(...explicitWinners.map((participant) => participant.score))
-      : Math.max(...participants.map((participant) => participant.score))
-    const winnerRows = explicitWinners.length > 0
-      ? explicitWinners
-      : participants.filter((participant) => participant.score === winningScore)
-    const winnerRowSet = new Set(winnerRows)
+    const explicitWinners = participants.filter((participant) => participant.isWinner);
+    const winningScore =
+      explicitWinners.length > 0
+        ? Math.max(...explicitWinners.map((participant) => participant.score))
+        : Math.max(...participants.map((participant) => participant.score));
+    const winnerRows =
+      explicitWinners.length > 0
+        ? explicitWinners
+        : participants.filter((participant) => participant.score === winningScore);
+    const winnerRowSet = new Set(winnerRows);
 
     return {
       gameId: participants[0].gameId,
@@ -427,17 +549,17 @@ async function getWinningScoreSummaries(): Promise<WinningScoreSummary[]> {
       nonWinnerRowScores: participants
         .filter((participant) => !winnerRowSet.has(participant))
         .map((participant) => participant.score),
-    }
-  })
+    };
+  });
 }
 
 export interface PlayerNormalizedScoreStats {
-  playerId: number
-  name: string
-  tier: PlayerTierType
-  games: number
-  avgScore: number
-  medianScore: number
+  playerId: number;
+  name: string;
+  tier: PlayerTierType;
+  games: number;
+  avgScore: number;
+  medianScore: number;
 }
 
 export async function getPlayerNormalizedScoreStats(): Promise<PlayerNormalizedScoreStats[]> {
@@ -452,26 +574,29 @@ export async function getPlayerNormalizedScoreStats(): Promise<PlayerNormalizedS
     })
     .from(gamePlayers)
     .innerJoin(players, eq(players.id, gamePlayers.playerId))
-    .orderBy(gamePlayers.gameId, players.id)
+    .orderBy(gamePlayers.gameId, players.id);
 
-  const participantsByGameId = new Map<number, typeof rows>()
+  const participantsByGameId = new Map<number, typeof rows>();
 
   rows.forEach((row) => {
-    const existing = participantsByGameId.get(row.gameId) ?? []
-    existing.push(row)
-    participantsByGameId.set(row.gameId, existing)
-  })
+    const existing = participantsByGameId.get(row.gameId) ?? [];
+    existing.push(row);
+    participantsByGameId.set(row.gameId, existing);
+  });
 
-  const normalizedScoresByPlayerId = new Map<number, PlayerNormalizedScoreAccumulator>()
+  const normalizedScoresByPlayerId = new Map<number, PlayerNormalizedScoreAccumulator>();
 
   participantsByGameId.forEach((participants) => {
-    const winnerScores = participants.filter((participant) => participant.isWinner).map((participant) => participant.score)
-    const winningScore = winnerScores.length > 0
-      ? Math.max(...winnerScores)
-      : Math.max(...participants.map((participant) => participant.score))
+    const winnerScores = participants
+      .filter((participant) => participant.isWinner)
+      .map((participant) => participant.score);
+    const winningScore =
+      winnerScores.length > 0
+        ? Math.max(...winnerScores)
+        : Math.max(...participants.map((participant) => participant.score));
 
     if (winningScore <= 0) {
-      return
+      return;
     }
 
     participants.forEach((participant) => {
@@ -480,12 +605,12 @@ export async function getPlayerNormalizedScoreStats(): Promise<PlayerNormalizedS
         name: participant.name,
         tier: parsePlayerTier(participant.tier),
         normalizedScores: [],
-      }
+      };
 
-      existing.normalizedScores.push(participant.score / winningScore)
-      normalizedScoresByPlayerId.set(participant.playerId, existing)
-    })
-  })
+      existing.normalizedScores.push(participant.score / winningScore);
+      normalizedScoresByPlayerId.set(participant.playerId, existing);
+    });
+  });
 
   return [...normalizedScoresByPlayerId.values()]
     .map((player) => ({
@@ -494,35 +619,37 @@ export async function getPlayerNormalizedScoreStats(): Promise<PlayerNormalizedS
       tier: player.tier,
       games: player.normalizedScores.length,
       avgScore: round3(
-        player.normalizedScores.reduce((sum, score) => sum + score, 0) / player.normalizedScores.length,
+        player.normalizedScores.reduce((sum, score) => sum + score, 0) /
+          player.normalizedScores.length,
       ),
       medianScore: round3(getMedian(player.normalizedScores)),
     }))
     .sort(
-      (a, b) => b.avgScore - a.avgScore
-        || b.medianScore - a.medianScore
-        || a.name.localeCompare(b.name),
-    )
+      (a, b) =>
+        b.avgScore - a.avgScore || b.medianScore - a.medianScore || a.name.localeCompare(b.name),
+    );
 }
 
 export interface WinningScoreComparison {
-  winnerRows: number
-  nonWinnerRows: number
-  avgWinningScore: number
-  avgLosingScore: number
-  scoreGap: number
+  winnerRows: number;
+  nonWinnerRows: number;
+  avgWinningScore: number;
+  avgLosingScore: number;
+  scoreGap: number;
 }
 
 export async function getWinningScoreComparison(): Promise<WinningScoreComparison> {
-  const summaries = await getWinningScoreSummaries()
-  const winnerScores = summaries.flatMap((summary) => summary.winnerRowScores)
-  const nonWinnerScores = summaries.flatMap((summary) => summary.nonWinnerRowScores)
-  const avgWinningScore = winnerScores.length > 0
-    ? round1(winnerScores.reduce((sum, score) => sum + score, 0) / winnerScores.length)
-    : 0
-  const avgLosingScore = nonWinnerScores.length > 0
-    ? round1(nonWinnerScores.reduce((sum, score) => sum + score, 0) / nonWinnerScores.length)
-    : 0
+  const summaries = await getWinningScoreSummaries();
+  const winnerScores = summaries.flatMap((summary) => summary.winnerRowScores);
+  const nonWinnerScores = summaries.flatMap((summary) => summary.nonWinnerRowScores);
+  const avgWinningScore =
+    winnerScores.length > 0
+      ? round1(winnerScores.reduce((sum, score) => sum + score, 0) / winnerScores.length)
+      : 0;
+  const avgLosingScore =
+    nonWinnerScores.length > 0
+      ? round1(nonWinnerScores.reduce((sum, score) => sum + score, 0) / nonWinnerScores.length)
+      : 0;
 
   return {
     winnerRows: winnerScores.length,
@@ -530,29 +657,29 @@ export async function getWinningScoreComparison(): Promise<WinningScoreCompariso
     avgWinningScore,
     avgLosingScore,
     scoreGap: round1(avgWinningScore - avgLosingScore),
-  }
+  };
 }
 
 export interface WinningScoreByGameSizeBucket {
-  playerCount: number
-  gameCount: number
-  avgWinningScore: number
+  playerCount: number;
+  gameCount: number;
+  avgWinningScore: number;
 }
 
 export async function getWinningScoreByGameSize(): Promise<WinningScoreByGameSizeBucket[]> {
-  const summaries = await getWinningScoreSummaries()
-  const buckets = new Map<number, { gameCount: number; winningScoreTotal: number }>()
+  const summaries = await getWinningScoreSummaries();
+  const buckets = new Map<number, { gameCount: number; winningScoreTotal: number }>();
 
   summaries.forEach((summary) => {
     const existing = buckets.get(summary.playerCount) ?? {
       gameCount: 0,
       winningScoreTotal: 0,
-    }
+    };
 
-    existing.gameCount += 1
-    existing.winningScoreTotal += summary.winningScore
-    buckets.set(summary.playerCount, existing)
-  })
+    existing.gameCount += 1;
+    existing.winningScoreTotal += summary.winningScore;
+    buckets.set(summary.playerCount, existing);
+  });
 
   return [...buckets.entries()]
     .map(([playerCount, bucket]) => ({
@@ -560,16 +687,16 @@ export async function getWinningScoreByGameSize(): Promise<WinningScoreByGameSiz
       gameCount: bucket.gameCount,
       avgWinningScore: round1(bucket.winningScoreTotal / bucket.gameCount),
     }))
-    .sort((a, b) => a.playerCount - b.playerCount)
+    .sort((a, b) => a.playerCount - b.playerCount);
 }
 
 export interface PlayerPodiumRate {
-  playerId: number
-  name: string
-  tier: PlayerTierType
-  games: number
-  podiums: number
-  podiumRate: number // 0.0–1.0
+  playerId: number;
+  name: string;
+  tier: PlayerTierType;
+  games: number;
+  podiums: number;
+  podiumRate: number; // 0.0–1.0
 }
 
 export async function getPlayerPodiumRates(): Promise<PlayerPodiumRate[]> {
@@ -590,12 +717,12 @@ export async function getPlayerPodiumRates(): Promise<PlayerPodiumRate[]> {
     LEFT JOIN ranked r ON r.player_id = p.id
     GROUP BY p.id, p.name, p.tier
     ORDER BY podiums DESC
-  `)
+  `);
 
   return (result as Record<string, unknown>[])
     .map((row) => {
-      const gameCount = row.games as number
-      const podiums = row.podiums as number
+      const gameCount = row.games as number;
+      const podiums = row.podiums as number;
       return {
         playerId: row.playerId as number,
         name: row.name as string,
@@ -603,24 +730,24 @@ export async function getPlayerPodiumRates(): Promise<PlayerPodiumRate[]> {
         games: gameCount,
         podiums,
         podiumRate: gameCount > 0 ? podiums / gameCount : 0,
-      }
+      };
     })
-    .sort((a, b) => b.podiumRate - a.podiumRate || b.podiums - a.podiums)
+    .sort((a, b) => b.podiumRate - a.podiumRate || b.podiums - a.podiums);
 }
 
 export interface PlayerFinishBreakdown {
-  playerId: number
-  name: string
-  tier: PlayerTierType
-  games: number
-  firsts: number
-  seconds: number
-  thirds: number
-  lasts: number
-  firstRate: number
-  secondRate: number
-  thirdRate: number
-  lastRate: number
+  playerId: number;
+  name: string;
+  tier: PlayerTierType;
+  games: number;
+  firsts: number;
+  seconds: number;
+  thirds: number;
+  lasts: number;
+  firstRate: number;
+  secondRate: number;
+  thirdRate: number;
+  lastRate: number;
 }
 
 export async function getPlayerFinishBreakdowns(): Promise<PlayerFinishBreakdown[]> {
@@ -646,15 +773,15 @@ export async function getPlayerFinishBreakdowns(): Promise<PlayerFinishBreakdown
     FROM players p
     LEFT JOIN ranked r ON r.player_id = p.id
     GROUP BY p.id, p.name, p.tier
-  `)
+  `);
 
   return (result as Record<string, unknown>[])
     .map((row) => {
-      const gameCount = row.games as number
-      const firsts = row.firsts as number
-      const seconds = row.seconds as number
-      const thirds = row.thirds as number
-      const lasts = row.lasts as number
+      const gameCount = row.games as number;
+      const firsts = row.firsts as number;
+      const seconds = row.seconds as number;
+      const thirds = row.thirds as number;
+      const lasts = row.lasts as number;
 
       return {
         playerId: row.playerId as number,
@@ -669,37 +796,38 @@ export async function getPlayerFinishBreakdowns(): Promise<PlayerFinishBreakdown
         secondRate: gameCount > 0 ? seconds / gameCount : 0,
         thirdRate: gameCount > 0 ? thirds / gameCount : 0,
         lastRate: gameCount > 0 ? lasts / gameCount : 0,
-      }
+      };
     })
     .sort(
-      (a, b) => b.firstRate - a.firstRate
-        || b.firsts - a.firsts
-        || b.secondRate - a.secondRate
-        || b.thirdRate - a.thirdRate
-        || a.lastRate - b.lastRate
-        || b.games - a.games
-        || a.name.localeCompare(b.name),
-    )
+      (a, b) =>
+        b.firstRate - a.firstRate ||
+        b.firsts - a.firsts ||
+        b.secondRate - a.secondRate ||
+        b.thirdRate - a.thirdRate ||
+        a.lastRate - b.lastRate ||
+        b.games - a.games ||
+        a.name.localeCompare(b.name),
+    );
 }
 
 export interface PlayerMarginStats {
-  playerId: number
-  name: string
-  tier: PlayerTierType
-  winGames: number
-  lossGames: number
-  averageVictoryMargin: number | null
-  averageDefeatMargin: number | null
+  playerId: number;
+  name: string;
+  tier: PlayerTierType;
+  winGames: number;
+  lossGames: number;
+  averageVictoryMargin: number | null;
+  averageDefeatMargin: number | null;
 }
 
 interface PlayerMarginAccumulator {
-  playerId: number
-  name: string
-  tier: PlayerTierType
-  winGames: number
-  lossGames: number
-  victoryMarginTotal: number
-  defeatMarginTotal: number
+  playerId: number;
+  name: string;
+  tier: PlayerTierType;
+  winGames: number;
+  lossGames: number;
+  victoryMarginTotal: number;
+  defeatMarginTotal: number;
 }
 
 export async function getPlayerMarginStats(): Promise<PlayerMarginStats[]> {
@@ -720,7 +848,7 @@ export async function getPlayerMarginStats(): Promise<PlayerMarginStats[]> {
         isWinner: gamePlayers.isWinner,
       })
       .from(gamePlayers),
-  ])
+  ]);
 
   const statsByPlayerId = new Map<number, PlayerMarginAccumulator>(
     playerRows.map((player) => [
@@ -735,44 +863,44 @@ export async function getPlayerMarginStats(): Promise<PlayerMarginStats[]> {
         defeatMarginTotal: 0,
       },
     ]),
-  )
+  );
 
-  const participantsByGameId = new Map<number, typeof participantRows>()
+  const participantsByGameId = new Map<number, typeof participantRows>();
 
   participantRows.forEach((row) => {
-    const existing = participantsByGameId.get(row.gameId) ?? []
-    existing.push(row)
-    participantsByGameId.set(row.gameId, existing)
-  })
+    const existing = participantsByGameId.get(row.gameId) ?? [];
+    existing.push(row);
+    participantsByGameId.set(row.gameId, existing);
+  });
 
   participantsByGameId.forEach((participants) => {
-    const winners = participants.filter((participant) => participant.isWinner)
+    const winners = participants.filter((participant) => participant.isWinner);
     if (winners.length === 0) {
-      return
+      return;
     }
 
-    const losers = participants.filter((participant) => !participant.isWinner)
-    const bestNonWinnerScore = losers.length > 0
-      ? Math.max(...losers.map((participant) => participant.score))
-      : null
-    const bestRecordedWinnerScore = Math.max(...winners.map((participant) => participant.score))
+    const losers = participants.filter((participant) => !participant.isWinner);
+    const bestNonWinnerScore =
+      losers.length > 0 ? Math.max(...losers.map((participant) => participant.score)) : null;
+    const bestRecordedWinnerScore = Math.max(...winners.map((participant) => participant.score));
 
     winners.forEach((winner) => {
-      const stats = statsByPlayerId.get(winner.playerId)
-      if (!stats) return
+      const stats = statsByPlayerId.get(winner.playerId);
+      if (!stats) return;
 
-      stats.winGames += 1
-      stats.victoryMarginTotal += bestNonWinnerScore === null ? 0 : winner.score - bestNonWinnerScore
-    })
+      stats.winGames += 1;
+      stats.victoryMarginTotal +=
+        bestNonWinnerScore === null ? 0 : winner.score - bestNonWinnerScore;
+    });
 
     losers.forEach((loser) => {
-      const stats = statsByPlayerId.get(loser.playerId)
-      if (!stats) return
+      const stats = statsByPlayerId.get(loser.playerId);
+      if (!stats) return;
 
-      stats.lossGames += 1
-      stats.defeatMarginTotal += bestRecordedWinnerScore - loser.score
-    })
-  })
+      stats.lossGames += 1;
+      stats.defeatMarginTotal += bestRecordedWinnerScore - loser.score;
+    });
+  });
 
   return [...statsByPlayerId.values()].map((player) => ({
     playerId: player.playerId,
@@ -784,86 +912,90 @@ export async function getPlayerMarginStats(): Promise<PlayerMarginStats[]> {
       player.winGames > 0 ? round1(player.victoryMarginTotal / player.winGames) : null,
     averageDefeatMargin:
       player.lossGames > 0 ? round1(player.defeatMarginTotal / player.lossGames) : null,
-  }))
+  }));
 }
 
 export interface HighestScoreRecord extends PlayerIdentity {
-  gameId: number
-  playedAt: string
-  score: number
+  gameId: number;
+  playedAt: string;
+  score: number;
 }
 
-export type WinningScoreRecord = HighestScoreRecord
+export type WinningScoreRecord = HighestScoreRecord;
 
 export interface MarginGameRecord {
-  gameId: number
-  playedAt: string
-  winner: string
-  winnerScore: number
-  runnerUpScore: number
-  margin: number
-  participantCount: number
+  gameId: number;
+  playedAt: string;
+  winner: string;
+  winnerScore: number;
+  runnerUpScore: number;
+  margin: number;
+  participantCount: number;
 }
 
 export interface SingleGameRecords {
-  highestScore: HighestScoreRecord | null
-  lowestWinningScore: WinningScoreRecord | null
-  biggestBlowout: MarginGameRecord | null
-  closestGame: MarginGameRecord | null
+  highestScore: HighestScoreRecord | null;
+  lowestWinningScore: WinningScoreRecord | null;
+  biggestBlowout: MarginGameRecord | null;
+  closestGame: MarginGameRecord | null;
 }
 
 interface SingleGameParticipantRecord extends PlayerIdentity {
-  gameId: number
-  playedAt: Date
-  score: number
-  isWinner: boolean
+  gameId: number;
+  playedAt: Date;
+  score: number;
+  isWinner: boolean;
 }
 
 interface InternalScoreRecord extends PlayerIdentity {
-  gameId: number
-  playedAt: Date
-  score: number
+  gameId: number;
+  playedAt: Date;
+  score: number;
 }
 
 interface InternalMarginGameRecord {
-  gameId: number
-  playedAt: Date
-  winner: string
-  winnerScore: number
-  runnerUpScore: number
-  margin: number
-  participantCount: number
+  gameId: number;
+  playedAt: Date;
+  winner: string;
+  winnerScore: number;
+  runnerUpScore: number;
+  margin: number;
+  participantCount: number;
 }
 
 function prefersNewerGame(
   candidate: { gameId: number; playedAt: Date },
   current: { gameId: number; playedAt: Date },
 ): boolean {
-  const playedAtDiff = candidate.playedAt.getTime() - current.playedAt.getTime()
+  const playedAtDiff = candidate.playedAt.getTime() - current.playedAt.getTime();
 
   if (playedAtDiff !== 0) {
-    return playedAtDiff > 0
+    return playedAtDiff > 0;
   }
 
-  return candidate.gameId > current.gameId
+  return candidate.gameId > current.gameId;
 }
 
-function prefersHighestScore(candidate: InternalScoreRecord, current: InternalScoreRecord): boolean {
+function prefersHighestScore(
+  candidate: InternalScoreRecord,
+  current: InternalScoreRecord,
+): boolean {
   if (candidate.score !== current.score) {
-    return candidate.score > current.score
+    return candidate.score > current.score;
   }
 
   if (prefersNewerGame(candidate, current)) {
-    return true
+    return true;
   }
 
-  if (candidate.playedAt.getTime() === current.playedAt.getTime()
-    && candidate.gameId === current.gameId
+  if (
+    candidate.playedAt.getTime() === current.playedAt.getTime() &&
+    candidate.gameId === current.gameId
   ) {
-    return candidate.name.localeCompare(current.name) < 0
+    return candidate.name.localeCompare(current.name) < 0;
   }
 
-  return false
+  return false;
 }
 
 function prefersLowestWinningScore(
@@ -871,20 +1003,21 @@ function prefersLowestWinningScore(
   current: InternalScoreRecord,
 ): boolean {
   if (candidate.score !== current.score) {
-    return candidate.score < current.score
+    return candidate.score < current.score;
   }
 
   if (prefersNewerGame(candidate, current)) {
-    return true
+    return true;
   }
 
-  if (candidate.playedAt.getTime() === current.playedAt.getTime()
-    && candidate.gameId === current.gameId
+  if (
+    candidate.playedAt.getTime() === current.playedAt.getTime() &&
+    candidate.gameId === current.gameId
   ) {
-    return candidate.name.localeCompare(current.name) < 0
+    return candidate.name.localeCompare(current.name) < 0;
   }
 
-  return false
+  return false;
 }
 
 function prefersMarginRecord(
@@ -895,10 +1028,10 @@ function prefersMarginRecord(
   if (candidate.margin !== current.margin) {
     return direction === 'highest'
       ? candidate.margin > current.margin
-      : candidate.margin < current.margin
+      : candidate.margin < current.margin;
   }
 
-  return prefersNewerGame(candidate, current)
+  return prefersNewerGame(candidate, current);
 }
 
 function toScoreRecord(record: InternalScoreRecord): HighestScoreRecord {
@@ -909,7 +1042,7 @@ function toScoreRecord(record: InternalScoreRecord): HighestScoreRecord {
     name: record.name,
     tier: record.tier,
     score: record.score,
-  }
+  };
 }
 
 function toMarginRecord(record: InternalMarginGameRecord): MarginGameRecord {
@@ -921,7 +1054,7 @@ function toMarginRecord(record: InternalMarginGameRecord): MarginGameRecord {
     runnerUpScore: record.runnerUpScore,
     margin: record.margin,
     participantCount: record.participantCount,
-  }
+  };
 }
 
 export async function getSingleGameRecords(): Promise<SingleGameRecords> {
@@ -938,13 +1071,13 @@ export async function getSingleGameRecords(): Promise<SingleGameRecords> {
     .from(gamePlayers)
     .innerJoin(games, eq(games.id, gamePlayers.gameId))
     .innerJoin(players, eq(players.id, gamePlayers.playerId))
-    .orderBy(desc(games.playedAt), desc(games.id), desc(gamePlayers.score), players.name)
+    .orderBy(desc(games.playedAt), desc(games.id), desc(gamePlayers.score), players.name);
 
-  let highestScore: InternalScoreRecord | null = null
-  let lowestWinningScore: InternalScoreRecord | null = null
-  let biggestBlowout: InternalMarginGameRecord | null = null
-  let closestGame: InternalMarginGameRecord | null = null
-  const participantsByGameId = new Map<number, SingleGameParticipantRecord[]>()
+  let highestScore: InternalScoreRecord | null = null;
+  let lowestWinningScore: InternalScoreRecord | null = null;
+  let biggestBlowout: InternalMarginGameRecord | null = null;
+  let closestGame: InternalMarginGameRecord | null = null;
+  const participantsByGameId = new Map<number, SingleGameParticipantRecord[]>();
 
   rows.forEach((row) => {
     const record: SingleGameParticipantRecord = {
@@ -955,7 +1088,7 @@ export async function getSingleGameRecords(): Promise<SingleGameRecords> {
       tier: parsePlayerTier(row.tier),
       score: row.score,
       isWinner: row.isWinner,
-    }
+    };
     const scoreRecord: InternalScoreRecord = {
       gameId: record.gameId,
       playedAt: record.playedAt,
@@ -963,39 +1096,39 @@ export async function getSingleGameRecords(): Promise<SingleGameRecords> {
       name: record.name,
       tier: record.tier,
       score: record.score,
-    }
+    };
 
     if (highestScore === null || prefersHighestScore(scoreRecord, highestScore)) {
-      highestScore = scoreRecord
+      highestScore = scoreRecord;
     }
 
     if (
-      record.isWinner
-      && (lowestWinningScore === null || prefersLowestWinningScore(scoreRecord, lowestWinningScore))
+      record.isWinner &&
+      (lowestWinningScore === null || prefersLowestWinningScore(scoreRecord, lowestWinningScore))
     ) {
-      lowestWinningScore = scoreRecord
+      lowestWinningScore = scoreRecord;
     }
 
-    const existing = participantsByGameId.get(record.gameId) ?? []
-    existing.push(record)
-    participantsByGameId.set(record.gameId, existing)
-  })
+    const existing = participantsByGameId.get(record.gameId) ?? [];
+    existing.push(record);
+    participantsByGameId.set(record.gameId, existing);
+  });
 
   participantsByGameId.forEach((participants) => {
-    const winners = participants.filter((participant) => participant.isWinner)
-    const nonWinners = participants.filter((participant) => !participant.isWinner)
+    const winners = participants.filter((participant) => participant.isWinner);
+    const nonWinners = participants.filter((participant) => !participant.isWinner);
 
     if (winners.length === 0 || nonWinners.length === 0) {
-      return
+      return;
     }
 
-    const winnerScore = Math.max(...winners.map((winner) => winner.score))
+    const winnerScore = Math.max(...winners.map((winner) => winner.score));
     const topWinners = winners
       .filter((winner) => winner.score === winnerScore)
-      .sort((a, b) => a.name.localeCompare(b.name))
-    const runnerUpScore = Math.max(...nonWinners.map((participant) => participant.score))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    const runnerUpScore = Math.max(...nonWinners.map((participant) => participant.score));
     if (winnerScore < runnerUpScore) {
-      return
+      return;
     }
 
     const marginRecord: InternalMarginGameRecord = {
@@ -1006,74 +1139,71 @@ export async function getSingleGameRecords(): Promise<SingleGameRecords> {
       runnerUpScore,
       margin: winnerScore - runnerUpScore,
       participantCount: participants.length,
-    }
+    };
 
-    if (
-      biggestBlowout === null
-      || prefersMarginRecord(marginRecord, biggestBlowout, 'highest')
-    ) {
-      biggestBlowout = marginRecord
+    if (biggestBlowout === null || prefersMarginRecord(marginRecord, biggestBlowout, 'highest')) {
+      biggestBlowout = marginRecord;
     }
 
     if (closestGame === null || prefersMarginRecord(marginRecord, closestGame, 'lowest')) {
-      closestGame = marginRecord
+      closestGame = marginRecord;
     }
-  })
+  });
 
   return {
     highestScore: highestScore ? toScoreRecord(highestScore) : null,
     lowestWinningScore: lowestWinningScore ? toScoreRecord(lowestWinningScore) : null,
     biggestBlowout: biggestBlowout ? toMarginRecord(biggestBlowout) : null,
     closestGame: closestGame ? toMarginRecord(closestGame) : null,
-  }
+  };
 }
 
 export interface PlayerWinRateByGameSize {
-  playerId: number
-  name: string
-  tier: PlayerTierType
-  playerCount: number
-  games: number
-  wins: number
-  winRate: number
+  playerId: number;
+  name: string;
+  tier: PlayerTierType;
+  playerCount: number;
+  games: number;
+  wins: number;
+  winRate: number;
 }
 
 export async function getPlayerWinRateByGameSize(): Promise<PlayerWinRateByGameSize[]> {
-  const data = await getGameSizeAggregateData()
-  return data.playerWinRateByGameSize
+  const data = await getGameSizeAggregateData();
+  return data.playerWinRateByGameSize;
 }
 
 export interface TierShowdownStats {
-  tier: PlayerTierType
-  players: number
-  appearances: number
-  wins: number
-  winRate: number
+  tier: PlayerTierType;
+  players: number;
+  appearances: number;
+  wins: number;
+  winRate: number;
 }
 
 export async function getTierShowdownStats(): Promise<TierShowdownStats[]> {
-  const data = await getGameSizeAggregateData()
-  return data.tierShowdownStats
+  const data = await getGameSizeAggregateData();
+  return data.tierShowdownStats;
 }
 
 export interface PlayerExpectedVsActualWins {
-  playerId: number
-  name: string
-  tier: PlayerTierType
-  games: number
-  wins: number
-  expectedWins: number
-  winDelta: number
+  playerId: number;
+  name: string;
+  tier: PlayerTierType;
+  games: number;
+  wins: number;
+  expectedWins: number;
+  winDelta: number;
 }
 
 export async function getPlayerExpectedVsActualWins(): Promise<PlayerExpectedVsActualWins[]> {
-  const data = await getGameSizeAggregateData()
-  return data.playerExpectedVsActualWins
+  const data = await getGameSizeAggregateData();
+  return data.playerExpectedVsActualWins;
 }
 
 export interface RecentActivitySummary {
-  totalGames: number
-  latestPlayedAt: string | null
+  totalGames: number;
+  latestPlayedAt: string | null;
 }
 
 export async function getRecentActivitySummary(): Promise<RecentActivitySummary> {
@@ -1083,39 +1213,39 @@ export async function getRecentActivitySummary(): Promise<RecentActivitySummary>
     })
     .from(games)
     .orderBy(desc(games.playedAt), desc(games.id))
-    .limit(1)
+    .limit(1);
 
   const [{ totalGames }] = await db
     .select({
       totalGames: count(),
     })
-    .from(games)
+    .from(games);
 
   if (!latestGame) {
     return {
       totalGames,
       latestPlayedAt: null,
-    }
+    };
   }
 
   return {
     totalGames,
     latestPlayedAt: latestGame.playedAt.toISOString(),
-  }
+  };
 }
 
 interface GameOutcomeRow {
-  gameId: number
-  playedAt: Date
-  playerId: number
-  name: string
-  tier: PlayerTierType
-  isWinner: boolean
+  gameId: number;
+  playedAt: Date;
+  playerId: number;
+  name: string;
+  tier: PlayerTierType;
+  isWinner: boolean;
 }
 
 interface OrderedGameOutcomeData {
-  players: PlayerIdentity[]
-  outcomeRows: GameOutcomeRow[]
+  players: PlayerIdentity[];
+  outcomeRows: GameOutcomeRow[];
 }
 
 async function getOrderedGameOutcomeData(): Promise<OrderedGameOutcomeData> {
@@ -1141,7 +1271,7 @@ async function getOrderedGameOutcomeData(): Promise<OrderedGameOutcomeData> {
       .innerJoin(games, eq(games.id, gamePlayers.gameId))
       .innerJoin(players, eq(players.id, gamePlayers.playerId))
       .orderBy(desc(games.playedAt), desc(games.id), players.name),
-  ])
+  ]);
 
   return {
     players: playerRows.map((player) => ({
@@ -1157,20 +1287,20 @@ async function getOrderedGameOutcomeData(): Promise<OrderedGameOutcomeData> {
       tier: parsePlayerTier(row.tier),
       isWinner: row.isWinner,
     })),
-  }
+  };
 }
 
 export interface ReigningChampionSummary {
-  playedAt: string
-  winners: PlayerIdentity[]
+  playedAt: string;
+  winners: PlayerIdentity[];
 }
 
 export async function getReigningChampionSummary(): Promise<ReigningChampionSummary | null> {
-  const { outcomeRows } = await getOrderedGameOutcomeData()
-  const latestGame = outcomeRows[0]
+  const { outcomeRows } = await getOrderedGameOutcomeData();
+  const latestGame = outcomeRows[0];
 
   if (!latestGame) {
-    return null
+    return null;
   }
 
   return {
@@ -1182,109 +1312,110 @@ export async function getReigningChampionSummary(): Promise<ReigningChampionSumm
         name: row.name,
         tier: row.tier,
       })),
-  }
+  };
 }
 
 export interface PlayerCurrentWinStreak extends PlayerIdentity {
-  streak: number
-  mostRecentAppearance: string | null
-  mostRecentWin: string | null
+  streak: number;
+  mostRecentAppearance: string | null;
+  mostRecentWin: string | null;
 }
 
 interface StreakAccumulator {
-  count: number
-  startedAt: Date | null
-  endedAt: Date | null
+  count: number;
+  startedAt: Date | null;
+  endedAt: Date | null;
 }
 
 interface PlayerStreakAccumulator {
-  longestWin: StreakAccumulator
-  currentLoss: StreakAccumulator
-  longestLoss: StreakAccumulator
-  attendance: StreakAccumulator
+  longestWin: StreakAccumulator;
+  currentLoss: StreakAccumulator;
+  longestLoss: StreakAccumulator;
+  attendance: StreakAccumulator;
 }
 
 export interface PlayerStreakRecord extends PlayerIdentity {
-  longestWinStreak: number
-  longestWinStreakStartedAt: string | null
-  longestWinStreakEndedAt: string | null
-  currentLossStreak: number
-  currentLossStreakStartedAt: string | null
-  currentLossStreakEndedAt: string | null
-  longestLossStreak: number
-  longestLossStreakStartedAt: string | null
-  longestLossStreakEndedAt: string | null
-  attendanceStreak: number
-  attendanceStreakStartedAt: string | null
-  attendanceStreakEndedAt: string | null
+  longestWinStreak: number;
+  longestWinStreakStartedAt: string | null;
+  longestWinStreakEndedAt: string | null;
+  currentLossStreak: number;
+  currentLossStreakStartedAt: string | null;
+  currentLossStreakEndedAt: string | null;
+  longestLossStreak: number;
+  longestLossStreakStartedAt: string | null;
+  longestLossStreakEndedAt: string | null;
+  attendanceStreak: number;
+  attendanceStreakStartedAt: string | null;
+  attendanceStreakEndedAt: string | null;
 }
 
 function compareNullableIsoDesc(left: string | null, right: string | null) {
   if (left === right) {
-    return 0
+    return 0;
   }
 
   if (left === null) {
-    return 1
+    return 1;
   }
 
   if (right === null) {
-    return -1
+    return -1;
   }
 
-  return right.localeCompare(left)
+  return right.localeCompare(left);
 }
 
 export async function getPlayerCurrentWinStreaks(): Promise<PlayerCurrentWinStreak[]> {
-  const { players: allPlayers, outcomeRows } = await getOrderedGameOutcomeData()
-  const rowsByPlayerId = new Map<number, GameOutcomeRow[]>()
+  const { players: allPlayers, outcomeRows } = await getOrderedGameOutcomeData();
+  const rowsByPlayerId = new Map<number, GameOutcomeRow[]>();
   const mostRecentAppearanceByPlayerId = new Map<number, string | null>(
     allPlayers.map((player) => [player.playerId, null]),
-  )
+  );
   const mostRecentWinByPlayerId = new Map<number, string | null>(
     allPlayers.map((player) => [player.playerId, null]),
-  )
+  );
 
   outcomeRows.forEach((row) => {
-    const existingRows = rowsByPlayerId.get(row.playerId) ?? []
-    existingRows.push(row)
-    rowsByPlayerId.set(row.playerId, existingRows)
+    const existingRows = rowsByPlayerId.get(row.playerId) ?? [];
+    existingRows.push(row);
+    rowsByPlayerId.set(row.playerId, existingRows);
 
     if (mostRecentAppearanceByPlayerId.get(row.playerId) === null) {
-      mostRecentAppearanceByPlayerId.set(row.playerId, row.playedAt.toISOString())
+      mostRecentAppearanceByPlayerId.set(row.playerId, row.playedAt.toISOString());
     }
 
     if (row.isWinner && mostRecentWinByPlayerId.get(row.playerId) === null) {
-      mostRecentWinByPlayerId.set(row.playerId, row.playedAt.toISOString())
+      mostRecentWinByPlayerId.set(row.playerId, row.playedAt.toISOString());
     }
-  })
+  });
 
   return allPlayers
     .map((player) => {
-      const rows = rowsByPlayerId.get(player.playerId) ?? []
-      let streak = 0
+      const rows = rowsByPlayerId.get(player.playerId) ?? [];
+      let streak = 0;
 
       rows.some((row) => {
         if (!row.isWinner) {
-          return true
+          return true;
         }
 
-        streak += 1
-        return false
-      })
+        streak += 1;
+        return false;
+      });
 
       return {
         ...player,
         streak,
         mostRecentAppearance: mostRecentAppearanceByPlayerId.get(player.playerId) ?? null,
         mostRecentWin: mostRecentWinByPlayerId.get(player.playerId) ?? null,
-      }
+      };
     })
     .sort(
-      (a, b) => b.streak - a.streak
-        || compareNullableIsoDesc(a.mostRecentWin, b.mostRecentWin)
-        || a.name.localeCompare(b.name),
-    )
+      (a, b) =>
+        b.streak - a.streak ||
+        compareNullableIsoDesc(a.mostRecentWin, b.mostRecentWin) ||
+        a.name.localeCompare(b.name),
+    );
 }
 
 function createEmptyStreak(): StreakAccumulator {
@@ -1292,23 +1423,23 @@ function createEmptyStreak(): StreakAccumulator {
     count: 0,
     startedAt: null,
     endedAt: null,
-  }
+  };
 }
 
 function shouldReplaceStreak(candidate: StreakAccumulator, best: StreakAccumulator) {
   if (candidate.count === 0 || !candidate.startedAt || !candidate.endedAt) {
-    return false
+    return false;
   }
 
   if (candidate.count !== best.count) {
-    return candidate.count > best.count
+    return candidate.count > best.count;
   }
 
   if (!best.endedAt) {
-    return true
+    return true;
   }
 
-  return candidate.endedAt.getTime() >= best.endedAt.getTime()
+  return candidate.endedAt.getTime() >= best.endedAt.getTime();
 }
 
 function cloneStreak(streak: StreakAccumulator): StreakAccumulator {
@@ -1316,17 +1447,19 @@ function cloneStreak(streak: StreakAccumulator): StreakAccumulator {
     count: streak.count,
     startedAt: streak.startedAt,
     endedAt: streak.endedAt,
-  }
+  };
 }
 
 function serializeDate(date: Date | null) {
-  return date?.toISOString() ?? null
+  return date?.toISOString() ?? null;
 }
 
 function sortOutcomeRowsChronologically(left: GameOutcomeRow, right: GameOutcomeRow) {
-  return left.playedAt.getTime() - right.playedAt.getTime()
-    || left.gameId - right.gameId
-    || left.name.localeCompare(right.name)
+  return (
+    left.playedAt.getTime() - right.playedAt.getTime() ||
+    left.gameId - right.gameId ||
+    left.name.localeCompare(right.name)
+  );
 }
 
 async function getOrderedGameRows(): Promise<{ gameId: number; playedAt: Date }[]> {
@@ -1336,26 +1469,26 @@ async function getOrderedGameRows(): Promise<{ gameId: number; playedAt: Date }[
       playedAt: games.playedAt,
     })
     .from(games)
-    .orderBy(games.playedAt, games.id)
+    .orderBy(games.playedAt, games.id);
 }
 
 export async function getPlayerStreakRecords(): Promise<PlayerStreakRecord[]> {
   const [{ players: allPlayers, outcomeRows }, gameRows] = await Promise.all([
     getOrderedGameOutcomeData(),
     getOrderedGameRows(),
-  ])
-  const outcomeRowsByPlayerId = new Map<number, GameOutcomeRow[]>()
-  const playerIdsByGameId = new Map<number, Set<number>>()
+  ]);
+  const outcomeRowsByPlayerId = new Map<number, GameOutcomeRow[]>();
+  const playerIdsByGameId = new Map<number, Set<number>>();
 
   outcomeRows.forEach((row) => {
-    const playerOutcomeRows = outcomeRowsByPlayerId.get(row.playerId) ?? []
-    playerOutcomeRows.push(row)
-    outcomeRowsByPlayerId.set(row.playerId, playerOutcomeRows)
+    const playerOutcomeRows = outcomeRowsByPlayerId.get(row.playerId) ?? [];
+    playerOutcomeRows.push(row);
+    outcomeRowsByPlayerId.set(row.playerId, playerOutcomeRows);
 
-    const gamePlayerIds = playerIdsByGameId.get(row.gameId) ?? new Set<number>()
-    gamePlayerIds.add(row.playerId)
-    playerIdsByGameId.set(row.gameId, gamePlayerIds)
-  })
+    const gamePlayerIds = playerIdsByGameId.get(row.gameId) ?? new Set<number>();
+    gamePlayerIds.add(row.playerId);
+    playerIdsByGameId.set(row.gameId, gamePlayerIds);
+  });
 
   return allPlayers.map((player) => {
     const accumulator: PlayerStreakAccumulator = {
@@ -1363,13 +1496,13 @@ export async function getPlayerStreakRecords(): Promise<PlayerStreakRecord[]> {
       currentLoss: createEmptyStreak(),
       longestLoss: createEmptyStreak(),
       attendance: createEmptyStreak(),
-    }
-    let activeWin = createEmptyStreak()
-    let activeLoss = createEmptyStreak()
-    let activeAttendance = createEmptyStreak()
+    };
+    let activeWin = createEmptyStreak();
+    let activeLoss = createEmptyStreak();
+    let activeAttendance = createEmptyStreak();
     const rows = [...(outcomeRowsByPlayerId.get(player.playerId) ?? [])].sort(
       sortOutcomeRowsChronologically,
-    )
+    );
 
     rows.forEach((row) => {
       if (row.isWinner) {
@@ -1377,27 +1510,27 @@ export async function getPlayerStreakRecords(): Promise<PlayerStreakRecord[]> {
           count: activeWin.count + 1,
           startedAt: activeWin.startedAt ?? row.playedAt,
           endedAt: row.playedAt,
-        }
-        activeLoss = createEmptyStreak()
+        };
+        activeLoss = createEmptyStreak();
 
         if (shouldReplaceStreak(activeWin, accumulator.longestWin)) {
-          accumulator.longestWin = cloneStreak(activeWin)
+          accumulator.longestWin = cloneStreak(activeWin);
         }
       } else {
         activeLoss = {
           count: activeLoss.count + 1,
           startedAt: activeLoss.startedAt ?? row.playedAt,
           endedAt: row.playedAt,
-        }
-        activeWin = createEmptyStreak()
+        };
+        activeWin = createEmptyStreak();
 
         if (shouldReplaceStreak(activeLoss, accumulator.longestLoss)) {
-          accumulator.longestLoss = cloneStreak(activeLoss)
+          accumulator.longestLoss = cloneStreak(activeLoss);
         }
       }
-    })
+    });
 
-    accumulator.currentLoss = cloneStreak(activeLoss)
+    accumulator.currentLoss = cloneStreak(activeLoss);
 
     gameRows.forEach((game) => {
       if (playerIdsByGameId.get(game.gameId)?.has(player.playerId)) {
@@ -1405,15 +1538,15 @@ export async function getPlayerStreakRecords(): Promise<PlayerStreakRecord[]> {
           count: activeAttendance.count + 1,
           startedAt: activeAttendance.startedAt ?? game.playedAt,
           endedAt: game.playedAt,
-        }
+        };
 
         if (shouldReplaceStreak(activeAttendance, accumulator.attendance)) {
-          accumulator.attendance = cloneStreak(activeAttendance)
+          accumulator.attendance = cloneStreak(activeAttendance);
         }
       } else {
-        activeAttendance = createEmptyStreak()
+        activeAttendance = createEmptyStreak();
       }
-    })
+    });
 
     return {
       ...player,
@@ -1429,16 +1562,16 @@ export async function getPlayerStreakRecords(): Promise<PlayerStreakRecord[]> {
       attendanceStreak: accumulator.attendance.count,
       attendanceStreakStartedAt: serializeDate(accumulator.attendance.startedAt),
       attendanceStreakEndedAt: serializeDate(accumulator.attendance.endedAt),
-    }
-  })
+    };
+  });
 }
 
 export interface PlayerWinEvent extends PlayerIdentity {
-  playedAt: string
+  playedAt: string;
 }
 
 export async function getPlayerWinEvents(): Promise<PlayerWinEvent[]> {
-  const { outcomeRows } = await getOrderedGameOutcomeData()
+  const { outcomeRows } = await getOrderedGameOutcomeData();
 
   return outcomeRows
     .filter((row) => row.isWinner)
@@ -1447,7 +1580,7 @@ export async function getPlayerWinEvents(): Promise<PlayerWinEvent[]> {
       playerId: row.playerId,
       name: row.name,
       tier: row.tier,
-    }))
+    }));
 }
 
 async function getOrderedGameDates(): Promise<Date[]> {
@@ -1456,26 +1589,26 @@ async function getOrderedGameDates(): Promise<Date[]> {
       playedAt: games.playedAt,
     })
     .from(games)
-    .orderBy(games.playedAt, games.id)
+    .orderBy(games.playedAt, games.id);
 
-  return gameRows.map((game) => game.playedAt)
+  return gameRows.map((game) => game.playedAt);
 }
 
 export async function getGameActivityTimestamps(): Promise<string[]> {
-  const playedAtDates = await getOrderedGameDates()
-  return playedAtDates.map((playedAt) => playedAt.toISOString())
+  const playedAtDates = await getOrderedGameDates();
+  return playedAtDates.map((playedAt) => playedAt.toISOString());
 }
 
 export interface ActivityBucket {
-  bucketStart: Date
-  label: string
-  gameCount: number
+  bucketStart: Date;
+  label: string;
+  gameCount: number;
 }
 
 export interface GamesOverTimeSeries {
-  weekly: ActivityBucket[]
-  monthly: ActivityBucket[]
-  totalGames: number
+  weekly: ActivityBucket[];
+  monthly: ActivityBucket[];
+  totalGames: number;
 }
 
 function buildBucketStarts(
@@ -1484,22 +1617,22 @@ function buildBucketStarts(
   getNextBucketStart: (date: Date) => Date,
 ): Date[] {
   if (playedAtDates.length === 0) {
-    return []
+    return [];
   }
 
-  const firstBucket = getBucketStart(playedAtDates[0])
-  const lastBucket = getBucketStart(playedAtDates[playedAtDates.length - 1])
-  const bucketStarts: Date[] = []
+  const firstBucket = getBucketStart(playedAtDates[0]);
+  const lastBucket = getBucketStart(playedAtDates[playedAtDates.length - 1]);
+  const bucketStarts: Date[] = [];
 
   for (
     let bucketStart = firstBucket;
     bucketStart.getTime() <= lastBucket.getTime();
     bucketStart = getNextBucketStart(bucketStart)
   ) {
-    bucketStarts.push(bucketStart)
+    bucketStarts.push(bucketStart);
   }
 
-  return bucketStarts
+  return bucketStarts;
 }
 
 function buildActivityBuckets(
@@ -1509,30 +1642,30 @@ function buildActivityBuckets(
   formatLabel: (date: Date) => string,
 ): ActivityBucket[] {
   if (playedAtDates.length === 0) {
-    return []
+    return [];
   }
 
-  const countsByBucket = new Map<string, number>()
+  const countsByBucket = new Map<string, number>();
 
   playedAtDates.forEach((playedAt) => {
-    const bucketStart = getBucketStart(playedAt)
-    const bucketKey = toUtcDateKey(bucketStart)
-    countsByBucket.set(bucketKey, (countsByBucket.get(bucketKey) ?? 0) + 1)
-  })
+    const bucketStart = getBucketStart(playedAt);
+    const bucketKey = toUtcDateKey(bucketStart);
+    countsByBucket.set(bucketKey, (countsByBucket.get(bucketKey) ?? 0) + 1);
+  });
 
   return buildBucketStarts(playedAtDates, getBucketStart, getNextBucketStart).map((bucketStart) => {
-    const bucketKey = toUtcDateKey(bucketStart)
+    const bucketKey = toUtcDateKey(bucketStart);
 
     return {
       bucketStart,
       label: formatLabel(bucketStart),
       gameCount: countsByBucket.get(bucketKey) ?? 0,
-    }
-  })
+    };
+  });
 }
 
 export async function getGamesOverTimeSeries(): Promise<GamesOverTimeSeries> {
-  const playedAtDates = await getOrderedGameDates()
+  const playedAtDates = await getOrderedGameDates();
 
   return {
     weekly: buildActivityBuckets(
@@ -1548,40 +1681,40 @@ export async function getGamesOverTimeSeries(): Promise<GamesOverTimeSeries> {
       formatShortUtcMonth,
     ),
     totalGames: playedAtDates.length,
-  }
+  };
 }
 
 interface PlayerActivityRow {
-  playedAt: Date
-  playerId: number
-  name: string
-  tier: PlayerTierType
+  playedAt: Date;
+  playerId: number;
+  name: string;
+  tier: PlayerTierType;
 }
 
 export interface PlayerAttendanceSegment {
-  playerId: number
-  name: string
-  tier: PlayerTierType
-  gameCount: number
+  playerId: number;
+  name: string;
+  tier: PlayerTierType;
+  gameCount: number;
 }
 
 export interface PlayerAttendanceBucket {
-  bucketStart: Date
-  label: string
-  totalAppearances: number
-  segments: PlayerAttendanceSegment[]
+  bucketStart: Date;
+  label: string;
+  totalAppearances: number;
+  segments: PlayerAttendanceSegment[];
 }
 
 export interface PlayerAttendanceSeries {
-  weekly: PlayerAttendanceBucket[]
-  monthly: PlayerAttendanceBucket[]
+  weekly: PlayerAttendanceBucket[];
+  monthly: PlayerAttendanceBucket[];
 }
 
 export interface PlayerAttendanceEvent {
-  playedAt: string
-  playerId: number
-  name: string
-  tier: PlayerTierType
+  playedAt: string;
+  playerId: number;
+  name: string;
+  tier: PlayerTierType;
 }
 
 function buildPlayerAttendanceBuckets(
@@ -1592,40 +1725,41 @@ function buildPlayerAttendanceBuckets(
   formatLabel: (date: Date) => string,
 ): PlayerAttendanceBucket[] {
   if (rows.length === 0) {
-    return []
+    return [];
   }
 
-  const segmentsByBucket = new Map<string, Map<number, PlayerAttendanceSegment>>()
+  const segmentsByBucket = new Map<string, Map<number, PlayerAttendanceSegment>>();
 
   rows.forEach((row) => {
-    const bucketStart = getBucketStart(row.playedAt)
-    const bucketKey = toUtcDateKey(bucketStart)
-    const bucketSegments = segmentsByBucket.get(bucketKey) ?? new Map<number, PlayerAttendanceSegment>()
+    const bucketStart = getBucketStart(row.playedAt);
+    const bucketKey = toUtcDateKey(bucketStart);
+    const bucketSegments =
+      segmentsByBucket.get(bucketKey) ?? new Map<number, PlayerAttendanceSegment>();
     const existing = bucketSegments.get(row.playerId) ?? {
       playerId: row.playerId,
       name: row.name,
       tier: row.tier,
       gameCount: 0,
-    }
+    };
 
-    existing.gameCount += 1
-    bucketSegments.set(row.playerId, existing)
-    segmentsByBucket.set(bucketKey, bucketSegments)
-  })
+    existing.gameCount += 1;
+    bucketSegments.set(row.playerId, existing);
+    segmentsByBucket.set(bucketKey, bucketSegments);
+  });
 
   return buildBucketStarts(playedAtDates, getBucketStart, getNextBucketStart).map((bucketStart) => {
-    const bucketKey = toUtcDateKey(bucketStart)
+    const bucketKey = toUtcDateKey(bucketStart);
     const segments = [...(segmentsByBucket.get(bucketKey)?.values() ?? [])].sort(
       (a, b) => b.gameCount - a.gameCount || a.name.localeCompare(b.name),
-    )
+    );
 
     return {
       bucketStart,
       label: formatLabel(bucketStart),
       totalAppearances: segments.reduce((total, segment) => total + segment.gameCount, 0),
       segments,
-    }
-  })
+    };
+  });
 }
 
 export async function getPlayerAttendanceSeries(): Promise<PlayerAttendanceSeries> {
@@ -1639,15 +1773,15 @@ export async function getPlayerAttendanceSeries(): Promise<PlayerAttendanceSerie
     .from(gamePlayers)
     .innerJoin(games, eq(games.id, gamePlayers.gameId))
     .innerJoin(players, eq(players.id, gamePlayers.playerId))
-    .orderBy(games.playedAt, games.id, players.name)
+    .orderBy(games.playedAt, games.id, players.name);
 
   const attendanceRows = rows.map((row) => ({
     playedAt: row.playedAt,
     playerId: row.playerId,
     name: row.name,
     tier: parsePlayerTier(row.tier),
-  }))
-  const playedAtDates = attendanceRows.map((row) => row.playedAt)
+  }));
+  const playedAtDates = attendanceRows.map((row) => row.playedAt);
 
   return {
     weekly: buildPlayerAttendanceBuckets(
@@ -1664,7 +1798,7 @@ export async function getPlayerAttendanceSeries(): Promise<PlayerAttendanceSerie
       (date) => addUtcMonths(date, 1),
       formatShortUtcMonth,
     ),
-  }
+  };
 }
 
 export async function getPlayerAttendanceEvents(): Promise<PlayerAttendanceEvent[]> {
@@ -1678,47 +1812,47 @@ export async function getPlayerAttendanceEvents(): Promise<PlayerAttendanceEvent
     .from(gamePlayers)
     .innerJoin(games, eq(games.id, gamePlayers.gameId))
     .innerJoin(players, eq(players.id, gamePlayers.playerId))
-    .orderBy(games.playedAt, games.id, players.name)
+    .orderBy(games.playedAt, games.id, players.name);
 
   return rows.map((row) => ({
     playedAt: row.playedAt.toISOString(),
     playerId: row.playerId,
     name: row.name,
     tier: parsePlayerTier(row.tier),
-  }))
+  }));
 }
 
 export interface CalendarHeatmapDay {
-  date: Date
-  label: string
-  gameCount: number
+  date: Date;
+  label: string;
+  gameCount: number;
 }
 
 export interface CalendarHeatmapYear {
-  year: number
-  days: CalendarHeatmapDay[]
-  totalGames: number
+  year: number;
+  days: CalendarHeatmapDay[];
+  totalGames: number;
 }
 
 export interface CalendarHeatmapData {
-  recentDays: CalendarHeatmapDay[]
-  recentRangeLabel: string | null
-  years: CalendarHeatmapYear[]
-  defaultYear: number | null
+  recentDays: CalendarHeatmapDay[];
+  recentRangeLabel: string | null;
+  years: CalendarHeatmapYear[];
+  defaultYear: number | null;
 }
 
 function buildUtcDateRange(start: Date, end: Date): Date[] {
-  const days: Date[] = []
+  const days: Date[] = [];
 
   for (
     let current = startOfUtcDay(start);
     current.getTime() <= startOfUtcDay(end).getTime();
     current = addUtcDays(current, 1)
   ) {
-    days.push(current)
+    days.push(current);
   }
 
-  return days
+  return days;
 }
 
 function buildCalendarHeatmapDays(
@@ -1727,18 +1861,18 @@ function buildCalendarHeatmapDays(
   countsByDay: Map<string, number>,
 ): CalendarHeatmapDay[] {
   return buildUtcDateRange(start, end).map((date) => {
-    const dateKey = toUtcDateKey(date)
+    const dateKey = toUtcDateKey(date);
 
     return {
       date,
       label: formatLongUtcDate(date),
       gameCount: countsByDay.get(dateKey) ?? 0,
-    }
-  })
+    };
+  });
 }
 
 export async function getCalendarHeatmapData(): Promise<CalendarHeatmapData> {
-  const playedAtDates = await getOrderedGameDates()
+  const playedAtDates = await getOrderedGameDates();
 
   if (playedAtDates.length === 0) {
     return {
@@ -1746,40 +1880,40 @@ export async function getCalendarHeatmapData(): Promise<CalendarHeatmapData> {
       recentRangeLabel: null,
       years: [],
       defaultYear: null,
-    }
+    };
   }
 
-  const countsByDay = new Map<string, number>()
+  const countsByDay = new Map<string, number>();
 
   playedAtDates.forEach((playedAt) => {
-    const day = startOfUtcDay(playedAt)
-    const dayKey = toUtcDateKey(day)
-    countsByDay.set(dayKey, (countsByDay.get(dayKey) ?? 0) + 1)
-  })
+    const day = startOfUtcDay(playedAt);
+    const dayKey = toUtcDateKey(day);
+    countsByDay.set(dayKey, (countsByDay.get(dayKey) ?? 0) + 1);
+  });
 
-  const latestDay = startOfUtcDay(playedAtDates[playedAtDates.length - 1])
+  const latestDay = startOfUtcDay(playedAtDates[playedAtDates.length - 1]);
   const recentStart = addUtcDays(
     new Date(
       Date.UTC(latestDay.getUTCFullYear() - 1, latestDay.getUTCMonth(), latestDay.getUTCDate()),
     ),
     1,
-  )
-  const firstRecordedYear = playedAtDates[0].getUTCFullYear()
-  const lastRecordedYear = latestDay.getUTCFullYear()
-  const years: CalendarHeatmapYear[] = []
+  );
+  const firstRecordedYear = playedAtDates[0].getUTCFullYear();
+  const lastRecordedYear = latestDay.getUTCFullYear();
+  const years: CalendarHeatmapYear[] = [];
 
   for (let year = lastRecordedYear; year >= firstRecordedYear; year -= 1) {
-    const start = new Date(Date.UTC(year, 0, 1))
-    const end = new Date(Date.UTC(year, 11, 31))
-    const days = buildCalendarHeatmapDays(start, end, countsByDay)
-    const totalGames = days.reduce((total, day) => total + day.gameCount, 0)
+    const start = new Date(Date.UTC(year, 0, 1));
+    const end = new Date(Date.UTC(year, 11, 31));
+    const days = buildCalendarHeatmapDays(start, end, countsByDay);
+    const totalGames = days.reduce((total, day) => total + day.gameCount, 0);
 
     if (totalGames > 0) {
       years.push({
         year,
         days,
         totalGames,
-      })
+      });
     }
   }
 
@@ -1788,16 +1922,16 @@ export async function getCalendarHeatmapData(): Promise<CalendarHeatmapData> {
     recentRangeLabel: `${formatLongUtcDate(recentStart)} - ${formatLongUtcDate(latestDay)}`,
     years,
     defaultYear: lastRecordedYear,
-  }
+  };
 }
 
 export interface PlayerParticipationRate {
-  playerId: number
-  name: string
-  tier: PlayerTierType
-  gamesPlayed: number
-  totalGames: number
-  participationRate: number
+  playerId: number;
+  name: string;
+  tier: PlayerTierType;
+  gamesPlayed: number;
+  totalGames: number;
+  participationRate: number;
 }
 
 export async function getPlayerParticipationRates(): Promise<PlayerParticipationRate[]> {
@@ -1818,7 +1952,7 @@ export async function getPlayerParticipationRates(): Promise<PlayerParticipation
         totalGames: count(),
       })
       .from(games),
-  ])
+  ]);
 
   return rows
     .map((row) => ({
@@ -1829,5 +1963,5 @@ export async function getPlayerParticipationRates(): Promise<PlayerParticipation
       totalGames,
       participationRate: totalGames > 0 ? row.gamesPlayed / totalGames : 0,
     }))
-    .sort((a, b) => b.participationRate - a.participationRate || a.name.localeCompare(b.name))
+    .sort((a, b) => b.participationRate - a.participationRate || a.name.localeCompare(b.name));
 }
