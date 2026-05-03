@@ -211,14 +211,14 @@ All activity and time-based stats in this section use the viewer's local time.
 - [ ] Display a dated reference to the very first game in the database.
 
 ### 6.2 Player of the month `[H]` `[S]`
-- [ ] Highlight the player with the most wins in the current calendar month.
+- [x] Highlight the player with the most wins in the current calendar month.
 
 ### 6.3 Hot-hand indicator `[H]`
-- [ ] Flag players on 3 or more wins in their last 5 games.
+- [x] Flag players on 3 or more wins in their last 5 games.
 - **Needs:** recent win history (share query from 3.2)
 
 ### 6.4 "Bridesmaid" stat `[S]`
-- [ ] Rank players by total number of 2nd-place finishes.
+- [x] Rank players by total number of 2nd-place finishes.
 - **Needs:** finish-position data (share query from 1.6)
 
 ### 6.5 Auto-generated badges / epithets `[P]`

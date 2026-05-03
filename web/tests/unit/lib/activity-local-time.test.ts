@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   buildPlayerBestMonthWinRecords,
   buildPlayerBestWeekWinRecords,
+  buildPlayerCurrentMonthWinRecords,
   buildBusiestActivityRecords,
   buildCalendarHeatmapData,
   buildCumulativeGamesSeries,
@@ -376,6 +377,142 @@ describe('activity-local-time', () => {
     })
   })
 
+  it('builds current-month win records in local time, includes zero-win players, and sorts ties by most recent win', () => {
+    const players = [
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+      },
+      {
+        playerId: 2,
+        name: 'Bea',
+        tier: PlayerTier.Standard,
+      },
+      {
+        playerId: 3,
+        name: 'Cara',
+        tier: PlayerTier.Standard,
+      },
+      {
+        playerId: 4,
+        name: 'Drew',
+        tier: PlayerTier.Standard,
+      },
+    ]
+    const winEvents = [
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+        playedAt: '2026-04-01T04:30:00.000Z',
+      },
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+        playedAt: '2026-04-10T22:00:00.000Z',
+      },
+      {
+        playerId: 2,
+        name: 'Bea',
+        tier: PlayerTier.Standard,
+        playedAt: '2026-04-05T16:00:00.000Z',
+      },
+      {
+        playerId: 2,
+        name: 'Bea',
+        tier: PlayerTier.Standard,
+        playedAt: '2026-04-12T21:00:00.000Z',
+      },
+      {
+        playerId: 3,
+        name: 'Cara',
+        tier: PlayerTier.Standard,
+        playedAt: '2026-03-31T23:30:00.000Z',
+      },
+      {
+        playerId: 3,
+        name: 'Cara',
+        tier: PlayerTier.Standard,
+        playedAt: '2026-05-01T04:30:00.000Z',
+      },
+    ]
+
+    const records = buildPlayerCurrentMonthWinRecords({
+      players,
+      winEvents,
+      now: new Date('2026-04-15T12:00:00.000Z'),
+      timeZone: 'America/New_York',
+    })
+
+    expect(records.map((player) => player.name)).toEqual(['Bea', 'Ada', 'Cara', 'Drew'])
+    expect(records.find((player) => player.playerId === 1)).toMatchObject({
+      wins: 2,
+      periodStart: '2026-04-01',
+      periodLabel: 'Apr 2026',
+      mostRecentWin: '2026-04-10T22:00:00.000Z',
+    })
+    expect(records.find((player) => player.playerId === 2)).toMatchObject({
+      wins: 2,
+      periodStart: '2026-04-01',
+      periodLabel: 'Apr 2026',
+      mostRecentWin: '2026-04-12T21:00:00.000Z',
+    })
+    expect(records.find((player) => player.playerId === 3)).toMatchObject({
+      wins: 0,
+      periodStart: '2026-04-01',
+      periodLabel: 'Apr 2026',
+      mostRecentWin: null,
+    })
+    expect(records.find((player) => player.playerId === 4)).toMatchObject({
+      wins: 0,
+      periodStart: '2026-04-01',
+      periodLabel: 'Apr 2026',
+      mostRecentWin: null,
+    })
+  })
+
+  it('uses the supplied local month boundary for current-month win records', () => {
+    const records = buildPlayerCurrentMonthWinRecords({
+      players: [
+        {
+          playerId: 1,
+          name: 'Ada',
+          tier: PlayerTier.Premium,
+        },
+      ],
+      winEvents: [
+        {
+          playerId: 1,
+          name: 'Ada',
+          tier: PlayerTier.Premium,
+          playedAt: '2026-05-01T03:59:00.000Z',
+        },
+        {
+          playerId: 1,
+          name: 'Ada',
+          tier: PlayerTier.Premium,
+          playedAt: '2026-05-01T04:00:00.000Z',
+        },
+      ],
+      now: new Date('2026-05-01T04:30:00.000Z'),
+      timeZone: 'America/New_York',
+    })
+
+    expect(records).toEqual([
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+        wins: 1,
+        periodStart: '2026-05-01',
+        periodLabel: 'May 2026',
+        mostRecentWin: '2026-05-01T04:00:00.000Z',
+      },
+    ])
+  })
+
   it('returns empty local-time structures when there is no activity', () => {
     expect(
       buildGamesOverTimeSeries({
@@ -440,6 +577,15 @@ describe('activity-local-time', () => {
       buildPlayerBestMonthWinRecords({
         players: [],
         winEvents: [],
+        timeZone: 'America/New_York',
+      }),
+    ).toEqual([])
+
+    expect(
+      buildPlayerCurrentMonthWinRecords({
+        players: [],
+        winEvents: [],
+        now: new Date('2026-04-21T05:00:00.000Z'),
         timeZone: 'America/New_York',
       }),
     ).toEqual([])

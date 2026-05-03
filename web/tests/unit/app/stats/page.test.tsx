@@ -56,6 +56,20 @@ vi.mock('@/lib/settings', () => ({
   getSettings: vi.fn(),
 }));
 
+vi.mock('@/components/PlayerOfMonthLeaderboard', () => ({
+  PlayerOfMonthLeaderboard: ({
+    players,
+    winEvents,
+  }: {
+    players: { name: string }[];
+    winEvents: { playerId: number }[];
+  }) => (
+    <div>
+      Player of the Month Leaderboard Mock: {players.length}/{winEvents.length}
+    </div>
+  ),
+}));
+
 describe('StatsPage', () => {
   beforeEach(() => {
     vi.mocked(getPlayerHeadToHeadRecords).mockResolvedValue([]);
@@ -469,6 +483,9 @@ describe('StatsPage', () => {
     expect(markup).toContain('Min 3 games');
     expect(markup).toContain('Min 4 games');
     expect(markup).toContain('font-semibold text-(--gold)');
+    expect(markup).toContain('Player of the Month');
+    expect(markup).toContain('Bridesmaid');
+    expect(markup).toContain('Player of the Month Leaderboard Mock: 2/3');
     expect(markup).not.toContain('ml-2 hidden rounded-sm bg-(--gold)/15');
 
     const totalWinsIndex = markup.indexOf('id="total-wins"');
@@ -488,6 +505,8 @@ describe('StatsPage', () => {
     const lopsidedRivalryIndex = markup.indexOf('id="lopsided-rivalry"');
     const tierShowdownIndex = markup.indexOf('id="tier-showdown"');
     const finishBreakdownIndex = markup.indexOf('id="finish-breakdown"');
+    const playerOfMonthIndex = markup.indexOf('id="player-of-month"');
+    const bridesmaidIndex = markup.indexOf('id="bridesmaid"');
     const gamesOverTimeIndex = markup.indexOf('id="games-over-time"');
     const participationRateIndex = markup.indexOf('id="participation-rate"');
     const attendanceIndex = markup.indexOf('id="player-attendance-over-time"');
@@ -521,7 +540,8 @@ describe('StatsPage', () => {
     expect(lopsidedRivalryIndex).toBeGreaterThan(closestRivalryIndex);
     expect(tierShowdownIndex).toBeGreaterThan(lopsidedRivalryIndex);
     expect(finishBreakdownIndex).toBeGreaterThan(tierShowdownIndex);
-    expect(gamesOverTimeIndex).toBeGreaterThan(finishBreakdownIndex);
+    expect(bridesmaidIndex).toBeGreaterThan(finishBreakdownIndex);
+    expect(gamesOverTimeIndex).toBeGreaterThan(bridesmaidIndex);
     expect(participationRateIndex).toBeGreaterThan(gamesOverTimeIndex);
     expect(attendanceIndex).toBeGreaterThan(participationRateIndex);
     expect(cumulativeGamesIndex).toBeGreaterThan(attendanceIndex);
@@ -534,10 +554,14 @@ describe('StatsPage', () => {
     expect(currentWinStreakIndex).toBeGreaterThan(busiestRecordsIndex);
     expect(mostWinsInWeekIndex).toBeGreaterThan(currentWinStreakIndex);
     expect(mostWinsInMonthIndex).toBeGreaterThan(mostWinsInWeekIndex);
+    expect(playerOfMonthIndex).toBeGreaterThan(mostWinsInMonthIndex);
     expect(singleGameRecordsIndex).toBeGreaterThan(mostWinsInMonthIndex);
+    expect(singleGameRecordsIndex).toBeGreaterThan(playerOfMonthIndex);
     expect(longestWinStreakEverIndex).toBeGreaterThan(singleGameRecordsIndex);
 
     expect(markup).toContain('Finish Breakdown');
+    expect(markup).toContain('Player of the Month');
+    expect(markup).toContain('Bridesmaid');
     expect(markup).toContain('>1st<');
     expect(markup).toContain('>2nd<');
     expect(markup).toContain('>3rd<');
@@ -619,6 +643,13 @@ describe('StatsPage', () => {
     expect(markup).toContain('Outscored: 3/4');
     expect(markup).toContain('2 wins - 1 losses');
     expect(markup).toContain('5 wins - 0 losses');
+
+    const bridesmaidMarkup = markup.slice(bridesmaidIndex, gamesOverTimeIndex);
+    expect(bridesmaidMarkup).toContain('2nd Place');
+    expect(bridesmaidMarkup).toContain('50.0%');
+    expect(bridesmaidMarkup.indexOf('Bea')).toBeGreaterThan(-1);
+    expect(bridesmaidMarkup.indexOf('Ada')).toBeGreaterThan(-1);
+    expect(bridesmaidMarkup.indexOf('Bea')).toBeLessThan(bridesmaidMarkup.indexOf('Ada'));
 
     expect(markup.slice(totalWinsIndex, totalWinsIndex + 160)).not.toContain('lg:col-span-2');
     expect(markup.slice(winRateIndex, winRateIndex + 160)).not.toContain('lg:col-span-2');
@@ -755,7 +786,7 @@ describe('StatsPage', () => {
     expect(markup).toContain('Most Lopsided Rivalry');
     expect(markup).toContain('No players recorded yet.');
     expect(markup).toContain('No rivalries meet the minimum game threshold yet.');
-    expect(markup.match(/No games recorded yet\./g)).toHaveLength(24);
+    expect(markup.match(/No games recorded yet\./g)).toHaveLength(25);
   });
 
   it('filters the podium leaderboard using the podium threshold instead of the win-rate threshold', async () => {

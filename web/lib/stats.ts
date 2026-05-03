@@ -1522,6 +1522,12 @@ export interface PlayerCurrentWinStreak extends PlayerIdentity {
   mostRecentWin: string | null;
 }
 
+export interface PlayerHotHandIndicator extends PlayerIdentity {
+  gamesInLast5: number;
+  winsInLast5: number;
+  mostRecentAppearance: string | null;
+}
+
 interface StreakAccumulator {
   count: number;
   startedAt: Date | null;
@@ -1615,6 +1621,42 @@ export async function getPlayerCurrentWinStreaks(): Promise<PlayerCurrentWinStre
       (a, b) =>
         b.streak - a.streak ||
         compareNullableIsoDesc(a.mostRecentWin, b.mostRecentWin) ||
+        a.name.localeCompare(b.name),
+    );
+}
+
+export async function getPlayerHotHandIndicators(): Promise<PlayerHotHandIndicator[]> {
+  const { players: allPlayers, outcomeRows } = await getOrderedGameOutcomeData();
+  const rowsByPlayerId = new Map<number, GameOutcomeRow[]>();
+  const mostRecentAppearanceByPlayerId = new Map<number, string | null>(
+    allPlayers.map((player) => [player.playerId, null]),
+  );
+
+  outcomeRows.forEach((row) => {
+    const existingRows = rowsByPlayerId.get(row.playerId) ?? [];
+    existingRows.push(row);
+    rowsByPlayerId.set(row.playerId, existingRows);
+
+    if (mostRecentAppearanceByPlayerId.get(row.playerId) === null) {
+      mostRecentAppearanceByPlayerId.set(row.playerId, row.playedAt.toISOString());
+    }
+  });
+
+  return allPlayers
+    .map((player) => {
+      const recentRows = (rowsByPlayerId.get(player.playerId) ?? []).slice(0, 5);
+
+      return {
+        ...player,
+        gamesInLast5: recentRows.length,
+        winsInLast5: recentRows.filter((row) => row.isWinner).length,
+        mostRecentAppearance: mostRecentAppearanceByPlayerId.get(player.playerId) ?? null,
+      };
+    })
+    .sort(
+      (a, b) =>
+        b.winsInLast5 - a.winsInLast5 ||
+        compareNullableIsoDesc(a.mostRecentAppearance, b.mostRecentAppearance) ||
         a.name.localeCompare(b.name),
     );
 }

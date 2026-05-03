@@ -3,6 +3,7 @@ import {
   getGameActivityTimestamps,
   getPlayerAttendanceEvents,
   getPlayerCumulativeScoreStats,
+  getPlayerHotHandIndicators,
   getPlayerCurrentWinStreaks,
   getPlayerHeadToHeadRecords,
   getRivalryAggregates,
@@ -132,6 +133,144 @@ describe('stats integration', () => {
       streak: 0,
       mostRecentAppearance: null,
       mostRecentWin: null,
+    });
+  });
+
+  test('getPlayerHotHandIndicators inspects each player last five appearances, includes zero-game players, and sorts ties by recency', async () => {
+    const alice = await createTestPlayer({ name: 'Alice', tier: PlayerTier.Premium });
+    const bob = await createTestPlayer({ name: 'Bob', tier: PlayerTier.Standard });
+    const carol = await createTestPlayer({ name: 'Carol', tier: PlayerTier.Standard });
+    const dana = await createTestPlayer({ name: 'Dana', tier: PlayerTier.Standard });
+
+    await createTestGame({
+      playedAt: new Date('2026-04-20T18:00:00.000Z'),
+      players: [
+        { playerId: alice.id, score: 10, isWinner: true },
+        { playerId: bob.id, score: 8, isWinner: false },
+        { playerId: carol.id, score: 7, isWinner: false },
+      ],
+    });
+    await createTestGame({
+      playedAt: new Date('2026-04-21T18:00:00.000Z'),
+      players: [
+        { playerId: bob.id, score: 10, isWinner: true },
+        { playerId: alice.id, score: 7, isWinner: false },
+      ],
+    });
+    await createTestGame({
+      playedAt: new Date('2026-04-22T18:00:00.000Z'),
+      players: [
+        { playerId: alice.id, score: 10, isWinner: true },
+        { playerId: carol.id, score: 7, isWinner: false },
+      ],
+    });
+    await createTestGame({
+      playedAt: new Date('2026-04-23T18:00:00.000Z'),
+      players: [
+        { playerId: bob.id, score: 10, isWinner: true },
+        { playerId: carol.id, score: 7, isWinner: false },
+      ],
+    });
+    await createTestGame({
+      playedAt: new Date('2026-04-24T18:00:00.000Z'),
+      players: [
+        { playerId: alice.id, score: 10, isWinner: true },
+        { playerId: carol.id, score: 7, isWinner: false },
+      ],
+    });
+    await createTestGame({
+      playedAt: new Date('2026-04-25T18:00:00.000Z'),
+      players: [
+        { playerId: bob.id, score: 10, isWinner: true },
+        { playerId: alice.id, score: 7, isWinner: false },
+      ],
+    });
+    await createTestGame({
+      playedAt: new Date('2026-04-26T18:00:00.000Z'),
+      players: [
+        { playerId: alice.id, score: 10, isWinner: true },
+        { playerId: bob.id, score: 8, isWinner: false },
+      ],
+    });
+
+    const indicators = await getPlayerHotHandIndicators();
+
+    expect(indicators.map((player) => player.name)).toEqual(['Alice', 'Bob', 'Carol', 'Dana']);
+    expect(indicators.find((player) => player.playerId === alice.id)).toMatchObject({
+      gamesInLast5: 5,
+      winsInLast5: 3,
+      mostRecentAppearance: '2026-04-26T18:00:00.000Z',
+    });
+    expect(indicators.find((player) => player.playerId === bob.id)).toMatchObject({
+      gamesInLast5: 5,
+      winsInLast5: 3,
+      mostRecentAppearance: '2026-04-26T18:00:00.000Z',
+    });
+    expect(indicators.find((player) => player.playerId === carol.id)).toMatchObject({
+      gamesInLast5: 4,
+      winsInLast5: 0,
+      mostRecentAppearance: '2026-04-24T18:00:00.000Z',
+    });
+    expect(indicators.find((player) => player.playerId === dana.id)).toMatchObject({
+      gamesInLast5: 0,
+      winsInLast5: 0,
+      mostRecentAppearance: null,
+    });
+  });
+
+  test('getPlayerHotHandIndicators only counts up to five appearances per player', async () => {
+    const alice = await createTestPlayer({ name: 'Alice', tier: PlayerTier.Premium });
+    const bob = await createTestPlayer({ name: 'Bob', tier: PlayerTier.Standard });
+
+    await createTestGame({
+      playedAt: new Date('2026-04-20T18:00:00.000Z'),
+      players: [
+        { playerId: alice.id, score: 10, isWinner: true },
+        { playerId: bob.id, score: 7, isWinner: false },
+      ],
+    });
+    await createTestGame({
+      playedAt: new Date('2026-04-21T18:00:00.000Z'),
+      players: [
+        { playerId: bob.id, score: 10, isWinner: true },
+        { playerId: alice.id, score: 7, isWinner: false },
+      ],
+    });
+    await createTestGame({
+      playedAt: new Date('2026-04-22T18:00:00.000Z'),
+      players: [
+        { playerId: alice.id, score: 10, isWinner: true },
+        { playerId: bob.id, score: 7, isWinner: false },
+      ],
+    });
+    await createTestGame({
+      playedAt: new Date('2026-04-23T18:00:00.000Z'),
+      players: [
+        { playerId: bob.id, score: 10, isWinner: true },
+        { playerId: alice.id, score: 7, isWinner: false },
+      ],
+    });
+    await createTestGame({
+      playedAt: new Date('2026-04-24T18:00:00.000Z'),
+      players: [
+        { playerId: alice.id, score: 10, isWinner: true },
+        { playerId: bob.id, score: 7, isWinner: false },
+      ],
+    });
+    await createTestGame({
+      playedAt: new Date('2026-04-25T18:00:00.000Z'),
+      players: [
+        { playerId: alice.id, score: 10, isWinner: true },
+        { playerId: bob.id, score: 7, isWinner: false },
+      ],
+    });
+
+    const indicators = await getPlayerHotHandIndicators();
+
+    expect(indicators.find((player) => player.playerId === alice.id)).toMatchObject({
+      gamesInLast5: 5,
+      winsInLast5: 3,
+      mostRecentAppearance: '2026-04-25T18:00:00.000Z',
     });
   });
 

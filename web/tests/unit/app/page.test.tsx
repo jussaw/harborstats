@@ -6,8 +6,10 @@ import { listRecentGames } from '@/lib/games';
 import { getPlayers } from '@/lib/players';
 import {
   getPlayerCurrentWinStreaks,
+  getPlayerHotHandIndicators,
   getRecentActivitySummary,
   getReigningChampionSummary,
+  getPlayerWinEvents,
 } from '@/lib/stats';
 
 vi.mock('@/lib/games', () => ({
@@ -20,8 +22,10 @@ vi.mock('@/lib/players', () => ({
 
 vi.mock('@/lib/stats', () => ({
   getPlayerCurrentWinStreaks: vi.fn(),
+  getPlayerHotHandIndicators: vi.fn(),
   getRecentActivitySummary: vi.fn(),
   getReigningChampionSummary: vi.fn(),
+  getPlayerWinEvents: vi.fn(),
 }));
 
 vi.mock('@/components/NewGameButton', () => ({
@@ -33,6 +37,51 @@ vi.mock('@/components/FormattedDate', () => ({
     <time dateTime={iso} className={className}>
       {iso}
     </time>
+  ),
+}));
+
+vi.mock('@/components/RecentActivityCard', () => ({
+  RecentActivityCard: ({ latestPlayedAt }: { latestPlayedAt: string | null }) => (
+    <div>Recent Activity Mock: {latestPlayedAt ?? 'none'}</div>
+  ),
+}));
+
+vi.mock('@/components/CurrentWinStreakLeaderCard', () => ({
+  CurrentWinStreakLeaderCard: ({
+    currentWinStreaks,
+  }: {
+    currentWinStreaks: { name: string; streak: number }[]
+  }) => (
+    <div>Current Win Streak Mock: {currentWinStreaks.length}</div>
+  ),
+}));
+
+vi.mock('@/components/PlayerOfMonthCard', () => ({
+  PlayerOfMonthCard: ({
+    players,
+    winEvents,
+  }: {
+    players: { name: string }[]
+    winEvents: { playerId: number }[]
+  }) => (
+    <div>
+      Player of the Month Mock: {players.length}/{winEvents.length}
+    </div>
+  ),
+}));
+
+vi.mock('@/components/HotHandIndicatorCard', () => ({
+  HotHandIndicatorCard: ({
+    hotHand,
+  }: {
+    hotHand: { name: string; winsInLast5: number }[]
+  }) => (
+    <div>
+      Hot Hand Indicator Mock:{' '}
+      {hotHand.length > 0
+        ? hotHand.map((indicator) => `${indicator.name} (${indicator.winsInLast5})`).join(', ')
+        : 'none'}
+    </div>
   ),
 }));
 
@@ -79,6 +128,36 @@ describe('HomePage', () => {
         mostRecentWin: '2026-04-17T12:00:00.000Z',
       },
     ]);
+    vi.mocked(getPlayerWinEvents).mockResolvedValue([
+      {
+        playedAt: '2026-04-01T12:00:00.000Z',
+        playerId: 1,
+        name: 'Ada',
+        tier: 'premium' as const,
+      },
+      {
+        playedAt: '2026-04-08T12:00:00.000Z',
+        playerId: 1,
+        name: 'Ada',
+        tier: 'premium' as const,
+      },
+      {
+        playedAt: '2026-04-12T12:00:00.000Z',
+        playerId: 2,
+        name: 'Bea',
+        tier: 'standard' as const,
+      },
+    ]);
+    vi.mocked(getPlayerHotHandIndicators).mockResolvedValue([
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: 'premium' as const,
+        gamesInLast5: 5,
+        winsInLast5: 3,
+        mostRecentAppearance: '2026-04-18T12:00:00.000Z',
+      },
+    ]);
 
     const element = await HomePage();
     const markup = renderToStaticMarkup(element);
@@ -87,10 +166,22 @@ describe('HomePage', () => {
     expect(markup).toContain('Days Since Last Game');
     expect(markup).toContain('Reigning Champion');
     expect(markup).toContain('Current Win Streak Leader');
+    expect(markup).toContain('Player of the Month');
+    expect(markup).toContain('Hot Hand');
+    expect(markup).toContain('aria-label="Featured summary cards"');
+    expect(markup).toContain('aria-label="Secondary summary cards"');
+    expect(markup).toMatch(
+      /aria-label="Featured summary cards"[\s\S]*Days Since Last Game[\s\S]*Reigning Champion/,
+    );
+    expect(markup).toMatch(
+      /aria-label="Secondary summary cards"[\s\S]*Player of the Month[\s\S]*Current Win Streak Leader[\s\S]*Hot Hand/,
+    );
     expect(markup).toContain('Latest recorded game');
     expect(markup).toContain('Ada, Bea');
-    expect(markup).not.toContain('2 wins');
-    expect(markup.match(/Loading your local-time view\.\.\./g)).toHaveLength(2);
+    expect(markup).toContain('Recent Activity Mock: 2026-04-18T12:00:00.000Z');
+    expect(markup).toContain('Current Win Streak Mock: 2');
+    expect(markup).toContain('Player of the Month Mock: 2/3');
+    expect(markup).toContain('Hot Hand Indicator Mock: Ada (3)');
     expect(markup).toContain('2026-04-18T12:00:00.000Z');
     expect(markup).toContain('Fast game');
   });
@@ -113,6 +204,8 @@ describe('HomePage', () => {
         mostRecentWin: null,
       },
     ]);
+    vi.mocked(getPlayerWinEvents).mockResolvedValue([]);
+    vi.mocked(getPlayerHotHandIndicators).mockResolvedValue([]);
 
     const element = await HomePage();
     const markup = renderToStaticMarkup(element);
@@ -121,7 +214,14 @@ describe('HomePage', () => {
     expect(markup).toContain('No games recorded yet.');
     expect(markup).toContain('Reigning Champion');
     expect(markup).toContain('Current Win Streak Leader');
-    expect(markup).toContain('No active win streaks yet.');
+    expect(markup).toContain('Player of the Month');
+    expect(markup).toContain('Hot Hand');
+    expect(markup).toContain('aria-label="Featured summary cards"');
+    expect(markup).toContain('aria-label="Secondary summary cards"');
+    expect(markup).toContain('Recent Activity Mock: none');
+    expect(markup).toContain('Current Win Streak Mock: 1');
+    expect(markup).toContain('Player of the Month Mock: 1/0');
+    expect(markup).toContain('Hot Hand Indicator Mock: none');
     expect(markup).toContain('No games yet — record your first one!');
   });
 });

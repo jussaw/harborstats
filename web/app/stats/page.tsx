@@ -12,6 +12,7 @@ import { HeadToHeadMatrix } from '@/components/HeadToHeadMatrix';
 import { RivalryCard } from '@/components/RivalryCard';
 import { LongestGapCard } from '@/components/LongestGapCard';
 import { PlayerAttendanceChart } from '@/components/PlayerAttendanceChart';
+import { PlayerOfMonthLeaderboard } from '@/components/PlayerOfMonthLeaderboard';
 import { PlayerScoreBoxPlot } from '@/components/PlayerScoreBoxPlot';
 import { ScoreHistogramChart } from '@/components/ScoreHistogramChart';
 import { StatsCard } from '@/components/StatsCard';
@@ -471,6 +472,14 @@ export default async function StatsPage() {
     longestWinStreakRecords,
     (player) => player.longestWinStreak,
   );
+  const bridesmaidSorted = [...finishBreakdowns].sort(
+    (a, b) =>
+      b.seconds - a.seconds ||
+      b.secondRate - a.secondRate ||
+      b.games - a.games ||
+      a.name.localeCompare(b.name),
+  );
+  const bridesmaidRanks = rankWithTies(bridesmaidSorted, (player) => player.seconds);
 
   const statsCards: StatsCardMeta[] = [
     {
@@ -621,6 +630,13 @@ export default async function StatsPage() {
       span: 'full',
     },
     {
+      id: 'bridesmaid',
+      title: 'Bridesmaid',
+      description: 'Most second-place finishes across all recorded games.',
+      badge: undefined,
+      span: 'single',
+    },
+    {
       id: 'games-over-time',
       title: 'Games Over Time',
       description:
@@ -712,6 +728,13 @@ export default async function StatsPage() {
       id: 'most-wins-in-month',
       title: 'Most Wins in a Month',
       description: 'Each player’s personal-best win total in a local calendar month.',
+      badge: undefined,
+      span: 'single',
+    },
+    {
+      id: 'player-of-month',
+      title: 'Player of the Month',
+      description: 'Most wins this calendar month.',
       badge: undefined,
       span: 'single',
     },
@@ -1365,6 +1388,51 @@ export default async function StatsPage() {
           )}
         </StatsCard>
 
+        <StatsCard {...cardById.bridesmaid}>
+          {bridesmaidSorted.length === 0 ? (
+            <EmptyState>No games recorded yet.</EmptyState>
+          ) : (
+            <StatsLeaderboardTable
+              columns={[
+                { label: '#', align: 'center', widthClass: 'w-10' },
+                { label: 'Player' },
+                { label: '2nd Place', align: 'right' },
+                { label: 'Rate', align: 'right' },
+                { label: 'Games', align: 'right' },
+              ]}
+            >
+              {bridesmaidSorted.map((player, index) => (
+                <DataRow key={player.playerId}>
+                  <RankCell rank={bridesmaidRanks[index]} />
+                  <td className="px-3 py-2 text-(--cream)">
+                    <PlayerName name={player.name} tier={player.tier} />
+                  </td>
+                  <td
+                    className="
+                      px-3 py-2 text-right font-semibold text-(--gold)
+                      tabular-nums
+                    "
+                  >
+                    {player.seconds}
+                  </td>
+                  <td className="
+                    px-3 py-2 text-right text-(--cream) tabular-nums
+                  ">
+                    {formatPercent(player.secondRate, 1)}
+                  </td>
+                  <td
+                    className="
+                      px-3 py-2 text-right text-(--cream)/70 tabular-nums
+                    "
+                  >
+                    {player.games}
+                  </td>
+                </DataRow>
+              ))}
+            </StatsLeaderboardTable>
+          )}
+        </StatsCard>
+
         <StatsCard {...cardById['games-over-time']}>
           <GamesOverTimeChart playedAtIsos={gameActivityTimestamps} defaultView="week" />
         </StatsCard>
@@ -1496,6 +1564,10 @@ export default async function StatsPage() {
             winEvents={playerWinEvents}
             variant="month"
           />
+        </StatsCard>
+
+        <StatsCard {...cardById['player-of-month']}>
+          <PlayerOfMonthLeaderboard players={currentWinStreaks} winEvents={playerWinEvents} />
         </StatsCard>
 
         <StatsCard {...cardById['single-game-records']}>

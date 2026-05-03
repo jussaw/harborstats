@@ -84,6 +84,10 @@ function getUtcMonthStart(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1))
 }
 
+export function getLocalUtcMonthStart(input: string | Date, timeZone: string): Date {
+  return getUtcMonthStart(toUtcCalendarDate(input, timeZone))
+}
+
 function addUtcDays(date: Date, days: number): Date {
   const next = new Date(date)
   next.setUTCDate(next.getUTCDate() + days)
@@ -402,6 +406,10 @@ export interface PlayerBestWinRecord extends PlayerBestWinRecordIdentity {
   periodLabel: string | null
 }
 
+export interface PlayerCurrentMonthWinRecord extends PlayerBestWinRecord {
+  mostRecentWin: string | null
+}
+
 function compareNullableDateKeyDesc(left: string | null, right: string | null) {
   if (left === right) {
     return 0
@@ -503,6 +511,51 @@ export function buildPlayerBestMonthWinRecords({
     getBucketStart: getUtcMonthStart,
     formatLabel: formatShortUtcMonth,
   })
+}
+
+export function buildPlayerCurrentMonthWinRecords({
+  players,
+  winEvents,
+  now,
+  timeZone,
+}: {
+  players: PlayerBestWinRecordIdentity[]
+  winEvents: PlayerBestWinRecordEvent[]
+  now: Date
+  timeZone: string
+}): PlayerCurrentMonthWinRecord[] {
+  const currentMonthStart = getLocalUtcMonthStart(now, timeZone)
+  const currentMonthKey = toUtcDateKey(currentMonthStart)
+  const currentMonthLabel = formatShortUtcMonth(currentMonthStart)
+  const winsByPlayerId = new Map<number, number>()
+  const mostRecentWinByPlayerId = new Map<number, string | null>()
+
+  winEvents.forEach((event) => {
+    if (toUtcDateKey(getLocalUtcMonthStart(event.playedAt, timeZone)) !== currentMonthKey) {
+      return
+    }
+
+    winsByPlayerId.set(event.playerId, (winsByPlayerId.get(event.playerId) ?? 0) + 1)
+
+    const mostRecentWin = mostRecentWinByPlayerId.get(event.playerId)
+    if (mostRecentWin === undefined || mostRecentWin === null || event.playedAt > mostRecentWin) {
+      mostRecentWinByPlayerId.set(event.playerId, event.playedAt)
+    }
+  })
+
+  return players
+    .map((player) => ({
+      ...player,
+      wins: winsByPlayerId.get(player.playerId) ?? 0,
+      periodStart: currentMonthKey,
+      periodLabel: currentMonthLabel,
+      mostRecentWin: mostRecentWinByPlayerId.get(player.playerId) ?? null,
+    }))
+    .sort(
+      (a, b) => b.wins - a.wins
+        || compareNullableDateKeyDesc(a.mostRecentWin, b.mostRecentWin)
+        || a.name.localeCompare(b.name),
+    )
 }
 
 export interface PlayerAttendanceEvent {
