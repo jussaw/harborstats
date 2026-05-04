@@ -595,7 +595,7 @@ export default async function StatsPage() {
       title: 'Score Histogram',
       description: 'Distribution of every recorded individual score across the full game history.',
       badge: undefined,
-      span: 'full',
+      span: 'single',
       section: 'scoring',
     },
     {
@@ -603,7 +603,7 @@ export default async function StatsPage() {
       title: 'Score Distribution by Player',
       description: 'Per-player score spread using quartiles, medians, and min/max whiskers.',
       badge: 'Min 5 games',
-      span: 'full',
+      span: 'single',
       section: 'scoring',
     },
     {
@@ -686,7 +686,7 @@ export default async function StatsPage() {
       description:
         'Game frequency plotted across weekly or monthly activity buckets in your local time.',
       badge: undefined,
-      span: 'full',
+      span: 'single',
       section: 'activity',
     },
     {
@@ -695,7 +695,7 @@ export default async function StatsPage() {
       description:
         'Running total of recorded games over time, bucketed by week or month in your local time.',
       badge: undefined,
-      span: 'full',
+      span: 'single',
       section: 'activity',
     },
     {
@@ -704,7 +704,7 @@ export default async function StatsPage() {
       description:
         'Stacked appearance totals showing who participated in each activity bucket in your local time.',
       badge: undefined,
-      span: 'full',
+      span: 'single',
       section: 'activity',
     },
     {
