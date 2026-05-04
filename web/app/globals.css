@@ -53,4 +53,30 @@ html {
       color-mix(in srgb, var(--gold) 70%, var(--navy-800) 30%)
     );
   }
+
+  [data-page-width='2xl'] {
+    max-width: 42rem;
   }
+
+  [data-page-width='3xl'] {
+    max-width: 48rem;
+  }
+
+  [data-page-width='5xl'] {
+    max-width: 64rem;
+  }
+
+  [data-page-width='6xl'] {
+    max-width: 72rem;
+  }
+
+  [data-page-width='7xl'] {
+    max-width: 80rem;
+  }
+}
+
+@media (min-width: 640px) {
+  [data-sidebar-collapsed='true'] [data-expand-on-collapse='true'][data-page-width] {
+    max-width: none;
+  }
+}

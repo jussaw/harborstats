@@ -89,13 +89,16 @@ export function SidebarShell({ isAdmin, logoutAction, children }: Props) {
       </aside>
 
       {/* Main content */}
-      <div className={collapsed ? `
-        flex-1
-        sm:pl-16
-      ` : `
-        flex-1
-        sm:pl-60
-      `}>
+      <div
+        data-sidebar-collapsed={String(collapsed)}
+        className={collapsed ? `
+          min-w-0 flex-1
+          sm:pl-16
+        ` : `
+          min-w-0 flex-1
+          sm:pl-60
+        `}
+      >
         {/* Mobile header */}
         <div className="
           flex h-12 items-center border-b border-(--gold)/15 bg-(--navy-900)

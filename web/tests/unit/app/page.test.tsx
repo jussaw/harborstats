@@ -184,6 +184,8 @@ describe('HomePage', () => {
     expect(markup).toContain('Hot Hand Indicator Mock: Ada (3)');
     expect(markup).toContain('2026-04-18T12:00:00.000Z');
     expect(markup).toContain('Fast game');
+    expect(markup).toContain('data-page-width="5xl"');
+    expect(markup).toContain('data-expand-on-collapse="true"');
   });
 
   it('renders an empty state for the activity tile when no games are recorded', async () => {
@@ -223,5 +225,6 @@ describe('HomePage', () => {
     expect(markup).toContain('Player of the Month Mock: 1/0');
     expect(markup).toContain('Hot Hand Indicator Mock: none');
     expect(markup).toContain('No games yet — record your first one!');
+    expect(markup).toContain('data-page-width="5xl"');
   });
 });

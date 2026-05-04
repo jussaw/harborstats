@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { getGameForEdit } from '@/lib/games'
 import { getPlayers } from '@/lib/players'
 import type { GameFormInitial } from '@/components/GameForm'
+import { PageWidth } from '@/components/PageWidth'
 import { EditGameForm } from './EditGameForm'
 
 interface Props {
@@ -27,8 +28,8 @@ export default async function EditGamePage({ params }: Props) {
   }
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8">
-      <div className="max-w-2xl space-y-6">
+    <PageWidth width="5xl" className="px-6 py-8">
+      <PageWidth as="div" width="2xl" className="space-y-6">
         <div className="flex items-center gap-3">
           <Link
             href="/admin/games"
@@ -45,7 +46,7 @@ export default async function EditGamePage({ params }: Props) {
           </h1>
         </div>
         <EditGameForm gameId={game.id} players={players} initial={initial} />
-      </div>
-    </main>
+      </PageWidth>
+    </PageWidth>
   )
 }

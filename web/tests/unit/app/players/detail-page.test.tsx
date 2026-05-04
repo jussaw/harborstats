@@ -443,6 +443,8 @@ describe('PlayerProfilePage', () => {
     expect(markup).toContain('4 shared games');
     expect(markup).toContain('3 losses across 4 shared games');
     expect(markup).toContain('1 win across 4 shared games');
+    expect(markup).toContain('data-page-width="6xl"');
+    expect(markup).toContain('data-expand-on-collapse="true"');
   });
 
   it('renders empty profile stat cards when the selected player has no recorded games', async () => {

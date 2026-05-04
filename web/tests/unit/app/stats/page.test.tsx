@@ -486,8 +486,10 @@ describe('StatsPage', () => {
     expect(markup).toContain('href="#records"');
     expect(markup).not.toContain('href="#total-wins"');
     expect(markup).not.toContain('href="#win-rate"');
-    expect(markup).toContain('mx-auto max-w-7xl px-4 pb-6');
+    expect(markup).toContain('data-page-width="7xl"');
+    expect(markup).toContain('data-expand-on-collapse="true"');
     expect(markup).toContain('sm:px-6 sm:pb-8');
+    expect(markup).not.toContain('max-w-7xl');
     expect(markup).not.toContain('px-4 py-6');
     expect(markup).not.toContain('sm:px-6 sm:py-8');
     expect(markup).toContain('Min 3 games');

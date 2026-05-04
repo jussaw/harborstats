@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { FormattedDate } from '@/components/FormattedDate';
+import { PageWidth } from '@/components/PageWidth';
 import { PlayerScoreBoxPlot } from '@/components/PlayerScoreBoxPlot';
 import { StatsCard } from '@/components/StatsCard';
 import { formatAverage, formatPercent, formatSignedNumber } from '@/lib/format';
@@ -737,7 +738,7 @@ export function PlayersSection({
 }: Props) {
   if (players.length === 0) {
     return (
-      <main className="mx-auto max-w-3xl px-4 py-12">
+      <PageWidth width="3xl" className="px-4 py-12">
         <div
           className="
             rounded-lg border border-(--gold)/30 bg-(--navy-900)/60 p-8
@@ -753,14 +754,15 @@ export function PlayersSection({
           <p className="mt-4 text-sm text-(--cream)/70">No players yet.</p>
           <p className="mt-2 text-sm text-(--cream)/50">Add your first player in admin.</p>
         </div>
-      </main>
+      </PageWidth>
     );
   }
 
   return (
-    <main
+    <PageWidth
+      width="6xl"
       className="
-        mx-auto max-w-6xl px-4 py-6
+        px-4 py-6
         sm:px-6 sm:py-10
       "
     >
@@ -840,6 +842,6 @@ export function PlayersSection({
           )}
         </div>
       </div>
-    </main>
+    </PageWidth>
   );
 }

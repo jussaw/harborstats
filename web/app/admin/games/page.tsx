@@ -3,6 +3,7 @@ import { listAllGames } from '@/lib/games'
 import { getPlayers } from '@/lib/players'
 import { ConfirmDeleteButton } from '@/app/admin/ConfirmDeleteButton'
 import { NewGameButton } from '@/components/NewGameButton'
+import { PageWidth } from '@/components/PageWidth'
 import { FormattedDate } from '@/components/FormattedDate'
 import { deleteGameAction } from './actions'
 
@@ -12,7 +13,7 @@ export default async function AdminGamesPage() {
   const [games, players] = await Promise.all([listAllGames(), getPlayers()])
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8">
+    <PageWidth width="5xl" className="px-6 py-8">
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -112,6 +113,6 @@ export default async function AdminGamesPage() {
           </div>
         )}
       </div>
-    </main>
+    </PageWidth>
   )
 }

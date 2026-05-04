@@ -58,6 +58,10 @@ describe('SidebarShell', () => {
     )
   }
 
+  function getMainContentWrapper() {
+    return screen.getByRole('complementary').nextElementSibling
+  }
+
   it('opens and closes the mobile navigation', async () => {
     mockPathname = '/admin/games'
     const user = userEvent.setup()
@@ -89,8 +93,12 @@ describe('SidebarShell', () => {
       </SidebarShell>,
     )
 
+    expect(getMainContentWrapper()).toHaveAttribute('data-sidebar-collapsed', 'false')
+    expect(getMainContentWrapper()).toHaveClass('min-w-0')
+
     await user.click(await screen.findByLabelText('Collapse sidebar'))
     expect(localStorage.getItem('hs_sidebar_collapsed')).toBe('true')
+    expect(getMainContentWrapper()).toHaveAttribute('data-sidebar-collapsed', 'true')
 
     unmount()
 
@@ -101,6 +109,7 @@ describe('SidebarShell', () => {
     )
 
     await waitFor(() => expect(screen.getByLabelText('Expand sidebar')).toBeInTheDocument())
+    expect(getMainContentWrapper()).toHaveAttribute('data-sidebar-collapsed', 'true')
   })
 
   it('hydrates without mismatch warnings when a collapsed preference is stored', async () => {
@@ -134,6 +143,7 @@ describe('SidebarShell', () => {
     })
 
     await waitFor(() => expect(screen.getByLabelText('Expand sidebar')).toBeInTheDocument())
+    expect(getMainContentWrapper()).toHaveAttribute('data-sidebar-collapsed', 'true')
 
     expect(recoverableErrors).toHaveLength(0)
 

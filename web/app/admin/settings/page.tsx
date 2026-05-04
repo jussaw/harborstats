@@ -1,3 +1,4 @@
+import { PageWidth } from '@/components/PageWidth';
 import { getSettings } from '@/lib/settings';
 import { saveSettings } from './actions';
 
@@ -7,8 +8,8 @@ export default async function AdminSettingsPage() {
   const settings = await getSettings();
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8">
-      <div className="max-w-3xl space-y-8">
+    <PageWidth width="5xl" className="px-6 py-8">
+      <PageWidth as="div" width="3xl" className="space-y-8">
         <div>
           <h1 className="font-cinzel text-xl tracking-wide text-(--gold)">Settings</h1>
           <p className="mt-0.5 text-xs text-(--cream)/50">App-wide configuration</p>
@@ -84,7 +85,7 @@ export default async function AdminSettingsPage() {
             </button>
           </form>
         </div>
-      </div>
-    </main>
+      </PageWidth>
+    </PageWidth>
   );
 }

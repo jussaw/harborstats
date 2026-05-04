@@ -1,6 +1,7 @@
 import { listPlayersWithUsage } from '@/lib/players'
 import { PLAYER_TIER_OPTIONS } from '@/lib/player-tier'
 import { ConfirmDeleteButton } from '@/app/admin/ConfirmDeleteButton'
+import { PageWidth } from '@/components/PageWidth'
 import { createPlayerAction, updatePlayerAction, deletePlayerAction } from './actions'
 
 export const dynamic = 'force-dynamic'
@@ -14,8 +15,8 @@ export default async function AdminPlayersPage({ searchParams }: Props) {
   const { error, count: inUseCount } = params
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8">
-      <div className="max-w-3xl space-y-8">
+    <PageWidth width="5xl" className="px-6 py-8">
+      <PageWidth as="div" width="3xl" className="space-y-8">
         <div>
           <h1 className="font-cinzel text-xl tracking-wide text-(--gold)">Players</h1>
           <p className="mt-0.5 text-xs text-(--cream)/50">{players.length} on roster</p>
@@ -191,7 +192,7 @@ export default async function AdminPlayersPage({ searchParams }: Props) {
             ))}
           </div>
         )}
-      </div>
-    </main>
+      </PageWidth>
+    </PageWidth>
   )
 }

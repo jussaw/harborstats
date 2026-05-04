@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { FormattedDate } from '@/components/FormattedDate'
 import { GamesFilters } from '@/components/GamesFilters'
 import { GamesPagination } from '@/components/GamesPagination'
+import { PageWidth } from '@/components/PageWidth'
 import { hasActiveGamesPageFilters, parseGamesPageState } from '@/lib/games-page-filters'
 import { listGamesPage } from '@/lib/games'
 import { getPlayers } from '@/lib/players'
@@ -21,7 +22,7 @@ export default async function GamesPage({ searchParams }: Props) {
   const hasActiveFilters = hasActiveGamesPageFilters(filters)
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-12">
+    <PageWidth width="2xl" className="px-4 py-12">
       <div className="mb-8 space-y-4">
         <div>
           <h1 className="text-xl tracking-wide text-(--gold)">Games</h1>
@@ -86,6 +87,6 @@ export default async function GamesPage({ searchParams }: Props) {
           ))}
         </div>
       )}
-    </main>
+    </PageWidth>
   )
 }

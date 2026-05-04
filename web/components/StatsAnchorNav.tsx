@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useEffectEvent, useState } from 'react'
+import { PageWidth } from './PageWidth'
 
 interface StatsAnchorNavSection {
   id: string
@@ -55,10 +56,14 @@ export function StatsAnchorNav({ sections }: StatsAnchorNavProps) {
         shadow-[0_16px_32px_rgba(0,0,0,0.22)] backdrop-blur-md
       "
     >
-      <div className="
-        mx-auto max-w-7xl px-4
-        sm:px-6
-      ">
+      <PageWidth
+        as="div"
+        width="7xl"
+        className="
+          px-4
+          sm:px-6
+        "
+      >
         <ul className="harbor-scrollbar flex gap-2 overflow-x-auto py-1.5">
           {sections.map((section) => {
             const isActive = activeId === section.id
@@ -85,7 +90,7 @@ export function StatsAnchorNav({ sections }: StatsAnchorNavProps) {
             )
           })}
         </ul>
-      </div>
+      </PageWidth>
     </nav>
   )
 }

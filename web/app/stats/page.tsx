@@ -11,6 +11,7 @@ import { GamesOverTimeChart } from '@/components/GamesOverTimeChart';
 import { HeadToHeadMatrix } from '@/components/HeadToHeadMatrix';
 import { RivalryCard } from '@/components/RivalryCard';
 import { LongestGapCard } from '@/components/LongestGapCard';
+import { PageWidth } from '@/components/PageWidth';
 import { PlayerAttendanceChart } from '@/components/PlayerAttendanceChart';
 import { PlayerOfMonthLeaderboard } from '@/components/PlayerOfMonthLeaderboard';
 import { PlayerScoreBoxPlot } from '@/components/PlayerScoreBoxPlot';
@@ -1436,10 +1437,13 @@ export default async function StatsPage() {
   return (
     <>
       <StatsAnchorNav sections={STATS_SECTIONS.map(({ id, title }) => ({ id, title }))} />
-      <main className="
-        mx-auto max-w-7xl px-4 pb-6
-        sm:px-6 sm:pb-8
-      ">
+      <PageWidth
+        width="7xl"
+        className="
+          px-4 pb-6
+          sm:px-6 sm:pb-8
+        "
+      >
         <div className="space-y-12">
           {STATS_SECTIONS.map((section) => (
             <section key={section.id} id={section.id} className="scroll-mt-24">
@@ -1458,7 +1462,7 @@ export default async function StatsPage() {
             </section>
           ))}
         </div>
-      </main>
+      </PageWidth>
     </>
   );
 }

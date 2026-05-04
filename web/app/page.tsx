@@ -11,6 +11,7 @@ import {
 import { CurrentWinStreakLeaderCard } from '@/components/CurrentWinStreakLeaderCard'
 import { HotHandIndicatorCard } from '@/components/HotHandIndicatorCard'
 import { NewGameButton } from '@/components/NewGameButton'
+import { PageWidth } from '@/components/PageWidth'
 import { PlayerOfMonthCard } from '@/components/PlayerOfMonthCard'
 import { FormattedDate } from '@/components/FormattedDate'
 import { RecentActivityCard } from '@/components/RecentActivityCard'
@@ -65,7 +66,7 @@ export default async function HomePage() {
   ])
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-12">
+    <PageWidth width="5xl" className="px-4 py-12">
       <div className="mb-8 flex items-center justify-between">
         <h1 className="font-cinzel text-xl tracking-wide text-(--gold)">Recent Games</h1>
         <NewGameButton
@@ -206,6 +207,6 @@ export default async function HomePage() {
           ))}
         </div>
       )}
-    </main>
+    </PageWidth>
   )
 }

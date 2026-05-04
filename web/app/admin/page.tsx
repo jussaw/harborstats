@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { PageWidth } from '@/components/PageWidth'
 import { listAllGames } from '@/lib/games'
 import { listPlayersWithUsage } from '@/lib/players'
 
@@ -8,7 +9,7 @@ export default async function AdminHomePage() {
   const [games, players] = await Promise.all([listAllGames(), listPlayersWithUsage()])
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8">
+    <PageWidth width="5xl" className="px-6 py-8">
       <div className="space-y-8">
         <div>
           <h1 className="font-cinzel text-2xl tracking-wide text-(--gold)">Command Deck</h1>
@@ -66,6 +67,6 @@ export default async function AdminHomePage() {
           </Link>
         </div>
       </div>
-    </main>
+    </PageWidth>
   )
 }

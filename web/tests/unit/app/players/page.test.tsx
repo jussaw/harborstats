@@ -405,6 +405,8 @@ describe('PlayersPage', () => {
     expect(markup).toContain('1 loss across 3 shared games');
     expect(markup).toContain('2 wins across 3 shared games');
     expect(markup).toContain('Loading your local-time view...');
+    expect(markup).toContain('data-page-width="6xl"');
+    expect(markup).toContain('data-expand-on-collapse="true"');
   });
 
   it('renders an empty state when there are no players', async () => {
@@ -427,5 +429,6 @@ describe('PlayersPage', () => {
 
     expect(markup).toContain('No players yet.');
     expect(markup).toContain('Add your first player in admin');
+    expect(markup).toContain('data-page-width="3xl"');
   });
 });
