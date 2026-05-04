@@ -1435,8 +1435,8 @@ export default async function StatsPage() {
 
   return (
     <main className="
-      mx-auto max-w-7xl px-4 py-6
-      sm:px-6 sm:py-8
+      mx-auto max-w-7xl px-4 pb-6
+      sm:px-6 sm:pb-8
     ">
       <StatsAnchorNav sections={STATS_SECTIONS.map(({ id, title }) => ({ id, title }))} />
 
