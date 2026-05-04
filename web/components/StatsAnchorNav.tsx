@@ -52,7 +52,7 @@ export function StatsAnchorNav({ sections }: StatsAnchorNavProps) {
     <nav
       aria-label="Stats sections"
       className="
-        sticky top-0 z-10 mb-8 border-y border-(--gold)/15 bg-(--navy-900)/85
+        sticky top-0 z-30 mb-8 border-y border-(--gold)/15 bg-(--navy-900)/85
         shadow-[0_16px_32px_rgba(0,0,0,0.22)] backdrop-blur-md
       "
     >
