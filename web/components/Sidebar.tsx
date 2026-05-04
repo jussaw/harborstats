@@ -133,18 +133,18 @@ export function Sidebar({
             onClick={onNavigate}
           />
           <NavLink
-            href="/games"
-            Icon={ScrollText}
-            label="Games"
-            active={isActive('/games', true)}
-            collapsed={collapsed}
-            onClick={onNavigate}
-          />
-          <NavLink
             href="/stats"
             Icon={BarChart3}
             label="Stats"
             active={isActive('/stats', true)}
+            collapsed={collapsed}
+            onClick={onNavigate}
+          />
+          <NavLink
+            href="/games"
+            Icon={ScrollText}
+            label="Games"
+            active={isActive('/games', true)}
             collapsed={collapsed}
             onClick={onNavigate}
           />

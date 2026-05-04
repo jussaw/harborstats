@@ -158,6 +158,23 @@ describe('SidebarShell', () => {
     expect(gamesLink).toHaveClass('bg-(--gold)/10')
   })
 
+  it('orders public links with Stats before Games', () => {
+    mockPathname = '/'
+
+    render(
+      <SidebarShell isAdmin={false} logoutAction={vi.fn().mockResolvedValue(undefined)}>
+        <main>Dashboard</main>
+      </SidebarShell>,
+    )
+
+    const primaryNav = screen.getByRole('navigation', { name: 'Primary navigation' })
+    const publicLabels = within(primaryNav)
+      .getAllByRole('link')
+      .map((link) => link.textContent?.trim())
+
+    expect(publicLabels).toEqual(['Home', 'Stats', 'Games', 'Players'])
+  })
+
   it('shows the public Players link and marks it active on /players', () => {
     mockPathname = '/players'
 
