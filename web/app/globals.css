@@ -7,6 +7,10 @@
   --cream: #f4ecd4;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 @layer components {
   .harbor-bg {
     background-color: #0e3a4a;

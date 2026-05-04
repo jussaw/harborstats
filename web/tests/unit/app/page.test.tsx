@@ -174,7 +174,7 @@ describe('HomePage', () => {
       /aria-label="Featured summary cards"[\s\S]*Days Since Last Game[\s\S]*Reigning Champion/,
     );
     expect(markup).toMatch(
-      /aria-label="Secondary summary cards"[\s\S]*Player of the Month[\s\S]*Current Win Streak Leader[\s\S]*Hot Hand/,
+      /aria-label="Secondary summary cards"[\s\S]*Current Win Streak Leader[\s\S]*Hot Hand[\s\S]*Player of the Month/,
     );
     expect(markup).toContain('Latest recorded game');
     expect(markup).toContain('Ada, Bea');

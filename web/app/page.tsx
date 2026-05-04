@@ -133,13 +133,6 @@ export default async function HomePage() {
           "
         >
           <SummaryTile
-            title="Player of the Month"
-            description="Most wins in the current local calendar month."
-          >
-            <PlayerOfMonthCard players={currentWinStreaks} winEvents={playerWinEvents} />
-          </SummaryTile>
-
-          <SummaryTile
             title="Current Win Streak Leader"
             description="Longest active streak based on each player’s own game history."
           >
@@ -151,6 +144,13 @@ export default async function HomePage() {
             description="Players with 3 or more wins in their last 5 games."
           >
             <HotHandIndicatorCard hotHand={hotHandIndicators} />
+          </SummaryTile>
+
+          <SummaryTile
+            title="Player of the Month"
+            description="Most wins in the current local calendar month."
+          >
+            <PlayerOfMonthCard players={currentWinStreaks} winEvents={playerWinEvents} />
           </SummaryTile>
         </div>
       </div>
