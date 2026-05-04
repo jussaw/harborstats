@@ -1434,30 +1434,31 @@ export default async function StatsPage() {
   };
 
   return (
-    <main className="
-      mx-auto max-w-7xl px-4 pb-6
-      sm:px-6 sm:pb-8
-    ">
+    <>
       <StatsAnchorNav sections={STATS_SECTIONS.map(({ id, title }) => ({ id, title }))} />
+      <main className="
+        mx-auto max-w-7xl px-4 pb-6
+        sm:px-6 sm:pb-8
+      ">
+        <div className="space-y-12">
+          {STATS_SECTIONS.map((section) => (
+            <section key={section.id} id={section.id} className="scroll-mt-24">
+              <StatsSectionHeader title={section.title} subtitle={section.subtitle} />
 
-      <div className="space-y-12">
-        {STATS_SECTIONS.map((section) => (
-          <section key={section.id} id={section.id} className="scroll-mt-24">
-            <StatsSectionHeader title={section.title} subtitle={section.subtitle} />
-
-            <div className="
-              grid grid-cols-1 gap-5
-              lg:grid-cols-2
-            ">
-              {cardsBySection[section.id].map((card) => (
-                <StatsCard key={card.id} {...card}>
-                  {cardContents[card.id]}
-                </StatsCard>
-              ))}
-            </div>
-          </section>
-        ))}
-      </div>
-    </main>
+              <div className="
+                grid grid-cols-1 gap-5
+                lg:grid-cols-2
+              ">
+                {cardsBySection[section.id].map((card) => (
+                  <StatsCard key={card.id} {...card}>
+                    {cardContents[card.id]}
+                  </StatsCard>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+      </main>
+    </>
   );
 }

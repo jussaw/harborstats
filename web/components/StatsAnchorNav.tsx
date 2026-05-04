@@ -51,41 +51,41 @@ export function StatsAnchorNav({ sections }: StatsAnchorNavProps) {
     <nav
       aria-label="Stats sections"
       className="
-        sticky top-0 z-10 -mx-4 mb-8 border-y border-(--gold)/15
-        bg-(--navy-900)/85 shadow-[0_16px_32px_rgba(0,0,0,0.22)]
-        backdrop-blur-md
-        sm:-mx-6
+        sticky top-0 z-10 mb-8 border-y border-(--gold)/15 bg-(--navy-900)/85
+        shadow-[0_16px_32px_rgba(0,0,0,0.22)] backdrop-blur-md
       "
     >
-      <ul className="
-        harbor-scrollbar flex gap-2 overflow-x-auto px-4 py-3
+      <div className="
+        mx-auto max-w-7xl px-4
         sm:px-6
       ">
-        {sections.map((section) => {
-          const isActive = activeId === section.id
+        <ul className="harbor-scrollbar flex gap-2 overflow-x-auto py-1.5">
+          {sections.map((section) => {
+            const isActive = activeId === section.id
 
-          return (
-            <li key={section.id} className="shrink-0">
-              <a
-                href={`#${section.id}`}
-                aria-current={isActive ? 'true' : undefined}
-                className={`
-                  inline-flex rounded-full border px-4 py-2 text-sm
-                  font-semibold tracking-wide transition-colors
-                  ${isActive
-                    ? 'border-(--gold) bg-(--gold)/12 text-(--gold)'
-                    : `
-                      border-(--gold)/15 bg-(--navy-800)/35 text-(--cream)/70
-                      hover:border-(--gold)/35 hover:text-(--cream)
-                    `}
-                `}
-              >
-                {section.title}
-              </a>
-            </li>
-          )
-        })}
-      </ul>
+            return (
+              <li key={section.id} className="shrink-0">
+                <a
+                  href={`#${section.id}`}
+                  aria-current={isActive ? 'true' : undefined}
+                  className={`
+                    inline-flex rounded-full border px-4 py-2 text-sm
+                    font-semibold tracking-wide transition-colors
+                    ${isActive
+                      ? 'border-(--gold) bg-(--gold)/12 text-(--gold)'
+                      : `
+                        border-(--gold)/15 bg-(--navy-800)/35 text-(--cream)/70
+                        hover:border-(--gold)/35 hover:text-(--cream)
+                      `}
+                  `}
+                >
+                  {section.title}
+                </a>
+              </li>
+            )
+          })}
+        </ul>
+      </div>
     </nav>
   )
 }
