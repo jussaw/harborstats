@@ -10,7 +10,7 @@ interface Props {
 }
 
 interface StatsCardDetailSlotProps {
-  size: 'compact' | 'roomy'
+  size: 'compact' | 'roomy' | 'tall'
   className?: string
   children: ReactNode
 }
@@ -72,11 +72,15 @@ export function StatsCard({
 }
 
 function getDetailSlotHeightClass(size: StatsCardDetailSlotProps['size']) {
-  if (size === 'roomy') {
-    return 'min-h-24'
+  if (size === 'tall') {
+    return 'h-44'
   }
 
-  return 'min-h-14'
+  if (size === 'roomy') {
+    return 'h-24'
+  }
+
+  return 'h-20'
 }
 
 export function StatsCardDetailSlot({

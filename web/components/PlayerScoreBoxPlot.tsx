@@ -89,7 +89,7 @@ export function PlayerScoreBoxPlot({ distributions }: Props) {
 
   return (
     <div className="space-y-4">
-      <StatsCardDetailSlot size="compact" className="text-sm text-(--cream)/55">
+      <StatsCardDetailSlot size="tall" className="text-sm text-(--cream)/55">
         {activeDistribution ? (
           <div>
             <p
