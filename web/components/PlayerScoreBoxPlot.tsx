@@ -89,24 +89,58 @@ export function PlayerScoreBoxPlot({ distributions }: Props) {
 
   return (
     <div className="space-y-4">
-      <StatsCardDetailSlot size="tall" className="text-sm text-(--cream)/55">
+      <StatsCardDetailSlot size="roomy" className="text-sm text-(--cream)/55">
         {activeDistribution ? (
-          <div>
-            <p
-              className={
-                activeDistribution.tier === PlayerTier.Premium ? 'text-(--gold)' : `
-                  text-(--cream)
-                `
-              }
+          <div className="space-y-3">
+            <div
+              className="
+                flex items-baseline justify-between gap-3 border-b
+                border-(--gold)/15 pb-2
+              "
             >
-              {activeDistribution.name}
-            </p>
-            <p className="mt-1 tabular-nums">{formatGameCount(activeDistribution.count)}</p>
-            <p className="mt-1 tabular-nums">min {formatAverage(activeDistribution.min)}</p>
-            <p className="mt-1 tabular-nums">q1 {formatAverage(activeDistribution.q1)}</p>
-            <p className="mt-1 tabular-nums">median {formatAverage(activeDistribution.median)}</p>
-            <p className="mt-1 tabular-nums">q3 {formatAverage(activeDistribution.q3)}</p>
-            <p className="mt-1 tabular-nums">max {formatAverage(activeDistribution.max)}</p>
+              <p
+                className={`
+                  text-base font-medium
+                  ${
+                    activeDistribution.tier === PlayerTier.Premium
+                      ? 'text-(--gold)'
+                      : 'text-(--cream)'
+                  }
+                `}
+              >
+                {activeDistribution.name}
+              </p>
+              <p className="text-xs text-(--cream)/55 tabular-nums">
+                {formatGameCount(activeDistribution.count)}
+              </p>
+            </div>
+            <dl className="grid grid-cols-5 gap-3">
+              {[
+                { label: 'Min', value: activeDistribution.min, accent: false },
+                { label: 'Q1', value: activeDistribution.q1, accent: false },
+                { label: 'Median', value: activeDistribution.median, accent: true },
+                { label: 'Q3', value: activeDistribution.q3, accent: false },
+                { label: 'Max', value: activeDistribution.max, accent: false },
+              ].map(({ label, value, accent }) => (
+                <div key={label} className="flex flex-col gap-1">
+                  <dt
+                    className="
+                      text-[10px] tracking-[0.2em] text-(--cream)/55 uppercase
+                    "
+                  >
+                    {label}
+                  </dt>
+                  <dd
+                    className={`
+                      text-base tabular-nums
+                      ${accent ? 'text-(--gold)' : 'text-(--cream)'}
+                    `}
+                  >
+                    {formatAverage(value)}
+                  </dd>
+                </div>
+              ))}
+            </dl>
           </div>
         ) : (
           <p>Hover over a box to inspect a player score spread.</p>

@@ -39,7 +39,7 @@ describe('PlayerScoreBoxPlot', () => {
 
     const detailSlot = screen.getByTestId('stats-card-detail-slot');
 
-    expect(detailSlot).toHaveAttribute('data-detail-size', 'compact');
+    expect(detailSlot).toHaveAttribute('data-detail-size', 'roomy');
     expect(
       screen.getByText('Hover over a box to inspect a player score spread.'),
     ).toBeInTheDocument();
@@ -54,9 +54,12 @@ describe('PlayerScoreBoxPlot', () => {
 
     expect(within(detailSlot).getByText('Bea')).toBeInTheDocument();
     expect(within(detailSlot).getByText('5 games')).toBeInTheDocument();
-    expect(within(detailSlot).getByText('min 4.0')).toBeInTheDocument();
-    expect(within(detailSlot).getByText('median 7.0')).toBeInTheDocument();
-    expect(within(detailSlot).getByText('max 10.0')).toBeInTheDocument();
+    expect(within(detailSlot).getByText('Min')).toBeInTheDocument();
+    expect(within(detailSlot).getByText('4.0')).toBeInTheDocument();
+    expect(within(detailSlot).getByText('Median')).toBeInTheDocument();
+    expect(within(detailSlot).getByText('7.0')).toBeInTheDocument();
+    expect(within(detailSlot).getByText('Max')).toBeInTheDocument();
+    expect(within(detailSlot).getByText('10.0')).toBeInTheDocument();
 
     fireEvent.mouseLeave(screen.getByRole('img', { name: 'Player score distribution' }));
     expect(
@@ -64,7 +67,8 @@ describe('PlayerScoreBoxPlot', () => {
     ).toBeInTheDocument();
 
     fireEvent.focus(beaBox);
-    expect(within(detailSlot).getByText('q3 8.0')).toBeInTheDocument();
+    expect(within(detailSlot).getByText('Q3')).toBeInTheDocument();
+    expect(within(detailSlot).getByText('8.0')).toBeInTheDocument();
     fireEvent.blur(beaBox);
     expect(
       screen.getByText('Hover over a box to inspect a player score spread.'),
