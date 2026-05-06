@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { PlayerTier } from '../../lib/player-tier';
-import { TEST_ENV } from '../helpers/test-env';
-import { createE2eGame, createE2ePlayer, resetE2eDatabase } from './db';
+import { TEST_ENV, TEST_BASE_URL } from '../helpers/test-env';
+import { createE2eGame, createE2ePlayer, resetE2eDatabase, setE2eGamePassword, signE2eGameSession } from './db';
 
 async function loginAsAdmin(page: Page, nextPath = '/admin'): Promise<void> {
   await page.goto(nextPath);
@@ -58,6 +58,17 @@ test.beforeEach(async () => {
 test('home page loads and creates a game from the modal', async ({ page }) => {
   await createE2ePlayer({ name: 'Ada' });
   await createE2ePlayer({ name: 'Bea' });
+  await setE2eGamePassword('smoke-test-password');
+  const sessionToken = await signE2eGameSession();
+  const { hostname } = new URL(TEST_BASE_URL);
+  await page.context().addCookies([{
+    name: 'hs_game',
+    value: sessionToken,
+    domain: hostname,
+    path: '/',
+    httpOnly: true,
+    sameSite: 'Lax',
+  }]);
 
   await page.goto('/');
   await page.waitForLoadState('networkidle');

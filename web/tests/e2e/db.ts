@@ -1,4 +1,6 @@
 import { PlayerTier } from '@/lib/player-tier'
+import { signGameSession } from '@/lib/game-auth'
+import { setNewGamePassword } from '@/lib/settings'
 import { createTestGame, createTestPlayer, resetDatabase } from '../helpers/db'
 import { applyTestEnv } from '../helpers/test-env'
 
@@ -22,4 +24,12 @@ export async function createE2eGame(input: {
   players: { playerId: number; score: number; isWinner: boolean }[]
 }) {
   return createTestGame(input)
+}
+
+export async function setE2eGamePassword(password: string): Promise<void> {
+  await setNewGamePassword(password)
+}
+
+export async function signE2eGameSession(): Promise<string> {
+  return signGameSession()
 }
