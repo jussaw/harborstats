@@ -137,6 +137,30 @@ describe('NewGameButton', () => {
       expect(screen.queryByLabelText('Password')).not.toBeInTheDocument()
       expect(refreshMock).toHaveBeenCalled()
     })
+
+    it('does not show a stale error message when the dialog is closed and reopened', async () => {
+      unlockGameCreationActionMock.mockResolvedValueOnce({ ok: false, error: 'incorrect' })
+      unlockGameCreationActionMock.mockResolvedValue({ ok: false })
+
+      const user = userEvent.setup()
+
+      render(<NewGameButton players={players} className="text-sm" isUnlocked={false} />)
+
+      // Open the dialog and submit with a wrong password — error should appear
+      await user.click(screen.getByRole('button', { name: /\+ new game/i }))
+      await user.type(screen.getByLabelText('Password'), 'wrongpassword')
+      await user.click(screen.getByRole('button', { name: /unlock/i }))
+
+      await waitFor(() =>
+        expect(screen.getByText(/incorrect password/i)).toBeInTheDocument(),
+      )
+
+      // Close and reopen — UnlockForm remounts with a fresh key, error must be gone
+      await user.click(screen.getByRole('button', { name: 'Close' }))
+      await user.click(screen.getByRole('button', { name: /\+ new game/i }))
+
+      expect(screen.queryByText(/incorrect password/i)).not.toBeInTheDocument()
+    })
   })
 
   describe('when isUnlocked', () => {
