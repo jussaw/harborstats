@@ -1,17 +1,31 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { eq } from 'drizzle-orm';
+import { cookies } from 'next/headers';
 import { createGameAction } from '@/app/actions';
+import { signGameSession, COOKIE_NAME } from '@/lib/game-auth';
 import { db } from '@/lib/db';
 import { gamePlayers, games } from '@/db/schema';
 import { createTestPlayer } from '../helpers/db';
 
-const { headersMock } = vi.hoisted(() => ({
+const { headersMock, cookiesMock } = vi.hoisted(() => ({
   headersMock: vi.fn(),
+  cookiesMock: vi.fn(),
 }));
 
 vi.mock('next/headers', () => ({
   headers: headersMock,
+  cookies: cookiesMock,
 }));
+
+async function setupValidSession() {
+  vi.stubEnv('ADMIN_SESSION_SECRET', 'test-secret');
+  const sessionCookie = await signGameSession();
+  vi.mocked(cookies).mockResolvedValue({
+    get: vi.fn((name: string) =>
+      name === COOKIE_NAME ? { value: sessionCookie } : undefined,
+    ),
+  } as Awaited<ReturnType<typeof cookies>>);
+}
 
 describe('createGameAction', () => {
   beforeEach(() => {
@@ -19,7 +33,18 @@ describe('createGameAction', () => {
     headersMock.mockResolvedValue(new Headers());
   });
 
+  test('throws when no valid hs_game session cookie is present', async () => {
+    cookiesMock.mockResolvedValue({
+      get: vi.fn(() => undefined),
+    } as Awaited<ReturnType<typeof cookies>>);
+
+    const formData = new FormData();
+    await expect(createGameAction(formData)).rejects.toThrow('Game creation is locked');
+  });
+
   test('parses submitted form data and persists a game using the first forwarded IP', async () => {
+    await setupValidSession();
+
     const alice = await createTestPlayer({ name: 'Alice' });
     const bob = await createTestPlayer({ name: 'Bob' });
 
@@ -70,6 +95,8 @@ describe('createGameAction', () => {
   });
 
   test('falls back to x-real-ip and lets the real parser infer a single top-score winner', async () => {
+    await setupValidSession();
+
     const alice = await createTestPlayer({ name: 'Alice' });
     const bob = await createTestPlayer({ name: 'Bob' });
 
