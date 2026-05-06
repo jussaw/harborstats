@@ -1,16 +1,22 @@
-import { scrypt, randomBytes, timingSafeEqual } from 'node:crypto'
-import { promisify } from 'node:util'
-
-const scryptAsync = promisify(scrypt)
+import { scrypt, randomBytes, timingSafeEqual, type ScryptOptions } from 'node:crypto'
 
 const FORMAT_PREFIX = 'scrypt'
 const SALT_BYTES = 16
 const KEY_LEN = 64
-const SCRYPT_PARAMS = { N: 16384, r: 8, p: 1 }
+const SCRYPT_PARAMS: ScryptOptions = { N: 16384, r: 8, p: 1 }
+
+function scryptAsync(plain: string, salt: Buffer, keylen: number, options: ScryptOptions): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    scrypt(plain, salt, keylen, options, (err, derivedKey) => {
+      if (err) reject(err)
+      else resolve(derivedKey)
+    })
+  })
+}
 
 export async function hashPassword(plain: string): Promise<string> {
   const salt = randomBytes(SALT_BYTES)
-  const hash = (await scryptAsync(plain, salt, KEY_LEN, SCRYPT_PARAMS)) as Buffer
+  const hash = await scryptAsync(plain, salt, KEY_LEN, SCRYPT_PARAMS)
   return `${FORMAT_PREFIX}$${salt.toString('hex')}$${hash.toString('hex')}`
 }
 
@@ -25,7 +31,7 @@ export async function verifyPasswordHash(plain: string, stored: string | null): 
 
   try {
     const expected = Buffer.from(hashHex, 'hex')
-    const actual = (await scryptAsync(plain, salt, KEY_LEN, SCRYPT_PARAMS)) as Buffer
+    const actual = await scryptAsync(plain, salt, KEY_LEN, SCRYPT_PARAMS)
     if (actual.length !== expected.length) return false
     return timingSafeEqual(actual, expected)
   } catch {

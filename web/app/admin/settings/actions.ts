@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { updateRateMinGames } from '@/lib/settings';
+import { updateRateMinGames, setNewGamePassword, InvalidPasswordError } from '@/lib/settings';
 
 export async function saveSettings(formData: FormData) {
   const winRateMinGames = Math.max(
@@ -16,4 +16,29 @@ export async function saveSettings(formData: FormData) {
   await updateRateMinGames({ winRateMinGames, podiumRateMinGames });
   revalidatePath('/stats');
   revalidatePath('/admin/settings');
+}
+
+export interface SetPasswordState {
+  ok?: boolean
+  error?: string
+}
+
+export async function setNewGamePasswordAction(
+  _prev: SetPasswordState,
+  formData: FormData,
+): Promise<SetPasswordState> {
+  const plain = (formData.get('new_game_password') as string) ?? ''
+
+  try {
+    await setNewGamePassword(plain)
+  } catch (err) {
+    if (err instanceof InvalidPasswordError) {
+      return { ok: false, error: err.message }
+    }
+    return { ok: false, error: 'Failed to save password.' }
+  }
+
+  revalidatePath('/admin/settings')
+  revalidatePath('/')
+  return { ok: true }
 }

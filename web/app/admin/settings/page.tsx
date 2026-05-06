@@ -1,11 +1,12 @@
 import { PageWidth } from '@/components/PageWidth';
-import { getSettings } from '@/lib/settings';
+import { getSettings, hasNewGamePassword } from '@/lib/settings';
 import { saveSettings } from './actions';
+import { GamePasswordForm } from './GamePasswordForm';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminSettingsPage() {
-  const settings = await getSettings();
+  const [settings, isSet] = await Promise.all([getSettings(), hasNewGamePassword()]);
 
   return (
     <PageWidth width="5xl" className="px-6 py-8">
@@ -85,6 +86,8 @@ export default async function AdminSettingsPage() {
             </button>
           </form>
         </div>
+
+        <GamePasswordForm isSet={isSet} />
       </PageWidth>
     </PageWidth>
   );

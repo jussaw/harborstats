@@ -5,12 +5,17 @@ import { ConfirmDeleteButton } from '@/app/admin/ConfirmDeleteButton'
 import { NewGameButton } from '@/components/NewGameButton'
 import { PageWidth } from '@/components/PageWidth'
 import { FormattedDate } from '@/components/FormattedDate'
+import { isGameSession } from '@/lib/game-auth'
 import { deleteGameAction } from './actions'
 
 export const dynamic = 'force-dynamic'
 
 export default async function AdminGamesPage() {
-  const [games, players] = await Promise.all([listAllGames(), getPlayers()])
+  const [games, players, isUnlocked] = await Promise.all([
+    listAllGames(),
+    getPlayers(),
+    isGameSession(),
+  ])
 
   return (
     <PageWidth width="5xl" className="px-6 py-8">
@@ -22,6 +27,7 @@ export default async function AdminGamesPage() {
           </div>
           <NewGameButton
             players={players}
+            isUnlocked={isUnlocked}
             className="
               font-cinzel rounded-sm border border-(--gold) bg-(--gold) px-4
               py-2 text-xs font-semibold tracking-widest text-(--navy-900)
