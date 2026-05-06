@@ -31,7 +31,7 @@ describe('password-hash helpers', () => {
 
   it('rejects stored value with non-hex salt (zero-length decoded bytes)', async () => {
     // Empty salt hex decodes to a zero-length buffer
-    const zeroSalt = `scrypt$$$${'aa'.repeat(64)}`;
+    const zeroSalt = `scrypt$${'aa'.repeat(64)}`;
     await expect(verifyPasswordHash('any-input', zeroSalt)).resolves.toBe(false);
   });
 

@@ -69,5 +69,5 @@ export async function isGameSession(): Promise<boolean> {
 
 export async function verifyGamePassword(input: string): Promise<boolean> {
   const hash = await getNewGamePasswordHash()
-  return verifyPasswordHash(input, hash)
+  return verifyPasswordHash(input.trim(), hash)
 }
