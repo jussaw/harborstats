@@ -24,6 +24,14 @@ vi.mock('@/components/GameForm', () => ({
   ),
 }))
 
+const { unlockGameCreationActionMock } = vi.hoisted(() => ({
+  unlockGameCreationActionMock: vi.fn(),
+}))
+
+vi.mock('@/app/actions/game-unlock', () => ({
+  unlockGameCreationAction: unlockGameCreationActionMock,
+}))
+
 const players = [
   { id: 1, name: 'Alice', tier: PlayerTier.Premium },
 ]
@@ -31,12 +39,14 @@ const players = [
 describe('NewGameButton', () => {
   beforeEach(() => {
     refreshMock.mockReset()
+    unlockGameCreationActionMock.mockReset()
+    unlockGameCreationActionMock.mockResolvedValue({ ok: false })
   })
 
   it('opens and closes the dialog', async () => {
     const user = userEvent.setup()
 
-    render(<NewGameButton players={players} className="text-sm" />)
+    render(<NewGameButton players={players} className="text-sm" isUnlocked />)
 
     const openButton = screen.getByRole('button', { name: /\+ new game/i })
     await user.click(openButton)
@@ -52,7 +62,7 @@ describe('NewGameButton', () => {
   it('closes the dialog and refreshes after a successful submit', async () => {
     const user = userEvent.setup()
 
-    render(<NewGameButton players={players} className="text-sm" />)
+    render(<NewGameButton players={players} className="text-sm" isUnlocked />)
 
     await user.click(screen.getByRole('button', { name: /\+ new game/i }))
     const dialog = screen.getByRole('dialog')
@@ -61,5 +71,84 @@ describe('NewGameButton', () => {
 
     await waitFor(() => expect(dialog).not.toHaveAttribute('open'))
     expect(refreshMock).toHaveBeenCalledTimes(1)
+  })
+
+  describe('when isUnlocked={false}', () => {
+    it('shows the password form when dialog opens', async () => {
+      const user = userEvent.setup()
+
+      render(<NewGameButton players={players} className="text-sm" isUnlocked={false} />)
+
+      await user.click(screen.getByRole('button', { name: /\+ new game/i }))
+
+      expect(screen.getByLabelText('Password')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /unlock/i })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /complete game/i })).not.toBeInTheDocument()
+    })
+
+    it('shows an incorrect password error when the action returns error: incorrect', async () => {
+      unlockGameCreationActionMock.mockResolvedValue({ ok: false, error: 'incorrect' })
+
+      const user = userEvent.setup()
+
+      render(<NewGameButton players={players} className="text-sm" isUnlocked={false} />)
+
+      await user.click(screen.getByRole('button', { name: /\+ new game/i }))
+      await user.type(screen.getByLabelText('Password'), 'wrongpassword')
+      await user.click(screen.getByRole('button', { name: /unlock/i }))
+
+      await waitFor(() =>
+        expect(screen.getByText(/incorrect password/i)).toBeInTheDocument(),
+      )
+    })
+
+    it('shows a not-configured message when the action returns error: not-configured', async () => {
+      unlockGameCreationActionMock.mockResolvedValue({ ok: false, error: 'not-configured' })
+
+      const user = userEvent.setup()
+
+      render(<NewGameButton players={players} className="text-sm" isUnlocked={false} />)
+
+      await user.click(screen.getByRole('button', { name: /\+ new game/i }))
+      await user.type(screen.getByLabelText('Password'), 'anything')
+      await user.click(screen.getByRole('button', { name: /unlock/i }))
+
+      await waitFor(() =>
+        expect(
+          screen.getByText(/no game password has been set yet/i),
+        ).toBeInTheDocument(),
+      )
+    })
+
+    it('switches to the game form after a successful unlock', async () => {
+      unlockGameCreationActionMock.mockResolvedValue({ ok: true })
+
+      const user = userEvent.setup()
+
+      render(<NewGameButton players={players} className="text-sm" isUnlocked={false} />)
+
+      await user.click(screen.getByRole('button', { name: /\+ new game/i }))
+      await user.type(screen.getByLabelText('Password'), 'correctpassword')
+      await user.click(screen.getByRole('button', { name: /unlock/i }))
+
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: /complete game/i })).toBeInTheDocument(),
+      )
+      expect(screen.queryByLabelText('Password')).not.toBeInTheDocument()
+      expect(refreshMock).toHaveBeenCalled()
+    })
+  })
+
+  describe('when isUnlocked', () => {
+    it('shows the game form directly when dialog opens', async () => {
+      const user = userEvent.setup()
+
+      render(<NewGameButton players={players} className="text-sm" isUnlocked />)
+
+      await user.click(screen.getByRole('button', { name: /\+ new game/i }))
+
+      expect(screen.getByRole('button', { name: /complete game/i })).toBeInTheDocument()
+      expect(screen.queryByLabelText('Password')).not.toBeInTheDocument()
+    })
   })
 })

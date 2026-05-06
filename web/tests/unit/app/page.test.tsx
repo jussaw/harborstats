@@ -12,6 +12,10 @@ import {
   getPlayerWinEvents,
 } from '@/lib/stats';
 
+vi.mock('@/lib/game-auth', () => ({
+  isGameSession: vi.fn().mockResolvedValue(true),
+}));
+
 vi.mock('@/lib/games', () => ({
   listRecentGames: vi.fn(),
 }));

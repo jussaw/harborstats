@@ -8,6 +8,7 @@ import {
   getRecentActivitySummary,
   getReigningChampionSummary,
 } from '@/lib/stats'
+import { isGameSession } from '@/lib/game-auth'
 import { CurrentWinStreakLeaderCard } from '@/components/CurrentWinStreakLeaderCard'
 import { HotHandIndicatorCard } from '@/components/HotHandIndicatorCard'
 import { NewGameButton } from '@/components/NewGameButton'
@@ -48,6 +49,7 @@ function formatNameList(names: string[]) {
 
 export default async function HomePage() {
   const [
+    isUnlocked,
     games,
     players,
     activitySummary,
@@ -56,6 +58,7 @@ export default async function HomePage() {
     playerWinEvents,
     hotHandIndicators,
   ] = await Promise.all([
+    isGameSession(),
     listRecentGames(),
     getPlayers(),
     getRecentActivitySummary(),
@@ -71,6 +74,7 @@ export default async function HomePage() {
         <h1 className="font-cinzel text-xl tracking-wide text-(--gold)">Recent Games</h1>
         <NewGameButton
           players={players}
+          isUnlocked={isUnlocked}
           className="
             font-cinzel rounded-sm border border-(--gold) bg-(--gold) px-4 py-2
             text-sm font-semibold text-(--navy-900) transition-colors
