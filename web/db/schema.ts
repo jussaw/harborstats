@@ -54,5 +54,6 @@ export const appSettings = pgTable('app_settings', {
   id: integer('id').primaryKey().default(1),
   winRateMinGames: integer('win_rate_min_games').notNull().default(0),
   podiumRateMinGames: integer('podium_rate_min_games').notNull().default(0),
+  newGamePasswordHash: text('new_game_password_hash'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

@@ -50,6 +50,7 @@ Always heed deprecation warnings from Next.js 16.
   - `ADMIN_PASSWORD`
   - `ADMIN_SESSION_SECRET`
 - Never log or expose these secrets.
+- `createGameAction` is gated by the `hs_game` cookie (signed with `ADMIN_SESSION_SECRET`); game creation password is stored as a salted scrypt hash in `app_settings.new_game_password_hash` and is editable at `/admin/settings`.
 
 ## Data Model Constraints
 Tables:
