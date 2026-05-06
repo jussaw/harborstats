@@ -22,6 +22,13 @@
       "when": 1776795597824,
       "tag": "0002_add_podium_rate_min_games",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1778040435965,
+      "tag": "0003_peaceful_the_renegades",
+      "breakpoints": true
     }
   ]
 }
