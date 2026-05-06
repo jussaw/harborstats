@@ -1,11 +1,21 @@
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, it, test, vi } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { cookies } from 'next/headers';
 import { createGameAction } from '@/app/actions';
+import { unlockGameCreationAction } from '@/app/actions/game-unlock';
 import { signGameSession, COOKIE_NAME } from '@/lib/game-auth';
+import { setNewGamePassword } from '@/lib/settings';
 import { db } from '@/lib/db';
 import { gamePlayers, games } from '@/db/schema';
 import { createTestPlayer } from '../helpers/db';
+
+function buildFormData(fields: Record<string, string>): FormData {
+  const formData = new FormData();
+  Object.entries(fields).forEach(([key, value]) => {
+    formData.set(key, value);
+  });
+  return formData;
+}
 
 const { headersMock, cookiesMock } = vi.hoisted(() => ({
   headersMock: vi.fn(),
@@ -129,5 +139,46 @@ describe('createGameAction', () => {
       .filter((player) => player.isWinner)
       .map((player) => player.playerId);
     expect(winnerIds).toEqual([alice.id]);
+  });
+});
+
+describe('unlockGameCreationAction', () => {
+  it('returns not-configured error when no password is set', async () => {
+    const state = await unlockGameCreationAction(
+      { ok: false },
+      buildFormData({ password: 'any' }),
+    );
+    expect(state).toEqual({ ok: false, error: 'not-configured' });
+  });
+
+  it('returns incorrect error when wrong password is provided', async () => {
+    await setNewGamePassword('correct-password');
+    const state = await unlockGameCreationAction(
+      { ok: false },
+      buildFormData({ password: 'wrong' }),
+    );
+    expect(state).toEqual({ ok: false, error: 'incorrect' });
+  });
+
+  it('sets hs_game cookie and returns ok when correct password is provided', async () => {
+    vi.stubEnv('ADMIN_SESSION_SECRET', 'test-secret');
+    await setNewGamePassword('correct-password');
+
+    const setCookieMock = vi.fn();
+    vi.mocked(cookies).mockResolvedValue({
+      get: vi.fn(),
+      set: setCookieMock,
+    } as unknown as Awaited<ReturnType<typeof cookies>>);
+
+    const state = await unlockGameCreationAction(
+      { ok: false },
+      buildFormData({ password: 'correct-password' }),
+    );
+    expect(state).toEqual({ ok: true });
+    expect(setCookieMock).toHaveBeenCalledWith(
+      'hs_game',
+      expect.stringMatching(/^\d+\.[0-9a-f]+$/),
+      expect.objectContaining({ httpOnly: true, path: '/', maxAge: 60 * 60 * 24 * 30 }),
+    );
   });
 });

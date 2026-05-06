@@ -1,8 +1,9 @@
 'use server'
 
 import { cookies } from 'next/headers'
-import { verifyGamePassword, signGameSession, COOKIE_NAME } from '@/lib/game-auth'
+import { signGameSession, COOKIE_NAME } from '@/lib/game-auth'
 import { getNewGamePasswordHash } from '@/lib/settings'
+import { verifyPasswordHash } from '@/lib/password-hash'
 
 export interface UnlockState {
   ok: boolean
@@ -24,12 +25,11 @@ export async function unlockGameCreationAction(
   const password = (formData.get('password') as string) ?? ''
 
   const hash = await getNewGamePasswordHash()
-
   if (hash === null) {
     return { ok: false, error: 'not-configured' }
   }
 
-  const valid = await verifyGamePassword(password)
+  const valid = await verifyPasswordHash(password.trim(), hash)
   if (!valid) {
     return { ok: false, error: 'incorrect' }
   }
