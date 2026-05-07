@@ -51,7 +51,7 @@ describe('RivalryCard', () => {
     expect(screen.getByText('No rivalry yet.')).toBeInTheDocument();
   });
 
-  it('displays the games-together count and tier detail line', () => {
+  it('displays the games-together count', () => {
     render(
       <RivalryCard
         title="Closest Rivalry"
@@ -66,6 +66,5 @@ describe('RivalryCard', () => {
       'roomy',
     );
     expect(screen.getByText('14 games together')).toBeInTheDocument();
-    expect(screen.getByText('Premium vs Standard')).toBeInTheDocument();
   });
 });

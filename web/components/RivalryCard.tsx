@@ -11,53 +11,41 @@ interface RivalryCardProps {
   emptyMessage: string;
 }
 
-function formatTierLabel(tier: RivalryAggregate['playerA']['tier']) {
-  return tier === PlayerTier.Premium ? 'Premium' : 'Standard';
-}
-
 function getPlayerAccentClass(tier: RivalryAggregate['playerA']['tier']) {
   return tier === PlayerTier.Premium ? 'text-(--gold)' : 'text-(--cream)';
 }
 
 function RivalryPairContent({ pair }: { pair: RivalryAggregate }) {
   return (
-    <div className="flex h-full flex-col justify-between gap-4">
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          <Link
-            href={`/players/${pair.playerA.playerId}`}
-            className={`
-              font-cinzel text-3xl leading-none font-semibold tracking-wide
-              ${getPlayerAccentClass(pair.playerA.tier)}
-            `}
-          >
-            {pair.playerA.name}
-          </Link>
-          <span className="text-(--cream)/35">vs</span>
-          <Link
-            href={`/players/${pair.playerB.playerId}`}
-            className={`
-              font-cinzel text-3xl leading-none font-semibold tracking-wide
-              ${getPlayerAccentClass(pair.playerB.tier)}
-            `}
-          >
-            {pair.playerB.name}
-          </Link>
-        </div>
-
-        <div className="space-y-1">
-          <p className="text-base font-semibold text-(--cream)">
-            {pair.playerAWins} wins - {pair.playerBWins} losses
-          </p>
-          <p className="text-sm text-(--cream)/60">{pair.gamesTogether} games together</p>
-        </div>
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <Link
+          href={`/players/${pair.playerA.playerId}`}
+          className={`
+            font-cinzel text-3xl leading-none font-semibold tracking-wide
+            ${getPlayerAccentClass(pair.playerA.tier)}
+          `}
+        >
+          {pair.playerA.name}
+        </Link>
+        <span className="text-(--cream)/35">vs</span>
+        <Link
+          href={`/players/${pair.playerB.playerId}`}
+          className={`
+            font-cinzel text-3xl leading-none font-semibold tracking-wide
+            ${getPlayerAccentClass(pair.playerB.tier)}
+          `}
+        >
+          {pair.playerB.name}
+        </Link>
       </div>
 
-      <p className="
-        text-xs font-semibold tracking-[0.2em] text-(--cream)/45 uppercase
-      ">
-        {formatTierLabel(pair.playerA.tier)} vs {formatTierLabel(pair.playerB.tier)}
-      </p>
+      <div className="space-y-1">
+        <p className="text-base font-semibold text-(--cream)">
+          {pair.playerAWins} wins - {pair.playerBWins} losses
+        </p>
+        <p className="text-sm text-(--cream)/60">{pair.gamesTogether} games together</p>
+      </div>
     </div>
   );
 }
