@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useEffect, useActionState } from 'react'
+import { useRef, useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { GameForm } from '@/components/GameForm'
 import { createGameAction } from '@/app/actions'
@@ -14,10 +14,12 @@ interface UnlockFormProps {
 
 function UnlockForm({ onUnlocked }: UnlockFormProps) {
   const passwordRef = useRef<HTMLInputElement>(null)
-  const [state, action] = useActionState<UnlockState, FormData>(
-    unlockGameCreationAction,
-    { ok: false },
-  )
+  const [state, setState] = useState<UnlockState>({ ok: false })
+  const [isPending, startTransition] = useTransition()
+
+  useEffect(() => {
+    passwordRef.current?.focus()
+  }, [])
 
   useEffect(() => {
     if (state.ok) {
@@ -25,12 +27,17 @@ function UnlockForm({ onUnlocked }: UnlockFormProps) {
     }
   }, [state.ok, onUnlocked])
 
-  useEffect(() => {
-    passwordRef.current?.focus()
-  }, [])
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    startTransition(async () => {
+      const result = await unlockGameCreationAction(state, formData)
+      setState(result)
+    })
+  }
 
   return (
-    <form action={action} className="space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-5">
       {state.error === 'not-configured' && (
         <p className="
           rounded-sm border border-amber-500/50 bg-amber-950/60 px-4 py-2.5
@@ -71,14 +78,16 @@ function UnlockForm({ onUnlocked }: UnlockFormProps) {
       </label>
       <button
         type="submit"
+        disabled={isPending}
         className="
           font-cinzel w-full rounded-sm border border-(--gold) bg-(--gold) px-6
           py-3 font-semibold tracking-widest text-(--navy-900) uppercase
           transition-colors
           hover:bg-(--cream)
+          disabled:opacity-60
         "
       >
-        Unlock
+        {isPending ? 'Checking…' : 'Unlock'}
       </button>
     </form>
   )
