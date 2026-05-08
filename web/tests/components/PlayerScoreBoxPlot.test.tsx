@@ -98,6 +98,40 @@ describe('PlayerScoreBoxPlot', () => {
     expect(screen.getByRole('img', { name: 'Player score distribution' })).toBeInTheDocument();
   });
 
+  it('renders a compact single-player chart with details already selected', () => {
+    render(
+      <PlayerScoreBoxPlot
+        density="compact"
+        distributions={[
+          {
+            playerId: 1,
+            name: 'Ada',
+            tier: PlayerTier.Premium,
+            count: 3,
+            min: 7,
+            q1: 7.5,
+            median: 8,
+            q3: 8.5,
+            max: 9,
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByTestId('stats-card-detail-slot')).toHaveAttribute(
+      'data-detail-size',
+      'compact',
+    );
+    expect(screen.getByTestId('stats-card-detail-slot')).toHaveClass('h-auto');
+    expect(
+      screen.queryByText('Hover over a box to inspect a player score spread.'),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('3 games')).toBeInTheDocument();
+    expect(screen.getByText('Median')).toBeInTheDocument();
+    expect(screen.getByText('8.0')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Player score distribution' })).toHaveClass('h-28');
+  });
+
   it('renders an empty state with no distributions', () => {
     render(<PlayerScoreBoxPlot distributions={[]} />);
 

@@ -564,7 +564,10 @@ function PlayerDetail({
           badge={undefined}
           span="single"
         >
-          <PlayerScoreBoxPlot distributions={scoreDistribution ? [scoreDistribution] : []} />
+          <PlayerScoreBoxPlot
+            density="compact"
+            distributions={scoreDistribution ? [scoreDistribution] : []}
+          />
         </StatsCard>
         <ProfileMetricCard
           id="player-podium-rate"

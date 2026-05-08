@@ -8,6 +8,7 @@ import type { PlayerScoreDistribution } from '@/lib/stats';
 
 interface Props {
   distributions: PlayerScoreDistribution[];
+  density?: 'compact' | 'roomy';
 }
 
 function formatGameCount(count: number) {
@@ -61,7 +62,31 @@ function getYPosition(
   return plotBottom - ((value - minScore) / (maxScore - minScore)) * (plotBottom - plotTop);
 }
 
-export function PlayerScoreBoxPlot({ distributions }: Props) {
+function getChartHeightClass(density: NonNullable<Props['density']>) {
+  if (density === 'compact') {
+    return 'h-28';
+  }
+
+  return 'h-72';
+}
+
+function getChartFramePaddingClass(density: NonNullable<Props['density']>) {
+  if (density === 'compact') {
+    return 'p-3';
+  }
+
+  return 'p-4 sm:p-5';
+}
+
+function getDetailGridClass(isCompact: boolean) {
+  if (isCompact) {
+    return 'grid grid-cols-5 gap-2';
+  }
+
+  return 'grid grid-cols-5 gap-3';
+}
+
+export function PlayerScoreBoxPlot({ distributions, density }: Props) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   if (distributions.length === 0) {
@@ -80,7 +105,15 @@ export function PlayerScoreBoxPlot({ distributions }: Props) {
     maxScore,
     points,
   } = buildChartLayout(distributions);
-  const activeDistribution = activeIndex === null ? null : (points[activeIndex] ?? null);
+  const resolvedDensity = density ?? 'roomy';
+  const isCompact = resolvedDensity === 'compact';
+  let activeDistribution: (typeof points)[number] | null =
+    activeIndex === null ? null : (points[activeIndex] ?? null);
+  if (isCompact && points.length === 1) {
+    const [onlyDistribution] = points;
+    activeDistribution = onlyDistribution;
+  }
+  const detailSlotSize = isCompact ? 'compact' : 'roomy';
   const hoverWidth =
     points.length === 1
       ? width - plotLeft - plotRight
@@ -89,18 +122,26 @@ export function PlayerScoreBoxPlot({ distributions }: Props) {
 
   return (
     <div className="space-y-4">
-      <StatsCardDetailSlot size="roomy" className="text-sm text-(--cream)/55">
+      <StatsCardDetailSlot
+        size={detailSlotSize}
+        className={`
+          ${isCompact ? 'h-auto text-xs' : 'text-sm'}
+          text-(--cream)/55
+        `}
+      >
         {activeDistribution ? (
-          <div className="space-y-3">
+          <div className={isCompact ? 'space-y-2' : 'space-y-3'}>
             <div
-              className="
+              className={`
                 flex items-baseline justify-between gap-3 border-b
-                border-(--gold)/15 pb-2
-              "
+                border-(--gold)/15
+                ${isCompact ? 'pb-1' : 'pb-2'}
+              `}
             >
               <p
                 className={`
-                  text-base font-medium
+                  ${isCompact ? 'text-sm' : 'text-base'}
+                  font-medium
                   ${
                     activeDistribution.tier === PlayerTier.Premium
                       ? 'text-(--gold)'
@@ -110,11 +151,16 @@ export function PlayerScoreBoxPlot({ distributions }: Props) {
               >
                 {activeDistribution.name}
               </p>
-              <p className="text-xs text-(--cream)/55 tabular-nums">
+              <p
+                className={`
+                  ${isCompact ? 'text-[11px]' : 'text-xs'}
+                  text-(--cream)/55 tabular-nums
+                `}
+              >
                 {formatGameCount(activeDistribution.count)}
               </p>
             </div>
-            <dl className="grid grid-cols-5 gap-3">
+            <dl className={getDetailGridClass(isCompact)}>
               {[
                 { label: 'Min', value: activeDistribution.min, accent: false },
                 { label: 'Q1', value: activeDistribution.q1, accent: false },
@@ -124,15 +170,19 @@ export function PlayerScoreBoxPlot({ distributions }: Props) {
               ].map(({ label, value, accent }) => (
                 <div key={label} className="flex flex-col gap-1">
                   <dt
-                    className="
-                      text-[10px] tracking-[0.2em] text-(--cream)/55 uppercase
-                    "
+                    className={`
+                      ${isCompact ? 'text-[9px] tracking-[0.16em]' : `
+                        text-[10px] tracking-[0.2em]
+                      `}
+                      text-(--cream)/55 uppercase
+                    `}
                   >
                     {label}
                   </dt>
                   <dd
                     className={`
-                      text-base tabular-nums
+                      ${isCompact ? 'text-sm' : 'text-base'}
+                      tabular-nums
                       ${accent ? 'text-(--gold)' : 'text-(--cream)'}
                     `}
                   >
@@ -148,14 +198,17 @@ export function PlayerScoreBoxPlot({ distributions }: Props) {
       </StatsCardDetailSlot>
 
       <div
-        className="
-          rounded-2xl border border-(--gold)/15 bg-(--navy-800)/30 p-4
-          sm:p-5
-        "
+        className={`
+          rounded-2xl border border-(--gold)/15 bg-(--navy-800)/30
+          ${getChartFramePaddingClass(resolvedDensity)}
+        `}
       >
         <svg
           viewBox={`0 0 ${width} ${height}`}
-          className="h-72 w-full"
+          className={`
+            ${getChartHeightClass(resolvedDensity)}
+            w-full
+          `}
           role="img"
           aria-label="Player score distribution"
           onMouseLeave={() => setActiveIndex(null)}
@@ -316,3 +369,7 @@ export function PlayerScoreBoxPlot({ distributions }: Props) {
     </div>
   );
 }
+
+PlayerScoreBoxPlot.defaultProps = {
+  density: 'roomy',
+};
