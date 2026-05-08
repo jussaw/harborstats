@@ -403,15 +403,9 @@ export default async function StatsPage() {
     .sort((a, b) => b.podiumRate - a.podiumRate || b.podiums - a.podiums);
 
   const medianSorted = [...scoreStats].sort((a, b) => b.medianScore - a.medianScore);
-  const pointsPerGameSorted = cumulativeScoreStats
-    .filter((player) => player.games > 0)
-    .sort(
-      (a, b) =>
-        b.pointsPerGame - a.pointsPerGame ||
-        b.totalScore - a.totalScore ||
-        b.games - a.games ||
-        a.name.localeCompare(b.name),
-    );
+  const cumulativeScoreStatsByPlayerId = new Map(
+    cumulativeScoreStats.map((player) => [player.playerId, player]),
+  );
   const normalizedMedianSorted = [...normalizedScoreStats].sort(
     (a, b) => b.medianScore - a.medianScore,
   );
@@ -462,7 +456,6 @@ export default async function StatsPage() {
   const avgScoreRanks = rankWithTies(scoreStats, (player) => player.avgScore);
   const medianScoreRanks = rankWithTies(medianSorted, (player) => player.medianScore);
   const totalVpRanks = rankWithTies(cumulativeScoreStats, (player) => player.totalScore);
-  const pointsPerGameRanks = rankWithTies(pointsPerGameSorted, (player) => player.pointsPerGame);
   const normalizedAvgScoreRanks = rankWithTies(normalizedScoreStats, (player) => player.avgScore);
   const normalizedMedianScoreRanks = rankWithTies(
     normalizedMedianSorted,
@@ -544,14 +537,6 @@ export default async function StatsPage() {
       id: 'median-score',
       title: 'Median Score',
       description: 'Typical scoring performance with median values to smooth out spikes.',
-      badge: undefined,
-      span: 'single',
-      section: 'scoring',
-    },
-    {
-      id: 'points-per-game',
-      title: 'Points per Game',
-      description: 'Scoring efficiency based on average points per appearance.',
       badge: undefined,
       span: 'single',
       section: 'scoring',
@@ -949,25 +934,35 @@ export default async function StatsPage() {
           { label: '#', align: 'center', widthClass: 'w-10' },
           { label: 'Player' },
           { label: 'Avg Score', align: 'right' },
+          { label: 'Total VP', align: 'right' },
           { label: 'Games', align: 'right' },
         ]}
       >
-        {scoreStats.map((player, index) => (
-          <DataRow key={player.playerId}>
-            <RankCell rank={avgScoreRanks[index]} />
-            <td className="px-3 py-2 text-(--cream)">
-              <PlayerName name={player.name} tier={player.tier} />
-            </td>
-            <td className="
-              px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
-            ">
-              {formatAverage(player.avgScore)}
-            </td>
-            <td className="px-3 py-2 text-right text-(--cream)/70 tabular-nums">
-              {player.games}
-            </td>
-          </DataRow>
-        ))}
+        {scoreStats.map((player, index) => {
+          const cumulativeScoreStat = cumulativeScoreStatsByPlayerId.get(player.playerId);
+
+          return (
+            <DataRow key={player.playerId}>
+              <RankCell rank={avgScoreRanks[index]} />
+              <td className="px-3 py-2 text-(--cream)">
+                <PlayerName name={player.name} tier={player.tier} />
+              </td>
+              <td className="
+                px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
+              ">
+                {formatAverage(player.avgScore)}
+              </td>
+              <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
+                {cumulativeScoreStat?.totalScore ?? 0}
+              </td>
+              <td className="
+                px-3 py-2 text-right text-(--cream)/70 tabular-nums
+              ">
+                {player.games}
+              </td>
+            </DataRow>
+          );
+        })}
       </StatsLeaderboardTable>
     ),
     'median-score': medianSorted.length === 0 ? (
@@ -991,39 +986,6 @@ export default async function StatsPage() {
               px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
             ">
               {formatAverage(player.medianScore)}
-            </td>
-            <td className="px-3 py-2 text-right text-(--cream)/70 tabular-nums">
-              {player.games}
-            </td>
-          </DataRow>
-        ))}
-      </StatsLeaderboardTable>
-    ),
-    'points-per-game': pointsPerGameSorted.length === 0 ? (
-      <EmptyState>No games recorded yet.</EmptyState>
-    ) : (
-      <StatsLeaderboardTable
-        columns={[
-          { label: '#', align: 'center', widthClass: 'w-10' },
-          { label: 'Player' },
-          { label: 'PPG', align: 'right' },
-          { label: 'Total VP', align: 'right' },
-          { label: 'Games', align: 'right' },
-        ]}
-      >
-        {pointsPerGameSorted.map((player, index) => (
-          <DataRow key={player.playerId}>
-            <RankCell rank={pointsPerGameRanks[index]} />
-            <td className="px-3 py-2 text-(--cream)">
-              <PlayerName name={player.name} tier={player.tier} />
-            </td>
-            <td className="
-              px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
-            ">
-              {formatAverage(player.pointsPerGame)}
-            </td>
-            <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
-              {player.totalScore}
             </td>
             <td className="px-3 py-2 text-right text-(--cream)/70 tabular-nums">
               {player.games}
