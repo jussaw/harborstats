@@ -512,7 +512,6 @@ describe('StatsPage', () => {
     const totalVpIndex = markup.indexOf('id="total-vp"');
     const avgScoreIndex = markup.indexOf('id="avg-score"');
     const medianScoreIndex = markup.indexOf('id="median-score"');
-    const pointsPerGameIndex = markup.indexOf('id="points-per-game"');
     const winningVsLosingScoreIndex = markup.indexOf('id="winning-vs-losing-score"');
     const normalizedAvgScoreIndex = markup.indexOf('id="normalized-avg-score"');
     const normalizedMedianScoreIndex = markup.indexOf('id="normalized-median-score"');
@@ -555,9 +554,8 @@ describe('StatsPage', () => {
     expect(totalVpIndex).toBeGreaterThan(currentWinStreakIndex);
     expect(avgScoreIndex).toBeGreaterThan(totalVpIndex);
     expect(medianScoreIndex).toBeGreaterThan(avgScoreIndex);
-    expect(pointsPerGameIndex).toBeGreaterThan(medianScoreIndex);
-    expect(winningVsLosingScoreIndex).toBeGreaterThan(pointsPerGameIndex);
-    expect(normalizedAvgScoreIndex).toBeGreaterThan(pointsPerGameIndex);
+    expect(winningVsLosingScoreIndex).toBeGreaterThan(medianScoreIndex);
+    expect(normalizedAvgScoreIndex).toBeGreaterThan(winningVsLosingScoreIndex);
     expect(normalizedMedianScoreIndex).toBeGreaterThan(normalizedAvgScoreIndex);
     expect(winningScoreByGameSizeIndex).toBeGreaterThan(normalizedMedianScoreIndex);
     expect(scoreHistogramIndex).toBeGreaterThan(winningScoreByGameSizeIndex);
@@ -617,8 +615,10 @@ describe('StatsPage', () => {
     expect(markup).toContain('Winning Score by Game Size');
     expect(markup).toContain('Score Histogram');
     expect(markup).toContain('Score Distribution by Player');
+    expect(markup).toContain('Average Score');
     expect(markup).toContain('Total VP');
-    expect(markup).toContain('Points per Game');
+    expect(markup).not.toContain('Points per Game');
+    expect(markup).not.toContain('id="points-per-game"');
     expect(markup).toContain('Normalized Average Score');
     expect(markup).toContain('Normalized Median Score');
     expect(markup).toContain('Winner = 100%');
@@ -630,7 +630,6 @@ describe('StatsPage', () => {
     expect(markup).toContain('sm:whitespace-nowrap');
     expect(markup).toContain('47');
     expect(markup).toContain('35');
-    expect(markup).toContain('8.8');
     expect(markup).toContain('94.0%');
     expect(markup).toContain('90.0%');
     expect(markup).not.toContain('Days Since Last Game');
@@ -690,6 +689,15 @@ describe('StatsPage', () => {
     expect(bridesmaidMarkup.indexOf('Ada')).toBeGreaterThan(-1);
     expect(bridesmaidMarkup.indexOf('Bea')).toBeLessThan(bridesmaidMarkup.indexOf('Ada'));
 
+    const avgScoreMarkup = markup.slice(avgScoreIndex, medianScoreIndex);
+    expect(avgScoreMarkup).toContain('Avg Score');
+    expect(avgScoreMarkup).toContain('Total VP');
+    expect(avgScoreMarkup).toContain('Games');
+    expect(avgScoreMarkup).toContain('9.4');
+    expect(avgScoreMarkup).toContain('8.7');
+    expect(avgScoreMarkup).toContain('47');
+    expect(avgScoreMarkup).toContain('35');
+
     expect(markup.slice(totalWinsIndex, totalWinsIndex + 160)).not.toContain('lg:col-span-2');
     expect(markup.slice(winRateIndex, winRateIndex + 160)).not.toContain('lg:col-span-2');
     expect(markup.slice(expectedVsActualWinsIndex, expectedVsActualWinsIndex + 160)).not.toContain(
@@ -708,15 +716,15 @@ describe('StatsPage', () => {
       'lg:col-span-2',
     );
     expect(markup.slice(totalVpIndex, totalVpIndex + 160)).not.toContain('lg:col-span-2');
-    expect(markup.slice(pointsPerGameIndex, pointsPerGameIndex + 160)).not.toContain(
+    expect(markup.slice(avgScoreIndex, avgScoreIndex + 160)).not.toContain('lg:col-span-2');
+    expect(markup.slice(gamesOverTimeIndex, gamesOverTimeIndex + 160)).not.toContain(
       'lg:col-span-2',
     );
-    expect(markup.slice(gamesOverTimeIndex, gamesOverTimeIndex + 160)).toContain('lg:col-span-2');
     expect(markup.slice(participationRateIndex, participationRateIndex + 160)).toContain(
       'lg:col-span-2',
     );
-    expect(markup.slice(attendanceIndex, attendanceIndex + 160)).toContain('lg:col-span-2');
-    expect(markup.slice(cumulativeGamesIndex, cumulativeGamesIndex + 160)).toContain(
+    expect(markup.slice(attendanceIndex, attendanceIndex + 160)).not.toContain('lg:col-span-2');
+    expect(markup.slice(cumulativeGamesIndex, cumulativeGamesIndex + 160)).not.toContain(
       'lg:col-span-2',
     );
     expect(markup.slice(calendarHeatmapIndex, calendarHeatmapIndex + 160)).toContain(
@@ -801,7 +809,9 @@ describe('StatsPage', () => {
     expect(markup).toContain('No players have played 2+ games yet.');
     expect(markup).toContain('No players have played 5+ games yet.');
     expect(markup).toContain('Total VP');
-    expect(markup).toContain('Points per Game');
+    expect(markup).toContain('Average Score');
+    expect(markup).not.toContain('Points per Game');
+    expect(markup).not.toContain('id="points-per-game"');
     expect(markup).toContain('Winning vs Losing Score');
     expect(markup).toContain('Winning Score by Game Size');
     expect(markup).not.toContain('Days Since Last Game');
@@ -825,7 +835,7 @@ describe('StatsPage', () => {
     expect(markup).toContain('Most Lopsided Rivalry');
     expect(markup).toContain('No players recorded yet.');
     expect(markup).toContain('No rivalries meet the minimum game threshold yet.');
-    expect(markup.match(/No games recorded yet\./g)).toHaveLength(25);
+    expect(markup.match(/No games recorded yet\./g)).toHaveLength(24);
   });
 
   it('filters the podium leaderboard using the podium threshold instead of the win-rate threshold', async () => {
@@ -923,7 +933,8 @@ describe('StatsPage', () => {
     expect(podiumSection).not.toContain('Bea');
     expect(markup).toContain('section id="win-rate"');
     expect(markup).toContain('section id="total-vp"');
-    expect(markup).toContain('section id="points-per-game"');
+    expect(markup).toContain('section id="avg-score"');
+    expect(markup).not.toContain('section id="points-per-game"');
     expect(markup).toContain('Bea');
   });
 });
