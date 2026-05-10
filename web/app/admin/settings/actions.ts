@@ -1,9 +1,11 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { requireAdminSession } from '@/lib/admin-auth';
 import { updateRateMinGames, setNewGamePassword, InvalidPasswordError } from '@/lib/settings';
 
 export async function saveSettings(formData: FormData) {
+  await requireAdminSession();
   const winRateMinGames = Math.max(
     0,
     parseInt((formData.get('win_rate_min_games') as string) ?? '0', 10) || 0,
@@ -27,6 +29,7 @@ export async function setNewGamePasswordAction(
   _prev: SetPasswordState,
   formData: FormData,
 ): Promise<SetPasswordState> {
+  await requireAdminSession()
   const plain = (formData.get('new_game_password') as string) ?? ''
 
   try {

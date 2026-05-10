@@ -7,10 +7,16 @@ if (!DATABASE_URL) throw new Error('DATABASE_URL is not set')
 
 async function main(): Promise<void> {
   const sql = postgres(DATABASE_URL!, { max: 1 })
-  const db = drizzle(sql)
-  await migrate(db, { migrationsFolder: './db/migrations' })
-  await sql.end()
+  try {
+    const db = drizzle(sql)
+    await migrate(db, { migrationsFolder: './db/migrations' })
+  } finally {
+    await sql.end()
+  }
   console.log('Migration complete')
 }
 
-main().catch(console.error)
+main().catch((error: unknown) => {
+  console.error(error)
+  process.exitCode = 1
+})

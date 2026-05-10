@@ -12,10 +12,15 @@ const SESSION_COOKIE_OPTIONS = {
   path: '/',
 }
 
+function sanitizeAdminNext(value: FormDataEntryValue | null): string {
+  if (typeof value !== 'string') return '/admin'
+  if (value === '/admin' || value.startsWith('/admin/')) return value
+  return '/admin'
+}
+
 export async function loginAction(formData: FormData) {
   const password = (formData.get('password') as string) ?? ''
-  const next = (formData.get('next') as string) ?? '/admin'
-  const safeNext = next.startsWith('/') ? next : '/admin'
+  const safeNext = sanitizeAdminNext(formData.get('next'))
 
   if (!verifyPassword(password)) {
     redirect(`/admin/login?error=1&next=${encodeURIComponent(safeNext)}`)

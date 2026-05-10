@@ -8,6 +8,7 @@ import {
   inet,
   check,
   index,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
@@ -47,6 +48,10 @@ export const gamePlayers = pgTable(
     check('game_players_score_check', sql`${t.score} >= 0`),
     index('idx_game_players_game').on(t.gameId),
     index('idx_game_players_player').on(t.playerId),
+    uniqueIndex('game_players_game_id_player_id_unique').on(t.gameId, t.playerId),
+    uniqueIndex('game_players_one_winner_per_game')
+      .on(t.gameId)
+      .where(sql`${t.isWinner} = true`),
   ],
 );
 

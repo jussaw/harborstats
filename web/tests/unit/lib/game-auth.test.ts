@@ -7,6 +7,7 @@ import {
   verifyGameSession,
   COOKIE_NAME,
 } from '@/lib/game-auth';
+import { signSession } from '@/lib/admin-auth';
 
 vi.mock('next/headers', () => ({
   cookies: vi.fn(),
@@ -35,8 +36,10 @@ describe('game auth helpers', () => {
     vi.stubEnv('ADMIN_SESSION_SECRET', 'session-secret');
 
     const cookie = await signGameSession();
-    const [issuedAt, signature] = cookie.split('.');
+    const [payload, signature] = cookie.split('.');
+    const issuedAt = payload.replace('game:', '');
 
+    expect(payload).toMatch(/^game:\d+$/);
     expect(issuedAt).toBe(String(Math.floor(new Date('2026-04-20T12:00:00.000Z').getTime() / 1000)));
     expect(signature).toMatch(/^[0-9a-f]+$/);
     await expect(verifyGameSession(cookie)).resolves.toBe(true);
@@ -48,6 +51,16 @@ describe('game auth helpers', () => {
     await expect(verifyGameSession(undefined)).resolves.toBe(false);
     await expect(verifyGameSession('missing-dot')).resolves.toBe(false);
     await expect(verifyGameSession('not-a-number.deadbeef')).resolves.toBe(false);
+    await expect(verifyGameSession('1234.deadbeef')).resolves.toBe(false);
+    await expect(verifyGameSession('admin:1234.deadbeef')).resolves.toBe(false);
+  });
+
+  it('rejects an admin-scoped cookie signed with the same secret', async () => {
+    vi.stubEnv('ADMIN_SESSION_SECRET', 'session-secret');
+
+    const adminCookie = await signSession();
+
+    await expect(verifyGameSession(adminCookie)).resolves.toBe(false);
   });
 
   it('rejects a well-formed cookie with the wrong signature', async () => {

@@ -48,4 +48,24 @@ describe('ScoreHistogramChart', () => {
 
     expect(screen.getByText('No scores recorded yet.')).toBeInTheDocument();
   });
+
+  it('renders sparse high outlier scores without creating every missing bucket', () => {
+    render(
+      <ScoreHistogramChart
+        buckets={[
+          { score: 1, count: 2 },
+          { score: 10000, count: 1 },
+        ]}
+      />,
+    );
+
+    expect(
+      screen.getByRole('button', { name: '1 VP: 2 games, 66.7% of recorded scores' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: '10000 VP: 1 game, 33.3% of recorded scores' }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole('button')).toHaveLength(2);
+    expect(screen.queryByText('9999')).not.toBeInTheDocument();
+  });
 });

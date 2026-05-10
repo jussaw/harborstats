@@ -5,22 +5,80 @@ import { db } from './db'
 
 export interface GamePlayer { playerId: number; score: number; isWinner: boolean }
 
+const MIN_SCORE = 0
+const MAX_SCORE = 20
+
+function assertValidPlayedAt(playedAt: Date) {
+  if (!(playedAt instanceof Date) || !Number.isFinite(playedAt.getTime())) {
+    throw new Error('Played date must be valid.')
+  }
+}
+
+function validateAndNormalizeGamePlayers(inputPlayers: GamePlayer[]): GamePlayer[] {
+  if (inputPlayers.length === 0) {
+    throw new Error('Game must include at least one player.')
+  }
+
+  const seenPlayerIds = new Set<number>()
+  inputPlayers.forEach((player) => {
+    if (!Number.isInteger(player.playerId) || player.playerId <= 0) {
+      throw new Error('Player id must be a positive integer.')
+    }
+
+    if (!Number.isInteger(player.score) || player.score < MIN_SCORE || player.score > MAX_SCORE) {
+      throw new Error('Score must be an integer from 0 to 20.')
+    }
+
+    if (seenPlayerIds.has(player.playerId)) {
+      throw new Error('Each player can only appear once per game.')
+    }
+    seenPlayerIds.add(player.playerId)
+  })
+
+  const explicitWinnerCount = inputPlayers.filter((player) => player.isWinner).length
+  if (explicitWinnerCount > 1) {
+    throw new Error('Game must have exactly one winner.')
+  }
+
+  if (explicitWinnerCount === 1) {
+    return inputPlayers.map((player) => ({ ...player }))
+  }
+
+  const maxScore = Math.max(...inputPlayers.map((player) => player.score))
+  const topPlayers = inputPlayers.filter((player) => player.score === maxScore)
+  if (topPlayers.length !== 1) {
+    throw new Error('Tie games require an explicit single winner.')
+  }
+
+  const normalizedPlayers = inputPlayers.map((player) => ({
+    ...player,
+    isWinner: player.playerId === topPlayers[0].playerId,
+  }))
+
+  if (normalizedPlayers.filter((player) => player.isWinner).length !== 1) {
+    throw new Error('Game must have exactly one winner.')
+  }
+
+  return normalizedPlayers
+}
+
 export async function createGame(input: {
   playedAt: Date
   notes: string
   submittedFromIp: string | null
   players: GamePlayer[]
 }) {
+  assertValidPlayedAt(input.playedAt)
+  const normalizedPlayers = validateAndNormalizeGamePlayers(input.players)
+
   await db.transaction(async (tx) => {
     const [{ id }] = await tx
       .insert(games)
       .values({ playedAt: input.playedAt, notes: input.notes, submittedFromIp: input.submittedFromIp })
       .returning({ id: games.id })
-    if (input.players.length > 0) {
-      await tx.insert(gamePlayers).values(
-        input.players.map((p) => ({ gameId: id, playerId: p.playerId, score: p.score, isWinner: p.isWinner })),
-      )
-    }
+    await tx.insert(gamePlayers).values(
+      normalizedPlayers.map((p) => ({ gameId: id, playerId: p.playerId, score: p.score, isWinner: p.isWinner })),
+    )
   })
 }
 
@@ -28,14 +86,15 @@ export async function updateGame(
   id: number,
   input: { playedAt: Date; notes: string; players: GamePlayer[] },
 ) {
+  assertValidPlayedAt(input.playedAt)
+  const normalizedPlayers = validateAndNormalizeGamePlayers(input.players)
+
   await db.transaction(async (tx) => {
     await tx.update(games).set({ playedAt: input.playedAt, notes: input.notes }).where(eq(games.id, id))
     await tx.delete(gamePlayers).where(eq(gamePlayers.gameId, id))
-    if (input.players.length > 0) {
-      await tx.insert(gamePlayers).values(
-        input.players.map((p) => ({ gameId: id, playerId: p.playerId, score: p.score, isWinner: p.isWinner })),
-      )
-    }
+    await tx.insert(gamePlayers).values(
+      normalizedPlayers.map((p) => ({ gameId: id, playerId: p.playerId, score: p.score, isWinner: p.isWinner })),
+    )
   })
 }
 

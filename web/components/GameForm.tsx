@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { Player } from '@/lib/players'
 import { datetimeLocalToIso, isoToDatetimeLocal, nowDatetimeLocal } from '@/lib/dates'
 import { PlayerRow } from './PlayerRow'
@@ -66,16 +66,29 @@ export function GameForm({
     return Array.from({ length: NUM_ROWS }, (_, index) => createFormRow(index))
   })
   const [error, setError] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const isSubmittingRef = useRef(false)
+  const submitButtonRef = useRef<HTMLButtonElement>(null)
 
   const updateRow = (rowId: string, nextRowState: RowState) =>
     setRows((prevRows) =>
-      prevRows.map((row) => (row.id === rowId ? { ...row, ...nextRowState } : row)),
+      prevRows.map((row) => {
+        if (row.id !== rowId) {
+          return nextRowState.isWinner ? { ...row, isWinner: false } : row
+        }
+
+        return { ...row, ...nextRowState }
+      }),
     )
   const selectedPlayerIds = rows
     .map((r) => r.playerId)
     .filter((id): id is number => id !== null)
 
   async function handleSubmit(formData: FormData) {
+    if (isSubmittingRef.current) {
+      return
+    }
+
     setError(null)
 
     const invalidRowIndex = rows.findIndex(
@@ -111,8 +124,21 @@ export function GameForm({
       formData.set(`is_winner_${i}`, r.isWinner ? '1' : '0')
     })
 
-    await action(formData)
-    onSuccess?.()
+    isSubmittingRef.current = true
+    if (submitButtonRef.current) {
+      submitButtonRef.current.disabled = true
+    }
+    setIsSubmitting(true)
+    try {
+      await action(formData)
+      onSuccess?.()
+    } finally {
+      isSubmittingRef.current = false
+      if (submitButtonRef.current) {
+        submitButtonRef.current.disabled = false
+      }
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -186,11 +212,14 @@ export function GameForm({
       </div>
 
       <button
+        ref={submitButtonRef}
         type="submit"
+        disabled={isSubmitting}
         className="
           font-cinzel w-full rounded-sm border border-(--gold) bg-(--gold) px-6
           py-3 font-semibold tracking-wide text-(--navy-900) transition-colors
           hover:bg-(--cream)
+          disabled:cursor-not-allowed disabled:opacity-60
         "
       >
         {submitLabel}

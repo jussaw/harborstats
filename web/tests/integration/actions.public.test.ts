@@ -177,7 +177,7 @@ describe('unlockGameCreationAction', () => {
     expect(state).toEqual({ ok: true });
     expect(setCookieMock).toHaveBeenCalledWith(
       'hs_game',
-      expect.stringMatching(/^\d+\.[0-9a-f]+$/),
+      expect.stringMatching(/^game:\d+\.[0-9a-f]+$/),
       expect.objectContaining({ httpOnly: true, path: '/', maxAge: 60 * 60 * 24 * 30 }),
     );
   });

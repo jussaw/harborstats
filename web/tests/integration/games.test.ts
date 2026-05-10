@@ -122,6 +122,190 @@ describe('games lib', () => {
     ]);
   });
 
+  it('rejects empty games before creating a database row', async () => {
+    await expect(
+      createGame({
+        playedAt: new Date('2026-04-20T18:00:00.000Z'),
+        notes: '',
+        submittedFromIp: null,
+        players: [],
+      }),
+    ).rejects.toThrow('Game must include at least one player.');
+
+    expect(await db.select().from(games)).toHaveLength(0);
+  });
+
+  it('rejects duplicate players before creating a database row', async () => {
+    const ada = await createTestPlayer({ name: 'Ada' });
+
+    await expect(
+      createGame({
+        playedAt: new Date('2026-04-20T18:00:00.000Z'),
+        notes: '',
+        submittedFromIp: null,
+        players: [
+          { playerId: ada.id, score: 10, isWinner: true },
+          { playerId: ada.id, score: 8, isWinner: false },
+        ],
+      }),
+    ).rejects.toThrow('Each player can only appear once per game.');
+
+    expect(await db.select().from(games)).toHaveLength(0);
+  });
+
+  it('rejects invalid player ids before creating a database row', async () => {
+    await expect(
+      createGame({
+        playedAt: new Date('2026-04-20T18:00:00.000Z'),
+        notes: '',
+        submittedFromIp: null,
+        players: [{ playerId: 0, score: 10, isWinner: true }],
+      }),
+    ).rejects.toThrow('Player id must be a positive integer.');
+
+    expect(await db.select().from(games)).toHaveLength(0);
+  });
+
+  it('rejects invalid scores before creating a database row', async () => {
+    const ada = await createTestPlayer({ name: 'Ada' });
+
+    await expect(
+      createGame({
+        playedAt: new Date('2026-04-20T18:00:00.000Z'),
+        notes: '',
+        submittedFromIp: null,
+        players: [{ playerId: ada.id, score: 21, isWinner: true }],
+      }),
+    ).rejects.toThrow('Score must be an integer from 0 to 20.');
+
+    expect(await db.select().from(games)).toHaveLength(0);
+  });
+
+  it('rejects invalid played-at dates before creating a database row', async () => {
+    const ada = await createTestPlayer({ name: 'Ada' });
+
+    await expect(
+      createGame({
+        playedAt: new Date('not-a-date'),
+        notes: '',
+        submittedFromIp: null,
+        players: [{ playerId: ada.id, score: 10, isWinner: true }],
+      }),
+    ).rejects.toThrow('Played date must be valid.');
+
+    expect(await db.select().from(games)).toHaveLength(0);
+  });
+
+  it('rejects multiple explicit winners before creating a database row', async () => {
+    const ada = await createTestPlayer({ name: 'Ada' });
+    const bea = await createTestPlayer({ name: 'Bea' });
+
+    await expect(
+      createGame({
+        playedAt: new Date('2026-04-20T18:00:00.000Z'),
+        notes: '',
+        submittedFromIp: null,
+        players: [
+          { playerId: ada.id, score: 10, isWinner: true },
+          { playerId: bea.id, score: 8, isWinner: true },
+        ],
+      }),
+    ).rejects.toThrow('Game must have exactly one winner.');
+
+    expect(await db.select().from(games)).toHaveLength(0);
+  });
+
+  it('rejects tied implicit winners before creating a database row', async () => {
+    const ada = await createTestPlayer({ name: 'Ada' });
+    const bea = await createTestPlayer({ name: 'Bea' });
+
+    await expect(
+      createGame({
+        playedAt: new Date('2026-04-20T18:00:00.000Z'),
+        notes: '',
+        submittedFromIp: null,
+        players: [
+          { playerId: ada.id, score: 10, isWinner: false },
+          { playerId: bea.id, score: 10, isWinner: false },
+        ],
+      }),
+    ).rejects.toThrow('Tie games require an explicit single winner.');
+
+    expect(await db.select().from(games)).toHaveLength(0);
+  });
+
+  it('accepts a valid explicit winner', async () => {
+    const ada = await createTestPlayer({ name: 'Ada' });
+    const bea = await createTestPlayer({ name: 'Bea' });
+
+    await createGame({
+      playedAt: new Date('2026-04-20T18:00:00.000Z'),
+      notes: '',
+      submittedFromIp: null,
+      players: [
+        { playerId: ada.id, score: 8, isWinner: false },
+        { playerId: bea.id, score: 10, isWinner: true },
+      ],
+    });
+
+    const storedPlayers = await db.select().from(gamePlayers).orderBy(asc(gamePlayers.playerId));
+    expect(storedPlayers).toEqual([
+      expect.objectContaining({ playerId: ada.id, score: 8, isWinner: false }),
+      expect.objectContaining({ playerId: bea.id, score: 10, isWinner: true }),
+    ]);
+  });
+
+  it('accepts and stores an implicit winner when there is one unique high score', async () => {
+    const ada = await createTestPlayer({ name: 'Ada' });
+    const bea = await createTestPlayer({ name: 'Bea' });
+
+    await createGame({
+      playedAt: new Date('2026-04-20T18:00:00.000Z'),
+      notes: '',
+      submittedFromIp: null,
+      players: [
+        { playerId: ada.id, score: 12, isWinner: false },
+        { playerId: bea.id, score: 9, isWinner: false },
+      ],
+    });
+
+    const storedPlayers = await db.select().from(gamePlayers).orderBy(asc(gamePlayers.playerId));
+    expect(storedPlayers).toEqual([
+      expect.objectContaining({ playerId: ada.id, score: 12, isWinner: true }),
+      expect.objectContaining({ playerId: bea.id, score: 9, isWinner: false }),
+    ]);
+  });
+
+  it('rejects invalid updates before replacing existing player rows', async () => {
+    const ada = await createTestPlayer({ name: 'Ada' });
+    const bea = await createTestPlayer({ name: 'Bea' });
+    const game = await createTestGame({
+      notes: 'Original notes',
+      players: [
+        { playerId: ada.id, score: 7, isWinner: true },
+        { playerId: bea.id, score: 6, isWinner: false },
+      ],
+    });
+
+    await expect(
+      updateGame(game.id, {
+        playedAt: new Date('2026-04-22T20:45:00.000Z'),
+        notes: 'Updated notes',
+        players: [],
+      }),
+    ).rejects.toThrow('Game must include at least one player.');
+
+    const storedPlayers = await db
+      .select()
+      .from(gamePlayers)
+      .where(eq(gamePlayers.gameId, game.id))
+      .orderBy(asc(gamePlayers.playerId));
+    expect(storedPlayers).toEqual([
+      expect.objectContaining({ playerId: ada.id, score: 7, isWinner: true }),
+      expect.objectContaining({ playerId: bea.id, score: 6, isWinner: false }),
+    ]);
+  });
+
   it('updates a game and replaces its player rows', async () => {
     const ada = await createTestPlayer({ name: 'Ada' });
     const bea = await createTestPlayer({ name: 'Bea' });

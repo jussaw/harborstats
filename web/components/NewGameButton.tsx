@@ -101,6 +101,7 @@ interface Props {
 
 export function NewGameButton({ players, className, isUnlocked }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null)
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
   const router = useRouter()
   const [openKey, setOpenKey] = useState(0)
   const [unlocked, setUnlocked] = useState(isUnlocked)
@@ -109,6 +110,7 @@ export function NewGameButton({ players, className, isUnlocked }: Props) {
   function openDialog() {
     setOpenKey((key) => key + 1)
     dialogRef.current?.showModal()
+    closeButtonRef.current?.focus()
   }
 
   function closeDialog() {
@@ -132,6 +134,7 @@ export function NewGameButton({ players, className, isUnlocked }: Props) {
       >
         <button
           type="button"
+          tabIndex={-1}
           className="fixed inset-0 bg-black/70"
           onClick={closeDialog}
           aria-label="Dismiss dialog"
@@ -147,6 +150,7 @@ export function NewGameButton({ players, className, isUnlocked }: Props) {
               New Game
             </h2>
             <button
+              ref={closeButtonRef}
               type="button"
               onClick={closeDialog}
               className="

@@ -10,9 +10,17 @@ interface Props {
   params: Promise<{ id: string }>
 }
 
+function parseRouteId(id: string) {
+  if (!/^[1-9]\d*$/.test(id)) {
+    notFound()
+  }
+
+  return Number(id)
+}
+
 export default async function EditGamePage({ params }: Props) {
   const { id } = await params
-  const gameId = Number(id)
+  const gameId = parseRouteId(id)
 
   const [game, players] = await Promise.all([getGameForEdit(gameId), getPlayers()])
   if (!game) notFound()

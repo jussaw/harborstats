@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - '.github/workflows/**'
+      - 'devops/**'
       - 'web/**'
 
 jobs:
@@ -52,6 +53,10 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: DevOps shell tests
+        working-directory: .
+        run: bash devops/tests/backup-restore.test.sh
 
       - name: Install Playwright Chromium
         run: pnpm exec playwright install --with-deps chromium

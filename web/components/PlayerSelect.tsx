@@ -74,7 +74,8 @@ function getGroupedPlayers(players: PlayerOption[], query: string) {
 export function PlayerSelect({ players, value, selectedPlayerIds, onChange }: PlayerSelectProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const listboxId = useId()
+  const componentId = useId().replace(/[^a-zA-Z0-9_-]/g, '')
+  const listboxId = `player-select-listbox-${componentId}`
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQuery] = useState('')
   const selectedIds = useMemo(() => new Set(selectedPlayerIds), [selectedPlayerIds])
@@ -148,6 +149,8 @@ export function PlayerSelect({ players, value, selectedPlayerIds, onChange }: Pl
     }
   }
 
+  const getOptionId = (playerId: number) => `player-select-option-${playerId}-${componentId}`
+
   const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'ArrowDown') {
       event.preventDefault()
@@ -179,7 +182,7 @@ export function PlayerSelect({ players, value, selectedPlayerIds, onChange }: Pl
     <div ref={rootRef} className="relative flex-1">
       <button
         type="button"
-        role="combobox"
+        role={isOpen ? undefined : 'combobox'}
         aria-label="Player"
         aria-expanded={isOpen}
         aria-controls={listboxId}
@@ -210,7 +213,14 @@ export function PlayerSelect({ players, value, selectedPlayerIds, onChange }: Pl
         ">
           <input
             ref={inputRef}
+            role="combobox"
             aria-label="Player"
+            aria-autocomplete="list"
+            aria-expanded="true"
+            aria-controls={listboxId}
+            aria-activedescendant={
+              highlightedId === null ? undefined : getOptionId(highlightedId)
+            }
             value={query}
             onChange={(event) => {
               const nextQuery = event.target.value
@@ -271,6 +281,7 @@ export function PlayerSelect({ players, value, selectedPlayerIds, onChange }: Pl
 
                     return (
                       <button
+                        id={getOptionId(player.id)}
                         key={player.id}
                         type="button"
                         role="option"

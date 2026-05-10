@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { GameForm, type GameFormInitial } from '@/components/GameForm'
 import { PlayerTier } from '@/lib/player-tier'
@@ -134,5 +135,61 @@ describe('GameForm', () => {
     actionGate.resolve()
 
     await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1))
+  })
+
+  it('only submits once while a submission is pending', async () => {
+    const actionGate = deferred()
+    const action = vi.fn().mockReturnValue(actionGate.promise)
+
+    renderGameForm(
+      {
+        played_at: '2026-04-20T18:15:00.000Z',
+        notes: '',
+        rows: [{ playerId: 1, score: 12, isWinner: true }],
+      },
+      action,
+    )
+
+    submitGameForm()
+    submitGameForm()
+
+    await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(screen.getByRole('button', { name: /save game/i })).toBeDisabled())
+
+    actionGate.resolve()
+  })
+
+  it('keeps only one explicit winner selected at a time', async () => {
+    const user = userEvent.setup()
+    const action = vi.fn().mockResolvedValue(undefined)
+
+    renderGameForm(
+      {
+        played_at: '2026-04-20T18:15:00.000Z',
+        notes: '',
+        rows: [
+          { playerId: 1, score: 12, isWinner: false },
+          { playerId: 2, score: 10, isWinner: false },
+        ],
+      },
+      action,
+    )
+
+    const winnerButtons = screen.getAllByRole('button', { name: /mark as winner/i })
+    await user.click(winnerButtons[0])
+    await user.click(screen.getAllByRole('button', { name: /mark as winner/i })[0])
+
+    submitGameForm()
+
+    await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
+    const formData = action.mock.calls[0]?.[0]
+    expect(formData).toBeInstanceOf(FormData)
+
+    if (!(formData instanceof FormData)) {
+      throw new Error('Expected GameForm to submit a FormData instance')
+    }
+
+    expect(formData.get('is_winner_0')).toBe('0')
+    expect(formData.get('is_winner_1')).toBe('1')
   })
 })

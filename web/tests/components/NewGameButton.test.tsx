@@ -59,6 +59,20 @@ describe('NewGameButton', () => {
     expect(dialog).not.toHaveAttribute('open')
   })
 
+  it('focuses the close button instead of the backdrop when the dialog opens', async () => {
+    const user = userEvent.setup()
+
+    render(<NewGameButton players={players} className="text-sm" isUnlocked />)
+
+    await user.click(screen.getByRole('button', { name: /\+ new game/i }))
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Close' })).toHaveFocus())
+    expect(screen.getByRole('button', { name: 'Dismiss dialog' })).toHaveAttribute(
+      'tabindex',
+      '-1',
+    )
+  })
+
   it('closes the dialog and refreshes after a successful submit', async () => {
     const user = userEvent.setup()
 

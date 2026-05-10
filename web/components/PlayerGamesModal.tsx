@@ -30,10 +30,12 @@ function sortPlayersByScore(game: RecentGame) {
 
 export function PlayerGamesModal({ player, games }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null)
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
   const titleId = useId()
 
   function openDialog() {
     dialogRef.current?.showModal()
+    closeButtonRef.current?.focus()
   }
 
   function closeDialog() {
@@ -66,6 +68,7 @@ export function PlayerGamesModal({ player, games }: Props) {
       >
         <button
           type="button"
+          tabIndex={-1}
           className="fixed inset-0 bg-black/70"
           onClick={closeDialog}
           aria-label="Dismiss dialog"
@@ -90,6 +93,7 @@ export function PlayerGamesModal({ player, games }: Props) {
               <p className="mt-1 text-sm text-(--cream)/55">{games.length} recorded</p>
             </div>
             <button
+              ref={closeButtonRef}
               type="button"
               onClick={closeDialog}
               className="

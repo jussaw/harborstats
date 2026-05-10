@@ -30,7 +30,7 @@ import { PlayerTier } from '@/lib/player-tier';
 import { createTestGame, createTestPlayer } from '../helpers/db';
 
 describe('stats integration', () => {
-  test('getReigningChampionSummary returns all winners from the most recent game only', async () => {
+  test('getReigningChampionSummary returns the recorded winner from the most recent game only', async () => {
     const alice = await createTestPlayer({ name: 'Alice', tier: PlayerTier.Premium });
     const bob = await createTestPlayer({ name: 'Bob', tier: PlayerTier.Standard });
     const carol = await createTestPlayer({ name: 'Carol', tier: PlayerTier.Standard });
@@ -47,7 +47,7 @@ describe('stats integration', () => {
       playedAt: new Date('2026-04-21T18:00:00.000Z'),
       players: [
         { playerId: bob.id, score: 10, isWinner: true },
-        { playerId: carol.id, score: 10, isWinner: true },
+        { playerId: carol.id, score: 10, isWinner: false },
         { playerId: alice.id, score: 7, isWinner: false },
       ],
     });
@@ -58,11 +58,6 @@ describe('stats integration', () => {
         {
           playerId: bob.id,
           name: 'Bob',
-          tier: PlayerTier.Standard,
-        },
-        {
-          playerId: carol.id,
-          name: 'Carol',
           tier: PlayerTier.Standard,
         },
       ],
@@ -802,7 +797,7 @@ describe('stats integration', () => {
       playedAt: new Date('2026-04-21T18:00:00.000Z'),
       players: [
         { playerId: bob.id, score: 9, isWinner: true },
-        { playerId: alice.id, score: 9, isWinner: true },
+        { playerId: alice.id, score: 9, isWinner: false },
         { playerId: carol.id, score: 7, isWinner: false },
       ],
     });
@@ -818,7 +813,7 @@ describe('stats integration', () => {
       opponentTier: PlayerTier.Standard,
       gamesTogether: 2,
       winsAgainstOpponent: 1,
-      lossesToOpponent: 0,
+      lossesToOpponent: 1,
       timesOutscoredOpponent: 1,
       timesOutscoredByOpponent: 0,
     });
@@ -830,7 +825,7 @@ describe('stats integration', () => {
       opponentName: 'Alice',
       opponentTier: PlayerTier.Premium,
       gamesTogether: 2,
-      winsAgainstOpponent: 0,
+      winsAgainstOpponent: 1,
       lossesToOpponent: 1,
       timesOutscoredOpponent: 0,
       timesOutscoredByOpponent: 1,
@@ -857,7 +852,7 @@ describe('stats integration', () => {
       opponentTier: PlayerTier.Premium,
       gamesTogether: 2,
       winsAgainstOpponent: 0,
-      lossesToOpponent: 2,
+      lossesToOpponent: 1,
       timesOutscoredOpponent: 0,
       timesOutscoredByOpponent: 2,
     });
@@ -1050,7 +1045,7 @@ describe('stats integration', () => {
     await createTestGame({
       players: [
         { playerId: alice.id, score: 11, isWinner: true },
-        { playerId: bob.id, score: 11, isWinner: true },
+        { playerId: bob.id, score: 11, isWinner: false },
         { playerId: carol.id, score: 7, isWinner: false },
       ],
     });
@@ -1071,11 +1066,11 @@ describe('stats integration', () => {
     });
 
     await expect(getWinningScoreComparison()).resolves.toEqual({
-      winnerRows: 6,
-      nonWinnerRows: 5,
-      avgWinningScore: 8.3,
-      avgLosingScore: 5,
-      scoreGap: 3.3,
+      winnerRows: 5,
+      nonWinnerRows: 6,
+      avgWinningScore: 7.8,
+      avgLosingScore: 6,
+      scoreGap: 1.8,
     });
   });
 
@@ -1089,7 +1084,7 @@ describe('stats integration', () => {
     await createTestGame({
       players: [
         { playerId: alice.id, score: 10, isWinner: true },
-        { playerId: bob.id, score: 10, isWinner: true },
+        { playerId: bob.id, score: 10, isWinner: false },
         { playerId: carol.id, score: 5, isWinner: false },
       ],
     });
@@ -1177,8 +1172,8 @@ describe('stats integration', () => {
     await createTestGame({
       players: [
         { playerId: alice.id, score: 10, isWinner: true },
-        { playerId: bob.id, score: 10, isWinner: true },
-        { playerId: eve.id, score: 10, isWinner: true },
+        { playerId: bob.id, score: 10, isWinner: false },
+        { playerId: eve.id, score: 10, isWinner: false },
         { playerId: carol.id, score: 4, isWinner: false },
       ],
     });
@@ -1307,7 +1302,7 @@ describe('stats integration', () => {
     await createTestGame({
       players: [
         { playerId: dana.id, score: 9, isWinner: true },
-        { playerId: eve.id, score: 9, isWinner: true },
+        { playerId: eve.id, score: 9, isWinner: false },
       ],
     });
 
@@ -1342,10 +1337,10 @@ describe('stats integration', () => {
     });
 
     expect(marginStats.find((player) => player.playerId === eve.id)).toMatchObject({
-      winGames: 1,
-      lossGames: 0,
-      averageVictoryMargin: 0,
-      averageDefeatMargin: null,
+      winGames: 0,
+      lossGames: 1,
+      averageVictoryMargin: null,
+      averageDefeatMargin: 0,
     });
 
     expect(marginStats.find((player) => player.playerId === frank.id)).toMatchObject({
@@ -1411,7 +1406,7 @@ describe('stats integration', () => {
       playedAt: new Date('2026-04-25T18:00:00.000Z'),
       players: [
         { playerId: alice.id, score: 15, isWinner: true },
-        { playerId: eve.id, score: 15, isWinner: true },
+        { playerId: eve.id, score: 3, isWinner: false },
         { playerId: dana.id, score: 4, isWinner: false },
       ],
     });
@@ -1436,7 +1431,7 @@ describe('stats integration', () => {
       biggestBlowout: {
         gameId: blowout.id,
         playedAt: '2026-04-25T18:00:00.000Z',
-        winner: 'Alice, Eve',
+        winner: 'Alice',
         winnerScore: 15,
         runnerUpScore: 4,
         margin: 11,
@@ -1480,7 +1475,7 @@ describe('stats integration', () => {
     await createTestGame({
       players: [
         { playerId: alice.id, score: 12, isWinner: true },
-        { playerId: dana.id, score: 12, isWinner: true },
+        { playerId: dana.id, score: 12, isWinner: false },
         { playerId: bob.id, score: 9, isWinner: false },
         { playerId: carol.id, score: 8, isWinner: false },
       ],
@@ -1552,9 +1547,9 @@ describe('stats integration', () => {
 
     expect(expectedVsActualWins.find((player) => player.playerId === dana.id)).toMatchObject({
       games: 2,
-      wins: 1,
+      wins: 0,
       expectedWins: 0.5,
-      winDelta: 0.5,
+      winDelta: -0.5,
     });
 
     expect(expectedVsActualWins.find((player) => player.playerId === bob.id)).toMatchObject({
@@ -1587,8 +1582,8 @@ describe('stats integration', () => {
         tier: PlayerTier.Premium,
         players: 2,
         appearances: 5,
-        wins: 3,
-        winRate: 0.6,
+        wins: 2,
+        winRate: 0.4,
       }),
       expect.objectContaining({
         tier: PlayerTier.Standard,
@@ -1636,7 +1631,7 @@ describe('stats integration', () => {
     await createTestGame({
       players: [
         { playerId: alice.id, score: 15, isWinner: true },
-        { playerId: eve.id, score: 15, isWinner: true },
+        { playerId: eve.id, score: 15, isWinner: false },
         { playerId: bob.id, score: 11, isWinner: false },
         { playerId: carol.id, score: 10, isWinner: false },
         { playerId: dana.id, score: 8, isWinner: false },

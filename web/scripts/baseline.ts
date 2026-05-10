@@ -21,27 +21,33 @@ const hash = createHash('sha256').update(migrationSql).digest('hex')
 
 async function main(): Promise<void> {
   const sql = postgres(DATABASE_URL!, { max: 1 })
-  await sql`CREATE SCHEMA IF NOT EXISTS drizzle`
-  await sql`
-    CREATE TABLE IF NOT EXISTS drizzle.__drizzle_migrations (
-      id        SERIAL PRIMARY KEY,
-      hash      TEXT NOT NULL,
-      created_at BIGINT
-    )
-  `
-  const [existing] = await sql<{ id: number }[]>`
-    SELECT id FROM drizzle.__drizzle_migrations WHERE hash = ${hash}
-  `
-  if (existing) {
-    console.log('Baseline already applied, skipping.')
-  } else {
+  try {
+    await sql`CREATE SCHEMA IF NOT EXISTS drizzle`
     await sql`
-      INSERT INTO drizzle.__drizzle_migrations (hash, created_at)
-      VALUES (${hash}, ${Date.now()})
+      CREATE TABLE IF NOT EXISTS drizzle.__drizzle_migrations (
+        id        SERIAL PRIMARY KEY,
+        hash      TEXT NOT NULL,
+        created_at BIGINT
+      )
     `
-    console.log(`Baseline applied: marked ${firstTag} as completed.`)
+    const [existing] = await sql<{ id: number }[]>`
+      SELECT id FROM drizzle.__drizzle_migrations WHERE hash = ${hash}
+    `
+    if (existing) {
+      console.log('Baseline already applied, skipping.')
+    } else {
+      await sql`
+        INSERT INTO drizzle.__drizzle_migrations (hash, created_at)
+        VALUES (${hash}, ${Date.now()})
+      `
+      console.log(`Baseline applied: marked ${firstTag} as completed.`)
+    }
+  } finally {
+    await sql.end()
   }
-  await sql.end()
 }
 
-main().catch(console.error)
+main().catch((error: unknown) => {
+  console.error(error)
+  process.exitCode = 1
+})

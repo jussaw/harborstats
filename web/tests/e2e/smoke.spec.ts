@@ -46,9 +46,12 @@ async function pickPlayer(
   const picker = scope.getByRole('combobox', { name: 'Player' }).nth(rowIndex);
   await picker.click();
 
-  const pickerRoot = picker.locator('xpath=ancestor::div[contains(@class, "relative")][1]');
-  await pickerRoot.getByRole('textbox', { name: 'Player' }).fill(searchTerm);
-  await pickerRoot.getByRole('option', { name: playerName, exact: true }).click();
+  const activePicker = scope.getByRole('combobox', { name: 'Player' }).nth(rowIndex);
+  await activePicker.fill(searchTerm);
+
+  const listboxId = await activePicker.getAttribute('aria-controls');
+  expect(listboxId).not.toBeNull();
+  await scope.locator(`#${listboxId}`).getByRole('option', { name: playerName, exact: true }).click();
 }
 
 test.beforeEach(async () => {
@@ -71,8 +74,6 @@ test('home page loads and creates a game from the modal', async ({ page }) => {
   }]);
 
   await page.goto('/');
-  await page.waitForLoadState('networkidle');
-  await page.waitForTimeout(1_000);
 
   await expect(page.getByRole('heading', { name: 'Recent Games' })).toBeVisible();
   await expect(page.getByText('No games yet')).toBeVisible();
@@ -238,8 +239,7 @@ test('admin login, edit game, and logout work', async ({ page }) => {
 
   await page.getByRole('link', { name: 'Edit' }).click();
   await expect(page.getByRole('heading', { name: /Edit Game/ })).toBeVisible();
-  await page.waitForLoadState('networkidle');
-  await page.waitForTimeout(1_000);
+  await expect(page.getByLabel('Score').first()).toBeVisible();
 
   await page.getByLabel('Score').nth(0).selectOption('5');
   await pickPlayer(page, 1, 'Cara', 'ca');
@@ -339,7 +339,11 @@ test('updating rate thresholds changes the matching stats views independently', 
   await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
   await page.getByLabel('Win Rate — Min Games Threshold').fill('2');
   await page.getByLabel('Podium Rate — Min Games Threshold').fill('4');
-  await page.getByRole('button', { name: 'Save' }).click();
+  await page
+    .getByLabel('Win Rate — Min Games Threshold')
+    .locator('xpath=ancestor::form[1]')
+    .getByRole('button', { name: 'Save' })
+    .click();
 
   await expect
     .poll(async () => {

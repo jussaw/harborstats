@@ -25,7 +25,7 @@ This directory contains the deployment assets for the HarborStats repo. It is ai
 Published ports from the current compose file:
 
 - `23413`: HarborStats web app
-- `5050`: pgAdmin
+- `127.0.0.1:5050`: pgAdmin, only when the `pgadmin` compose profile is enabled
 
 ## Required environment variables
 
@@ -36,6 +36,7 @@ cp devops/.env.example devops/.env
 ```
 
 Both `backup-db.sh` and `restore-db.sh` automatically load `devops/.env` by default. Explicit shell environment variables still override values from that file.
+`deploy.sh` uses the same env-file behavior.
 
 Required values:
 
@@ -43,6 +44,13 @@ Required values:
 | --- | --- | --- | --- |
 | `ADMIN_PASSWORD` | Yes | `web` | Shared password for the admin UI |
 | `ADMIN_SESSION_SECRET` | Yes | `web` | Secret used to sign admin session cookies |
+
+Required values when using the `pgadmin` profile:
+
+| Variable | Required | Used by | Notes |
+| --- | --- | --- | --- |
+| `PGADMIN_DEFAULT_EMAIL` | Yes | `pgadmin` | Initial pgAdmin login email |
+| `PGADMIN_DEFAULT_PASSWORD` | Yes | `pgadmin` | Initial pgAdmin login password |
 
 Optional backup and restore script values:
 
@@ -67,7 +75,7 @@ cp devops/.env.example devops/.env
 ./devops/deploy.sh
 ```
 
-## Standard deployment flow
+## Standard Deployment Flow
 
 The intended deployment entrypoint is:
 
@@ -75,25 +83,41 @@ The intended deployment entrypoint is:
 ./devops/deploy.sh
 ```
 
-From the current script, the deploy sequence is:
+The deploy sequence is:
 
 1. Pull the latest changes into the repo with `git -C "$REPO_DIR" pull`
 2. Start the database service
-3. Run the `baseline` job
-4. Run the `migrate` job
-5. Build and start the `web` and `pgadmin` services
+3. Run the `migrate` job
+4. Build and start the `web` service
 
-The baseline step is designed to be safe to re-run, which lets the deploy script keep a consistent sequence for both new and existing environments.
+The deploy script does not run the `baseline` job by default. Treat baseline as a manual, one-time operation for an existing database that already contains the initial schema but does not yet have the first Drizzle migration marker.
+
+### Manual Baseline
+
+Only run baseline after verifying the database already has the initial HarborStats tables. For example, inspect the database directly or use pgAdmin, then run:
+
+```bash
+docker compose --env-file devops/.env -f devops/docker-compose.yml run --build --rm baseline
+```
+
+After baseline has marked the first migration as complete, use the normal deploy flow and migration job for subsequent schema updates.
+
+### Optional pgAdmin
+
+pgAdmin is behind an opt-in compose profile and binds to localhost only. Add `PGADMIN_DEFAULT_EMAIL` and `PGADMIN_DEFAULT_PASSWORD` to `devops/.env` or export them in the shell, then start it with:
+
+```bash
+docker compose --env-file devops/.env --profile pgadmin -f devops/docker-compose.yml up -d pgadmin
+```
 
 ## Manual Docker Compose commands
 
 If you need to operate the stack manually instead of using the script:
 
 ```bash
-docker compose -f devops/docker-compose.yml up -d db
-docker compose -f devops/docker-compose.yml run --build --rm baseline
-docker compose -f devops/docker-compose.yml run --build --rm migrate
-docker compose -f devops/docker-compose.yml up --build -d web pgadmin
+docker compose --env-file devops/.env -f devops/docker-compose.yml up -d db
+docker compose --env-file devops/.env -f devops/docker-compose.yml run --build --rm migrate
+docker compose --env-file devops/.env -f devops/docker-compose.yml up --build -d web
 ```
 
 Useful follow-up commands:
@@ -209,6 +233,6 @@ Because the compose file builds from `../web`, deploys should be run from a chec
 
 - This is a single-host Docker Compose deployment, not a full multi-environment platform
 - The compose file currently exposes the app directly on port `23413`; any reverse proxy, TLS termination, or domain routing is external to this repo
-- `pgadmin` uses default credentials in the compose file (`admin@example.com` / `admin`); keep it on a trusted network or change those values before exposing it more broadly
+- `pgadmin` is disabled by default, requires explicit credentials, and only publishes on localhost
 - Database data persists in the Docker `pgdata` named volume
 - Local development uses `web/docker-compose.yml`, not the deployment compose file in this directory

@@ -17,27 +17,8 @@ function getYAxisTicks(maxCount: number) {
   return [...new Set([0, Math.ceil(maxCount / 2), maxCount])].sort((a, b) => a - b);
 }
 
-function fillScoreRange(buckets: ScoreHistogramBucket[]) {
-  if (buckets.length === 0) {
-    return [];
-  }
-
-  const bucketMap = new Map(buckets.map((bucket) => [bucket.score, bucket.count]));
-  const minScore = Math.min(...buckets.map((bucket) => bucket.score));
-  const maxScore = Math.max(...buckets.map((bucket) => bucket.score));
-
-  return Array.from({ length: maxScore - minScore + 1 }, (_, index) => {
-    const score = minScore + index;
-
-    return {
-      score,
-      count: bucketMap.get(score) ?? 0,
-    };
-  });
-}
-
 function buildChartLayout(buckets: ScoreHistogramBucket[]) {
-  const filledBuckets = fillScoreRange(buckets);
+  const chartBuckets = [...buckets].sort((left, right) => left.score - right.score);
   const width = 640;
   const height = 260;
   const plotLeft = 52;
@@ -45,9 +26,9 @@ function buildChartLayout(buckets: ScoreHistogramBucket[]) {
   const plotTop = 24;
   const plotBottom = 200;
   const innerWidth = width - plotLeft - plotRight;
-  const slotWidth = filledBuckets.length === 0 ? innerWidth : innerWidth / filledBuckets.length;
+  const slotWidth = chartBuckets.length === 0 ? innerWidth : innerWidth / chartBuckets.length;
   const barWidth = Math.max(Math.min(slotWidth * 0.62, 42), 14);
-  const maxCount = Math.max(...filledBuckets.map((bucket) => bucket.count), 1);
+  const maxCount = Math.max(...chartBuckets.map((bucket) => bucket.count), 1);
 
   return {
     width,
@@ -58,7 +39,7 @@ function buildChartLayout(buckets: ScoreHistogramBucket[]) {
     plotBottom,
     barWidth,
     maxCount,
-    points: filledBuckets.map((bucket, index) => ({
+    points: chartBuckets.map((bucket, index) => ({
       ...bucket,
       x: plotLeft + slotWidth * index + slotWidth / 2,
     })),

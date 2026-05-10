@@ -693,6 +693,24 @@ describe('PlayerProfilePage', () => {
     );
   });
 
+  it.each(['1abc', '0', '-1', '1.5', 'abc'])(
+    'calls notFound for malformed player id "%s"',
+    async (id) => {
+      await expect(PlayerProfilePage({ params: Promise.resolve({ id }) })).rejects.toThrow(
+        'NEXT_NOT_FOUND',
+      );
+    },
+  );
+
+  it.each(['1abc', '0', '-1', '1.5', 'abc'])(
+    'calls notFound for malformed player metadata id "%s"',
+    async (id) => {
+      await expect(generateMetadata({ params: Promise.resolve({ id }) })).rejects.toThrow(
+        'NEXT_NOT_FOUND',
+      );
+    },
+  );
+
   it('calls notFound when the player does not exist', async () => {
     vi.mocked(getPlayers).mockResolvedValue([
       {

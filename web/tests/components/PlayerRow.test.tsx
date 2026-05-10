@@ -62,7 +62,7 @@ describe('PlayerRow', () => {
 
     await user.click(screen.getByRole('combobox', { name: 'Player' }))
 
-    const searchInput = screen.getByRole('textbox', { name: 'Player' })
+    const searchInput = screen.getByRole('combobox', { name: 'Player' })
     await user.type(searchInput, 'ca')
 
     expect(screen.getByRole('option', { name: 'Cara' })).toBeInTheDocument()

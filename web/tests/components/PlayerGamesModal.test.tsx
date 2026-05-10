@@ -81,4 +81,18 @@ describe('PlayerGamesModal', () => {
     await user.click(screen.getByRole('button', { name: 'Dismiss dialog' }))
     await waitFor(() => expect(emptyDialog).not.toHaveAttribute('open'))
   })
+
+  it('focuses the close button instead of the backdrop when the dialog opens', async () => {
+    const user = userEvent.setup()
+
+    render(<PlayerGamesModal player={player} games={games} />)
+
+    await user.click(screen.getByRole('button', { name: 'View Games (2)' }))
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Close' })).toHaveFocus())
+    expect(screen.getByRole('button', { name: 'Dismiss dialog' })).toHaveAttribute(
+      'tabindex',
+      '-1',
+    )
+  })
 })

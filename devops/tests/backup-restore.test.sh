@@ -32,6 +32,12 @@ assert_contains() {
   grep -F -- "$needle" "$path" >/dev/null || fail "Expected '$needle' in $path"
 }
 
+assert_not_contains() {
+  local needle="$1"
+  local path="$2"
+  ! grep -F -- "$needle" "$path" >/dev/null || fail "Did not expect '$needle' in $path"
+}
+
 setup_test_dir() {
   TEST_DIR="$(mktemp -d)"
   export TEST_DIR
@@ -40,10 +46,14 @@ setup_test_dir() {
   export COMPOSE_FILE
   export EXPECTED_COMPOSE_PREFIX="compose -f $COMPOSE_FILE"
   export DOCKER_LOG="$TEST_DIR/docker.log"
+  export DOCKER_ENV_LOG="$TEST_DIR/docker-env.log"
+  export GIT_LOG="$TEST_DIR/git.log"
   export PG_DUMP_SOURCE="$TEST_DIR/pg_dump_source.dump"
   export PG_RESTORE_CAPTURE="$TEST_DIR/pg_restore_capture.dump"
   mkdir -p "$STUB_BIN" "$BACKUP_DIR"
   : >"$DOCKER_LOG"
+  : >"$DOCKER_ENV_LOG"
+  : >"$GIT_LOG"
 }
 
 cleanup_test_dir() {
@@ -58,6 +68,9 @@ write_docker_stub() {
 set -euo pipefail
 
 printf '%s\n' "$*" >> "$DOCKER_LOG"
+printf 'ADMIN_PASSWORD=%s\n' "${ADMIN_PASSWORD:-}" >> "$DOCKER_ENV_LOG"
+printf 'ADMIN_SESSION_SECRET=%s\n' "${ADMIN_SESSION_SECRET:-}" >> "$DOCKER_ENV_LOG"
+printf 'PGADMIN_DEFAULT_EMAIL=%s\n' "${PGADMIN_DEFAULT_EMAIL:-}" >> "$DOCKER_ENV_LOG"
 
 args="$*"
 
@@ -80,6 +93,10 @@ if [[ "$args" == "$EXPECTED_COMPOSE_PREFIX stop web" ]]; then
 fi
 
 if [[ "$args" == "$EXPECTED_COMPOSE_PREFIX up -d web" ]]; then
+  exit 0
+fi
+
+if [[ "$args" == "$EXPECTED_COMPOSE_PREFIX up --build -d web" ]]; then
   exit 0
 fi
 
@@ -113,6 +130,23 @@ echo "Unhandled docker invocation: $args" >&2
 exit 1
 EOF
   chmod +x "$STUB_BIN/docker"
+}
+
+write_git_stub() {
+  cat >"$STUB_BIN/git" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+printf '%s\n' "$*" >> "$GIT_LOG"
+
+if [[ "$*" == "-C "*" pull" ]]; then
+  exit 0
+fi
+
+echo "Unhandled git invocation: $*" >&2
+exit 1
+EOF
+  chmod +x "$STUB_BIN/git"
 }
 
 write_checksum_stub() {
@@ -249,11 +283,95 @@ EOF
   assert_contains "$EXPECTED_COMPOSE_PREFIX exec -T db pg_restore -U archive_user -d backup_archive --clean --if-exists --no-owner --no-privileges" "$DOCKER_LOG"
 }
 
+run_deploy_env_file_test() {
+  setup_test_dir
+  trap cleanup_test_dir RETURN
+  write_docker_stub
+  write_git_stub
+
+  export ENV_FILE="$TEST_DIR/deploy.env"
+  export EXPECTED_COMPOSE_PREFIX="compose --env-file $ENV_FILE -f $COMPOSE_FILE"
+  unset ADMIN_SESSION_SECRET PGADMIN_DEFAULT_EMAIL
+
+  cat >"$ENV_FILE" <<EOF
+ADMIN_PASSWORD=env-admin-password
+ADMIN_SESSION_SECRET=env-admin-session-secret
+PGADMIN_DEFAULT_EMAIL=admin@example.test
+PGADMIN_DEFAULT_PASSWORD=env-pgadmin-password
+EOF
+
+  local output
+  if ! output="$(PATH="$STUB_BIN:$PATH" ENV_FILE="$ENV_FILE" ADMIN_PASSWORD=shell-admin-password "$REPO_DIR/devops/deploy.sh" 2>&1)"; then
+    echo "$output" >&2
+    fail "deploy.sh should load ENV_FILE defaults and preserve explicit shell overrides"
+  fi
+
+  assert_contains "-C $REPO_DIR pull" "$GIT_LOG"
+  assert_contains "$EXPECTED_COMPOSE_PREFIX up -d db" "$DOCKER_LOG"
+  assert_contains "$EXPECTED_COMPOSE_PREFIX run --build --rm migrate" "$DOCKER_LOG"
+  assert_contains "$EXPECTED_COMPOSE_PREFIX up --build -d web" "$DOCKER_LOG"
+  assert_not_contains "baseline" "$DOCKER_LOG"
+  assert_not_contains " pgadmin" "$DOCKER_LOG"
+  assert_contains "ADMIN_PASSWORD=shell-admin-password" "$DOCKER_ENV_LOG"
+  assert_contains "ADMIN_SESSION_SECRET=env-admin-session-secret" "$DOCKER_ENV_LOG"
+  assert_contains "PGADMIN_DEFAULT_EMAIL=admin@example.test" "$DOCKER_ENV_LOG"
+}
+
+run_pgadmin_profile_test() {
+  assert_contains 'profiles: ["pgadmin"]' "$COMPOSE_FILE"
+  assert_contains '"127.0.0.1:5050:80"' "$COMPOSE_FILE"
+  assert_contains 'PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-}' "$COMPOSE_FILE"
+  assert_contains 'PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-}' "$COMPOSE_FILE"
+  assert_not_contains 'admin@example.com' "$COMPOSE_FILE"
+  assert_not_contains 'PGADMIN_DEFAULT_PASSWORD: admin' "$COMPOSE_FILE"
+
+  if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+    local default_services
+    default_services="$(
+      ADMIN_PASSWORD=test-admin \
+        ADMIN_SESSION_SECRET=test-session-secret \
+        docker compose -f "$COMPOSE_FILE" config --services
+    )"
+    [[ "$default_services" != *"pgadmin"* ]] || fail "pgAdmin should not be included in default compose services"
+
+    local pgadmin_services
+    pgadmin_services="$(
+      ADMIN_PASSWORD=test-admin \
+        ADMIN_SESSION_SECRET=test-session-secret \
+        PGADMIN_DEFAULT_EMAIL=admin@example.test \
+        PGADMIN_DEFAULT_PASSWORD=test-pgadmin-password \
+        docker compose --profile pgadmin -f "$COMPOSE_FILE" config --services
+    )"
+    [[ "$pgadmin_services" == *"pgadmin"* ]] || fail "pgAdmin should be included with the pgadmin compose profile"
+  fi
+}
+
+run_migration_scripts_exit_nonzero_test() {
+  local bad_database_url="postgres://postgres:postgres@127.0.0.1:1/harborstats?connect_timeout=1"
+
+  set +e
+  local migrate_output
+  migrate_output="$(cd "$REPO_DIR/web" && DATABASE_URL="$bad_database_url" ./node_modules/.bin/tsx scripts/migrate.ts 2>&1)"
+  local migrate_status=$?
+  set -e
+  [[ $migrate_status -ne 0 ]] || fail "migrate.ts should exit non-zero when migration fails"$'\n'"$migrate_output"
+
+  set +e
+  local baseline_output
+  baseline_output="$(cd "$REPO_DIR/web" && DATABASE_URL="$bad_database_url" ./node_modules/.bin/tsx scripts/baseline.ts 2>&1)"
+  local baseline_status=$?
+  set -e
+  [[ $baseline_status -ne 0 ]] || fail "baseline.ts should exit non-zero when baseline fails"$'\n'"$baseline_output"
+}
+
 main() {
   run_backup_test
   run_restore_rejects_bad_confirmation_test
   run_restore_test
   run_env_file_test
+  run_deploy_env_file_test
+  run_pgadmin_profile_test
+  run_migration_scripts_exit_nonzero_test
   echo "backup-restore tests passed"
 }
 
