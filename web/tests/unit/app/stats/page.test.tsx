@@ -56,6 +56,42 @@ vi.mock('@/lib/settings', () => ({
   getSettings: vi.fn(),
 }));
 
+function mockDefaultStatsPageData() {
+  vi.mocked(getPlayerWinRates).mockResolvedValue([]);
+  vi.mocked(getPlayerScoreStats).mockResolvedValue([]);
+  vi.mocked(getPlayerCumulativeScoreStats).mockResolvedValue([]);
+  vi.mocked(getPlayerNormalizedScoreStats).mockResolvedValue([]);
+  vi.mocked(getWinningScoreComparison).mockResolvedValue({
+    winnerRows: 0,
+    nonWinnerRows: 0,
+    avgWinningScore: 0,
+    avgLosingScore: 0,
+    scoreGap: 0,
+  });
+  vi.mocked(getWinningScoreByGameSize).mockResolvedValue([]);
+  vi.mocked(getPlayerPodiumRates).mockResolvedValue([]);
+  vi.mocked(getPlayerFinishBreakdowns).mockResolvedValue([]);
+  vi.mocked(getTierShowdownStats).mockResolvedValue([]);
+  vi.mocked(getPlayerExpectedVsActualWins).mockResolvedValue([]);
+  vi.mocked(getGameActivityTimestamps).mockResolvedValue([]);
+  vi.mocked(getPlayerParticipationRates).mockResolvedValue([]);
+  vi.mocked(getPlayerAttendanceEvents).mockResolvedValue([]);
+  vi.mocked(getPlayerCurrentWinStreaks).mockResolvedValue([]);
+  vi.mocked(getPlayerWinEvents).mockResolvedValue([]);
+  vi.mocked(getPlayerStreakRecords).mockResolvedValue([]);
+  vi.mocked(getSingleGameRecords).mockResolvedValue({
+    highestScore: null,
+    lowestWinningScore: null,
+    biggestBlowout: null,
+    closestGame: null,
+  });
+  vi.mocked(getPlayerHeadToHeadRecords).mockResolvedValue([]);
+  vi.mocked(getPerPlayerScoreDistributions).mockResolvedValue([]);
+  vi.mocked(getRivalryAggregates).mockResolvedValue([]);
+  vi.mocked(getScoreHistogramBuckets).mockResolvedValue([]);
+  vi.mocked(getSettings).mockResolvedValue({ winRateMinGames: 2, podiumRateMinGames: 4 });
+}
+
 vi.mock('@/components/PlayerOfMonthLeaderboard', () => ({
   PlayerOfMonthLeaderboard: ({
     players,
@@ -72,10 +108,7 @@ vi.mock('@/components/PlayerOfMonthLeaderboard', () => ({
 
 describe('StatsPage', () => {
   beforeEach(() => {
-    vi.mocked(getPlayerHeadToHeadRecords).mockResolvedValue([]);
-    vi.mocked(getPerPlayerScoreDistributions).mockResolvedValue([]);
-    vi.mocked(getRivalryAggregates).mockResolvedValue([]);
-    vi.mocked(getScoreHistogramBuckets).mockResolvedValue([]);
+    mockDefaultStatsPageData();
   });
 
   it('renders grouped stat sections with section nav and the planned card order', async () => {
@@ -554,10 +587,10 @@ describe('StatsPage', () => {
     expect(totalVpIndex).toBeGreaterThan(currentWinStreakIndex);
     expect(avgScoreIndex).toBeGreaterThan(totalVpIndex);
     expect(medianScoreIndex).toBeGreaterThan(avgScoreIndex);
-    expect(winningVsLosingScoreIndex).toBeGreaterThan(medianScoreIndex);
-    expect(normalizedAvgScoreIndex).toBeGreaterThan(winningVsLosingScoreIndex);
+    expect(normalizedAvgScoreIndex).toBeGreaterThan(medianScoreIndex);
     expect(normalizedMedianScoreIndex).toBeGreaterThan(normalizedAvgScoreIndex);
-    expect(winningScoreByGameSizeIndex).toBeGreaterThan(normalizedMedianScoreIndex);
+    expect(winningVsLosingScoreIndex).toBeGreaterThan(normalizedMedianScoreIndex);
+    expect(winningScoreByGameSizeIndex).toBeGreaterThan(winningVsLosingScoreIndex);
     expect(scoreHistogramIndex).toBeGreaterThan(winningScoreByGameSizeIndex);
     expect(scoreDistributionIndex).toBeGreaterThan(scoreHistogramIndex);
     expect(podiumRateIndex).toBeGreaterThan(scoreDistributionIndex);
@@ -765,6 +798,132 @@ describe('StatsPage', () => {
     expect(
       markup.slice(winningScoreByGameSizeIndex, winningScoreByGameSizeIndex + 160),
     ).not.toContain('lg:col-span-2');
+  });
+
+  it('requires three games before showing score leaderboard rows', async () => {
+    vi.mocked(getPlayerScoreStats).mockResolvedValue([
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+        games: 3,
+        avgScore: 9.3,
+        medianScore: 9,
+      },
+      {
+        playerId: 2,
+        name: 'Bea',
+        tier: PlayerTier.Standard,
+        games: 2,
+        avgScore: 10,
+        medianScore: 10,
+      },
+    ]);
+    vi.mocked(getPlayerCumulativeScoreStats).mockResolvedValue([
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+        games: 3,
+        totalScore: 28,
+        pointsPerGame: 9.3,
+      },
+      {
+        playerId: 2,
+        name: 'Bea',
+        tier: PlayerTier.Standard,
+        games: 2,
+        totalScore: 20,
+        pointsPerGame: 10,
+      },
+    ]);
+    vi.mocked(getPlayerNormalizedScoreStats).mockResolvedValue([
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+        games: 3,
+        avgScore: 0.93,
+        medianScore: 0.9,
+      },
+      {
+        playerId: 2,
+        name: 'Bea',
+        tier: PlayerTier.Standard,
+        games: 2,
+        avgScore: 1,
+        medianScore: 1,
+      },
+    ]);
+
+    const element = await StatsPage();
+    const markup = renderToStaticMarkup(element);
+    const avgScoreIndex = markup.indexOf('id="avg-score"');
+    const medianScoreIndex = markup.indexOf('id="median-score"');
+    const normalizedAvgScoreIndex = markup.indexOf('id="normalized-avg-score"');
+    const normalizedMedianScoreIndex = markup.indexOf('id="normalized-median-score"');
+    const winningVsLosingScoreIndex = markup.indexOf('id="winning-vs-losing-score"');
+
+    const avgScoreMarkup = markup.slice(avgScoreIndex, medianScoreIndex);
+    const medianScoreMarkup = markup.slice(medianScoreIndex, normalizedAvgScoreIndex);
+    const normalizedAvgScoreMarkup = markup.slice(
+      normalizedAvgScoreIndex,
+      normalizedMedianScoreIndex,
+    );
+    const normalizedMedianScoreMarkup = markup.slice(
+      normalizedMedianScoreIndex,
+      winningVsLosingScoreIndex,
+    );
+
+    [
+      avgScoreMarkup,
+      medianScoreMarkup,
+      normalizedAvgScoreMarkup,
+      normalizedMedianScoreMarkup,
+    ].forEach((sectionMarkup) => {
+      expect(sectionMarkup).toContain('Min 3 games');
+      expect(sectionMarkup).toContain('Ada');
+      expect(sectionMarkup).not.toContain('Bea');
+    });
+    expect(markup).toContain('20');
+  });
+
+  it('shows the score threshold empty state when no score leaderboard rows qualify', async () => {
+    vi.mocked(getPlayerScoreStats).mockResolvedValue([
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+        games: 2,
+        avgScore: 9.5,
+        medianScore: 9.5,
+      },
+    ]);
+    vi.mocked(getPlayerCumulativeScoreStats).mockResolvedValue([
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+        games: 2,
+        totalScore: 19,
+        pointsPerGame: 9.5,
+      },
+    ]);
+    vi.mocked(getPlayerNormalizedScoreStats).mockResolvedValue([
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+        games: 2,
+        avgScore: 0.95,
+        medianScore: 0.95,
+      },
+    ]);
+
+    const element = await StatsPage();
+    const markup = renderToStaticMarkup(element);
+
+    expect(markup.match(/No players have played 3\+ games yet\./g)).toHaveLength(4);
   });
 
   it('renders card empty states when no stats are available', async () => {

@@ -79,9 +79,13 @@ interface StatsCardMeta {
 function PlayerName({ name, tier }: { name: string; tier: PlayerTier }) {
   return (
     <div className="min-w-0">
-      <span className={tier === PlayerTier.Premium ? `
-        font-semibold text-(--gold)
-      ` : ''}>
+      <span
+        className={
+          tier === PlayerTier.Premium
+            ? `font-semibold text-(--gold)`
+            : ''
+        }
+      >
         {name}
       </span>
     </div>
@@ -112,6 +116,20 @@ function DataRow({ children }: { children: ReactNode }) {
 
 function EmptyState({ children }: { children: ReactNode }) {
   return <p className="py-8 text-center text-sm text-(--cream)/50">{children}</p>;
+}
+
+function ScoreLeaderboardEmptyState({
+  hasRecordedStats,
+  minGames,
+}: {
+  hasRecordedStats: boolean;
+  minGames: number;
+}) {
+  if (!hasRecordedStats) {
+    return <EmptyState>No games recorded yet.</EmptyState>;
+  }
+
+  return <EmptyState>No players have played {minGames}+ games yet.</EmptyState>;
 }
 
 function ScoreComparisonMetric({
@@ -259,9 +277,10 @@ function SingleGameRecordRow({
           {value}
         </p>
       </div>
-      <FormattedDate iso={playedAt} className="
-        mt-2 block text-xs text-(--cream)/50
-      " />
+      <FormattedDate
+        iso={playedAt}
+        className="mt-2 block text-xs text-(--cream)/50"
+      />
     </div>
   );
 }
@@ -402,13 +421,21 @@ export default async function StatsPage() {
     .filter((player) => player.games >= settings.podiumRateMinGames)
     .sort((a, b) => b.podiumRate - a.podiumRate || b.podiums - a.podiums);
 
-  const medianSorted = [...scoreStats].sort((a, b) => b.medianScore - a.medianScore);
+  const minGamesForScoreLeaderboards = 3;
+  const scoreStatsQualified = scoreStats.filter(
+    (player) => player.games >= minGamesForScoreLeaderboards,
+  );
+  const medianSorted = [...scoreStatsQualified].sort((a, b) => b.medianScore - a.medianScore);
   const cumulativeScoreStatsByPlayerId = new Map(
     cumulativeScoreStats.map((player) => [player.playerId, player]),
   );
-  const normalizedMedianSorted = [...normalizedScoreStats].sort(
+  const normalizedScoreStatsQualified = normalizedScoreStats.filter(
+    (player) => player.games >= minGamesForScoreLeaderboards,
+  );
+  const normalizedMedianSorted = [...normalizedScoreStatsQualified].sort(
     (a, b) => b.medianScore - a.medianScore,
   );
+  const scoreLeaderboardBadge = `Min ${minGamesForScoreLeaderboards} games`;
   const minGamesForScoreDistribution = 5;
   const qualifiedScoreDistributions = perPlayerScoreDistributions.filter(
     (player) => player.count >= minGamesForScoreDistribution,
@@ -443,20 +470,25 @@ export default async function StatsPage() {
     }))
     .sort(comparePlayerIdentity);
   const qualifiedRivalries = rivalryAggregates.filter(
-    (pair) => pair.gamesTogether >= settings.winRateMinGames && Number.isFinite(pair.closenessScore),
+    (pair) =>
+      pair.gamesTogether >= settings.winRateMinGames && Number.isFinite(pair.closenessScore),
   );
   const [closestRivalry] = [...qualifiedRivalries].sort(compareClosestRivalries);
   const [lopsidedRivalry] = [...qualifiedRivalries].sort(compareLopsidedRivalries);
-  const rivalryEmptyMessage = settings.winRateMinGames > 0
-    ? 'No rivalries meet the minimum game threshold yet.'
-    : 'No decided rivalries recorded yet.';
+  const rivalryEmptyMessage =
+    settings.winRateMinGames > 0
+      ? 'No rivalries meet the minimum game threshold yet.'
+      : 'No decided rivalries recorded yet.';
 
   const totalWinsRanks = rankWithTies(winRates, (player) => player.wins);
   const winRateRanks = rankWithTies(winRateQualified, (player) => player.winRate);
-  const avgScoreRanks = rankWithTies(scoreStats, (player) => player.avgScore);
+  const avgScoreRanks = rankWithTies(scoreStatsQualified, (player) => player.avgScore);
   const medianScoreRanks = rankWithTies(medianSorted, (player) => player.medianScore);
   const totalVpRanks = rankWithTies(cumulativeScoreStats, (player) => player.totalScore);
-  const normalizedAvgScoreRanks = rankWithTies(normalizedScoreStats, (player) => player.avgScore);
+  const normalizedAvgScoreRanks = rankWithTies(
+    normalizedScoreStatsQualified,
+    (player) => player.avgScore,
+  );
   const normalizedMedianScoreRanks = rankWithTies(
     normalizedMedianSorted,
     (player) => player.medianScore,
@@ -529,7 +561,7 @@ export default async function StatsPage() {
       id: 'avg-score',
       title: 'Average Score',
       description: 'Scoring leaderboard ranked by each player’s all-time average.',
-      badge: undefined,
+      badge: scoreLeaderboardBadge,
       span: 'single',
       section: 'scoring',
     },
@@ -537,7 +569,24 @@ export default async function StatsPage() {
       id: 'median-score',
       title: 'Median Score',
       description: 'Typical scoring performance with median values to smooth out spikes.',
-      badge: undefined,
+      badge: scoreLeaderboardBadge,
+      span: 'single',
+      section: 'scoring',
+    },
+    {
+      id: 'normalized-avg-score',
+      title: 'Normalized Average Score',
+      description: 'Average share of each game’s winning score across all appearances.',
+      badge: `${scoreLeaderboardBadge}; Winner = 100%`,
+      span: 'single',
+      section: 'scoring',
+    },
+    {
+      id: 'normalized-median-score',
+      title: 'Normalized Median Score',
+      description:
+        'Typical share of each game’s winning score, using medians to smooth out spikes.',
+      badge: `${scoreLeaderboardBadge}; Winner = 100%`,
       span: 'single',
       section: 'scoring',
     },
@@ -547,23 +596,6 @@ export default async function StatsPage() {
       description:
         'Average score for winner rows versus non-winner rows across all recorded games.',
       badge: undefined,
-      span: 'single',
-      section: 'scoring',
-    },
-    {
-      id: 'normalized-avg-score',
-      title: 'Normalized Average Score',
-      description: 'Average share of each game’s winning score across all appearances.',
-      badge: 'Winner = 100%',
-      span: 'single',
-      section: 'scoring',
-    },
-    {
-      id: 'normalized-median-score',
-      title: 'Normalized Median Score',
-      description:
-        'Typical share of each game’s winning score, using medians to smooth out spikes.',
-      badge: 'Winner = 100%',
       span: 'single',
       section: 'scoring',
     },
@@ -803,100 +835,112 @@ export default async function StatsPage() {
   ) as Record<StatsSectionId, StatsCardMeta[]>;
 
   const cardContents: Record<string, ReactNode> = {
-    'total-wins': winRates.length === 0 ? (
-      <EmptyState>No wins recorded yet.</EmptyState>
-    ) : (
-      <StatsLeaderboardTable
-        columns={[
-          { label: '#', align: 'center', widthClass: 'w-10' },
-          { label: 'Player' },
-          { label: 'Wins', align: 'right' },
-          { label: 'Win Rate', align: 'right' },
-        ]}
-      >
-        {winRates.map((player, index) => (
-          <DataRow key={player.playerId}>
-            <RankCell rank={totalWinsRanks[index]} />
-            <td className="px-3 py-2 text-(--cream)">
-              <PlayerName name={player.name} tier={player.tier} />
-            </td>
-            <td className="px-3 py-2 text-right text-(--cream) tabular-nums">{player.wins}</td>
-            <td className="px-3 py-2 text-right text-(--cream)/70 tabular-nums">
-              {formatPercent(player.winRate, 1)}
-            </td>
-          </DataRow>
-        ))}
-      </StatsLeaderboardTable>
-    ),
-    'win-rate': winRateQualified.length === 0 ? (
-      <EmptyState>
-        No players have played {settings.winRateMinGames}+ game
-        {settings.winRateMinGames === 1 ? '' : 's'} yet.
-      </EmptyState>
-    ) : (
-      <StatsLeaderboardTable
-        columns={[
-          { label: '#', align: 'center', widthClass: 'w-10' },
-          { label: 'Player' },
-          { label: 'Win Rate', align: 'right' },
-          { label: 'Wins', align: 'right' },
-          { label: 'Games', align: 'right' },
-        ]}
-      >
-        {winRateQualified.map((player, index) => (
-          <DataRow key={player.playerId}>
-            <RankCell rank={winRateRanks[index]} />
-            <td className="px-3 py-2 text-(--cream)">
-              <PlayerName name={player.name} tier={player.tier} />
-            </td>
-            <td className="
-              px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
-            ">
-              {formatPercent(player.winRate, 1)}
-            </td>
-            <td className="px-3 py-2 text-right text-(--cream) tabular-nums">{player.wins}</td>
-            <td className="px-3 py-2 text-right text-(--cream)/70 tabular-nums">
-              {player.games}
-            </td>
-          </DataRow>
-        ))}
-      </StatsLeaderboardTable>
-    ),
-    'current-win-streak': currentWinStreaks.length > 0 ? (
-      <StatsLeaderboardTable
-        columns={[
-          { label: '#', align: 'center', widthClass: 'w-10' },
-          { label: 'Player' },
-          { label: 'Streak', align: 'right' },
-          { label: 'Last Win', align: 'right' },
-        ]}
-      >
-        {currentWinStreaks.map((player, index) => (
-          <DataRow key={player.playerId}>
-            <RankCell rank={currentWinStreakRanks[index]} />
-            <td className="px-3 py-2 text-(--cream)">
-              <PlayerName name={player.name} tier={player.tier} />
-            </td>
-            <td className="
-              px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
-            ">
-              {formatWinLabel(player.streak)}
-            </td>
-            <td className="px-3 py-2 text-right text-(--cream)/70">
-              {player.mostRecentWin ? (
-                <FormattedDate iso={player.mostRecentWin} className="
-                  inline text-(--cream)/70
-                " />
-              ) : (
-                '—'
-              )}
-            </td>
-          </DataRow>
-        ))}
-      </StatsLeaderboardTable>
-    ) : (
-      <EmptyState>No games recorded yet.</EmptyState>
-    ),
+    'total-wins':
+      winRates.length === 0 ? (
+        <EmptyState>No wins recorded yet.</EmptyState>
+      ) : (
+        <StatsLeaderboardTable
+          columns={[
+            { label: '#', align: 'center', widthClass: 'w-10' },
+            { label: 'Player' },
+            { label: 'Wins', align: 'right' },
+            { label: 'Win Rate', align: 'right' },
+          ]}
+        >
+          {winRates.map((player, index) => (
+            <DataRow key={player.playerId}>
+              <RankCell rank={totalWinsRanks[index]} />
+              <td className="px-3 py-2 text-(--cream)">
+                <PlayerName name={player.name} tier={player.tier} />
+              </td>
+              <td className="px-3 py-2 text-right text-(--cream) tabular-nums">{player.wins}</td>
+              <td className="
+                px-3 py-2 text-right text-(--cream)/70 tabular-nums
+              ">
+                {formatPercent(player.winRate, 1)}
+              </td>
+            </DataRow>
+          ))}
+        </StatsLeaderboardTable>
+      ),
+    'win-rate':
+      winRateQualified.length === 0 ? (
+        <EmptyState>
+          No players have played {settings.winRateMinGames}+ game
+          {settings.winRateMinGames === 1 ? '' : 's'} yet.
+        </EmptyState>
+      ) : (
+        <StatsLeaderboardTable
+          columns={[
+            { label: '#', align: 'center', widthClass: 'w-10' },
+            { label: 'Player' },
+            { label: 'Win Rate', align: 'right' },
+            { label: 'Wins', align: 'right' },
+            { label: 'Games', align: 'right' },
+          ]}
+        >
+          {winRateQualified.map((player, index) => (
+            <DataRow key={player.playerId}>
+              <RankCell rank={winRateRanks[index]} />
+              <td className="px-3 py-2 text-(--cream)">
+                <PlayerName name={player.name} tier={player.tier} />
+              </td>
+              <td
+                className="
+                  px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
+                "
+              >
+                {formatPercent(player.winRate, 1)}
+              </td>
+              <td className="px-3 py-2 text-right text-(--cream) tabular-nums">{player.wins}</td>
+              <td className="
+                px-3 py-2 text-right text-(--cream)/70 tabular-nums
+              ">
+                {player.games}
+              </td>
+            </DataRow>
+          ))}
+        </StatsLeaderboardTable>
+      ),
+    'current-win-streak':
+      currentWinStreaks.length > 0 ? (
+        <StatsLeaderboardTable
+          columns={[
+            { label: '#', align: 'center', widthClass: 'w-10' },
+            { label: 'Player' },
+            { label: 'Streak', align: 'right' },
+            { label: 'Last Win', align: 'right' },
+          ]}
+        >
+          {currentWinStreaks.map((player, index) => (
+            <DataRow key={player.playerId}>
+              <RankCell rank={currentWinStreakRanks[index]} />
+              <td className="px-3 py-2 text-(--cream)">
+                <PlayerName name={player.name} tier={player.tier} />
+              </td>
+              <td
+                className="
+                  px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
+                "
+              >
+                {formatWinLabel(player.streak)}
+              </td>
+              <td className="px-3 py-2 text-right text-(--cream)/70">
+                {player.mostRecentWin ? (
+                  <FormattedDate
+                    iso={player.mostRecentWin}
+                    className="inline text-(--cream)/70"
+                  />
+                ) : (
+                  '—'
+                )}
+              </td>
+            </DataRow>
+          ))}
+        </StatsLeaderboardTable>
+      ) : (
+        <EmptyState>No games recorded yet.</EmptyState>
+      ),
     'total-vp': cumulativeScoreStats.some((player) => player.games > 0) ? (
       <StatsLeaderboardTable
         columns={[
@@ -912,48 +956,95 @@ export default async function StatsPage() {
             <td className="px-3 py-2 text-(--cream)">
               <PlayerName name={player.name} tier={player.tier} />
             </td>
-            <td className="
-              px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
-            ">
+            <td
+              className="
+                px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
+              "
+            >
               {player.totalScore}
             </td>
-            <td className="px-3 py-2 text-right text-(--cream)/70 tabular-nums">
-              {player.games}
-            </td>
+            <td className="px-3 py-2 text-right text-(--cream)/70 tabular-nums">{player.games}</td>
           </DataRow>
         ))}
       </StatsLeaderboardTable>
     ) : (
       <EmptyState>No games recorded yet.</EmptyState>
     ),
-    'avg-score': scoreStats.length === 0 ? (
-      <EmptyState>No games recorded yet.</EmptyState>
-    ) : (
-      <StatsLeaderboardTable
-        columns={[
-          { label: '#', align: 'center', widthClass: 'w-10' },
-          { label: 'Player' },
-          { label: 'Avg Score', align: 'right' },
-          { label: 'Total VP', align: 'right' },
-          { label: 'Games', align: 'right' },
-        ]}
-      >
-        {scoreStats.map((player, index) => {
-          const cumulativeScoreStat = cumulativeScoreStatsByPlayerId.get(player.playerId);
+    'avg-score':
+      scoreStatsQualified.length === 0 ? (
+        <ScoreLeaderboardEmptyState
+          hasRecordedStats={scoreStats.length > 0}
+          minGames={minGamesForScoreLeaderboards}
+        />
+      ) : (
+        <StatsLeaderboardTable
+          columns={[
+            { label: '#', align: 'center', widthClass: 'w-10' },
+            { label: 'Player' },
+            { label: 'Avg Score', align: 'right' },
+            { label: 'Total VP', align: 'right' },
+            { label: 'Games', align: 'right' },
+          ]}
+        >
+          {scoreStatsQualified.map((player, index) => {
+            const cumulativeScoreStat = cumulativeScoreStatsByPlayerId.get(player.playerId);
 
-          return (
+            return (
+              <DataRow key={player.playerId}>
+                <RankCell rank={avgScoreRanks[index]} />
+                <td className="px-3 py-2 text-(--cream)">
+                  <PlayerName name={player.name} tier={player.tier} />
+                </td>
+                <td
+                  className="
+                    px-3 py-2 text-right font-semibold text-(--gold)
+                    tabular-nums
+                  "
+                >
+                  {formatAverage(player.avgScore)}
+                </td>
+                <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
+                  {cumulativeScoreStat?.totalScore ?? 0}
+                </td>
+                <td
+                  className="
+                    px-3 py-2 text-right text-(--cream)/70 tabular-nums
+                  "
+                >
+                  {player.games}
+                </td>
+              </DataRow>
+            );
+          })}
+        </StatsLeaderboardTable>
+      ),
+    'median-score':
+      medianSorted.length === 0 ? (
+        <ScoreLeaderboardEmptyState
+          hasRecordedStats={scoreStats.length > 0}
+          minGames={minGamesForScoreLeaderboards}
+        />
+      ) : (
+        <StatsLeaderboardTable
+          columns={[
+            { label: '#', align: 'center', widthClass: 'w-10' },
+            { label: 'Player' },
+            { label: 'Median Score', align: 'right' },
+            { label: 'Games', align: 'right' },
+          ]}
+        >
+          {medianSorted.map((player, index) => (
             <DataRow key={player.playerId}>
-              <RankCell rank={avgScoreRanks[index]} />
+              <RankCell rank={medianScoreRanks[index]} />
               <td className="px-3 py-2 text-(--cream)">
                 <PlayerName name={player.name} tier={player.tier} />
               </td>
-              <td className="
-                px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
-              ">
-                {formatAverage(player.avgScore)}
-              </td>
-              <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
-                {cumulativeScoreStat?.totalScore ?? 0}
+              <td
+                className="
+                  px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
+                "
+              >
+                {formatAverage(player.medianScore)}
               </td>
               <td className="
                 px-3 py-2 text-right text-(--cream)/70 tabular-nums
@@ -961,48 +1052,20 @@ export default async function StatsPage() {
                 {player.games}
               </td>
             </DataRow>
-          );
-        })}
-      </StatsLeaderboardTable>
-    ),
-    'median-score': medianSorted.length === 0 ? (
-      <EmptyState>No games recorded yet.</EmptyState>
-    ) : (
-      <StatsLeaderboardTable
-        columns={[
-          { label: '#', align: 'center', widthClass: 'w-10' },
-          { label: 'Player' },
-          { label: 'Median Score', align: 'right' },
-          { label: 'Games', align: 'right' },
-        ]}
-      >
-        {medianSorted.map((player, index) => (
-          <DataRow key={player.playerId}>
-            <RankCell rank={medianScoreRanks[index]} />
-            <td className="px-3 py-2 text-(--cream)">
-              <PlayerName name={player.name} tier={player.tier} />
-            </td>
-            <td className="
-              px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
-            ">
-              {formatAverage(player.medianScore)}
-            </td>
-            <td className="px-3 py-2 text-right text-(--cream)/70 tabular-nums">
-              {player.games}
-            </td>
-          </DataRow>
-        ))}
-      </StatsLeaderboardTable>
-    ),
+          ))}
+        </StatsLeaderboardTable>
+      ),
     'winning-vs-losing-score':
       winningScoreComparison.winnerRows + winningScoreComparison.nonWinnerRows === 0 ? (
         <EmptyState>No games recorded yet.</EmptyState>
       ) : (
         <div className="space-y-4">
-          <div className="
-            grid gap-3
-            sm:grid-cols-2
-          ">
+          <div
+            className="
+              grid gap-3
+              sm:grid-cols-2
+            "
+          >
             <ScoreComparisonMetric
               label="Winners"
               value={winningScoreComparison.avgWinningScore}
@@ -1014,9 +1077,11 @@ export default async function StatsPage() {
               rowLabel={`${winningScoreComparison.nonWinnerRows} non-winner rows`}
             />
           </div>
-          <div className="
-            rounded-xl border border-(--gold)/10 bg-(--navy-900)/35 p-3
-          ">
+          <div
+            className="
+              rounded-xl border border-(--gold)/10 bg-(--navy-900)/35 p-3
+            "
+          >
             <p className="text-xs tracking-widest text-(--cream)/50 uppercase">Gap</p>
             <p className="mt-2 font-semibold text-(--gold) tabular-nums">
               {formatSignedNumber(winningScoreComparison.scoreGap)}
@@ -1024,64 +1089,80 @@ export default async function StatsPage() {
           </div>
         </div>
       ),
-    'normalized-avg-score': normalizedScoreStats.length === 0 ? (
-      <EmptyState>No games recorded yet.</EmptyState>
-    ) : (
-      <StatsLeaderboardTable
-        columns={[
-          { label: '#', align: 'center', widthClass: 'w-10' },
-          { label: 'Player' },
-          { label: 'Normalized Avg', align: 'right' },
-          { label: 'Games', align: 'right' },
-        ]}
-      >
-        {normalizedScoreStats.map((player, index) => (
-          <DataRow key={player.playerId}>
-            <RankCell rank={normalizedAvgScoreRanks[index]} />
-            <td className="px-3 py-2 text-(--cream)">
-              <PlayerName name={player.name} tier={player.tier} />
-            </td>
-            <td className="
-              px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
-            ">
-              {formatPercent(player.avgScore, 1)}
-            </td>
-            <td className="px-3 py-2 text-right text-(--cream)/70 tabular-nums">
-              {player.games}
-            </td>
-          </DataRow>
-        ))}
-      </StatsLeaderboardTable>
-    ),
-    'normalized-median-score': normalizedMedianSorted.length === 0 ? (
-      <EmptyState>No games recorded yet.</EmptyState>
-    ) : (
-      <StatsLeaderboardTable
-        columns={[
-          { label: '#', align: 'center', widthClass: 'w-10' },
-          { label: 'Player' },
-          { label: 'Normalized Median', align: 'right' },
-          { label: 'Games', align: 'right' },
-        ]}
-      >
-        {normalizedMedianSorted.map((player, index) => (
-          <DataRow key={player.playerId}>
-            <RankCell rank={normalizedMedianScoreRanks[index]} />
-            <td className="px-3 py-2 text-(--cream)">
-              <PlayerName name={player.name} tier={player.tier} />
-            </td>
-            <td className="
-              px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
-            ">
-              {formatPercent(player.medianScore, 1)}
-            </td>
-            <td className="px-3 py-2 text-right text-(--cream)/70 tabular-nums">
-              {player.games}
-            </td>
-          </DataRow>
-        ))}
-      </StatsLeaderboardTable>
-    ),
+    'normalized-avg-score':
+      normalizedScoreStatsQualified.length === 0 ? (
+        <ScoreLeaderboardEmptyState
+          hasRecordedStats={normalizedScoreStats.length > 0}
+          minGames={minGamesForScoreLeaderboards}
+        />
+      ) : (
+        <StatsLeaderboardTable
+          columns={[
+            { label: '#', align: 'center', widthClass: 'w-10' },
+            { label: 'Player' },
+            { label: 'Normalized Avg', align: 'right' },
+            { label: 'Games', align: 'right' },
+          ]}
+        >
+          {normalizedScoreStatsQualified.map((player, index) => (
+            <DataRow key={player.playerId}>
+              <RankCell rank={normalizedAvgScoreRanks[index]} />
+              <td className="px-3 py-2 text-(--cream)">
+                <PlayerName name={player.name} tier={player.tier} />
+              </td>
+              <td
+                className="
+                  px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
+                "
+              >
+                {formatPercent(player.avgScore, 1)}
+              </td>
+              <td className="
+                px-3 py-2 text-right text-(--cream)/70 tabular-nums
+              ">
+                {player.games}
+              </td>
+            </DataRow>
+          ))}
+        </StatsLeaderboardTable>
+      ),
+    'normalized-median-score':
+      normalizedMedianSorted.length === 0 ? (
+        <ScoreLeaderboardEmptyState
+          hasRecordedStats={normalizedScoreStats.length > 0}
+          minGames={minGamesForScoreLeaderboards}
+        />
+      ) : (
+        <StatsLeaderboardTable
+          columns={[
+            { label: '#', align: 'center', widthClass: 'w-10' },
+            { label: 'Player' },
+            { label: 'Normalized Median', align: 'right' },
+            { label: 'Games', align: 'right' },
+          ]}
+        >
+          {normalizedMedianSorted.map((player, index) => (
+            <DataRow key={player.playerId}>
+              <RankCell rank={normalizedMedianScoreRanks[index]} />
+              <td className="px-3 py-2 text-(--cream)">
+                <PlayerName name={player.name} tier={player.tier} />
+              </td>
+              <td
+                className="
+                  px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
+                "
+              >
+                {formatPercent(player.medianScore, 1)}
+              </td>
+              <td className="
+                px-3 py-2 text-right text-(--cream)/70 tabular-nums
+              ">
+                {player.games}
+              </td>
+            </DataRow>
+          ))}
+        </StatsLeaderboardTable>
+      ),
     'winning-score-by-game-size': <WinningScoreByGameSizeChart buckets={winningScoreByGameSize} />,
     'score-histogram': <ScoreHistogramChart buckets={scoreHistogramBuckets} />,
     'score-distribution-by-player':
@@ -1090,72 +1171,80 @@ export default async function StatsPage() {
       ) : (
         scoreDistributionEmptyState
       ),
-    'podium-rate': podiumRateQualified.length === 0 ? (
-      podiumRateEmptyState
-    ) : (
-      <StatsLeaderboardTable
-        columns={[
-          { label: '#', align: 'center', widthClass: 'w-10' },
-          { label: 'Player' },
-          { label: 'Podium Rate', align: 'right' },
-          { label: 'Podiums', align: 'right' },
-          { label: 'Games', align: 'right' },
-        ]}
-      >
-        {podiumRateQualified.map((player, index) => (
-          <DataRow key={player.playerId}>
-            <RankCell rank={podiumRateRanks[index]} />
-            <td className="px-3 py-2 text-(--cream)">
-              <PlayerName name={player.name} tier={player.tier} />
-            </td>
-            <td className="
-              px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
-            ">
-              {formatPercent(player.podiumRate, 1)}
-            </td>
-            <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
-              {player.podiums}
-            </td>
-            <td className="px-3 py-2 text-right text-(--cream)/70 tabular-nums">
-              {player.games}
-            </td>
-          </DataRow>
-        ))}
-      </StatsLeaderboardTable>
-    ),
-    bridesmaid: bridesmaidSorted.length === 0 ? (
-      <EmptyState>No games recorded yet.</EmptyState>
-    ) : (
-      <StatsLeaderboardTable
-        columns={[
-          { label: '#', align: 'center', widthClass: 'w-10' },
-          { label: 'Player' },
-          { label: '2nd Place', align: 'right' },
-          { label: 'Rate', align: 'right' },
-          { label: 'Games', align: 'right' },
-        ]}
-      >
-        {bridesmaidSorted.map((player, index) => (
-          <DataRow key={player.playerId}>
-            <RankCell rank={bridesmaidRanks[index]} />
-            <td className="px-3 py-2 text-(--cream)">
-              <PlayerName name={player.name} tier={player.tier} />
-            </td>
-            <td className="
-              px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
-            ">
-              {player.seconds}
-            </td>
-            <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
-              {formatPercent(player.secondRate, 1)}
-            </td>
-            <td className="px-3 py-2 text-right text-(--cream)/70 tabular-nums">
-              {player.games}
-            </td>
-          </DataRow>
-        ))}
-      </StatsLeaderboardTable>
-    ),
+    'podium-rate':
+      podiumRateQualified.length === 0 ? (
+        podiumRateEmptyState
+      ) : (
+        <StatsLeaderboardTable
+          columns={[
+            { label: '#', align: 'center', widthClass: 'w-10' },
+            { label: 'Player' },
+            { label: 'Podium Rate', align: 'right' },
+            { label: 'Podiums', align: 'right' },
+            { label: 'Games', align: 'right' },
+          ]}
+        >
+          {podiumRateQualified.map((player, index) => (
+            <DataRow key={player.playerId}>
+              <RankCell rank={podiumRateRanks[index]} />
+              <td className="px-3 py-2 text-(--cream)">
+                <PlayerName name={player.name} tier={player.tier} />
+              </td>
+              <td
+                className="
+                  px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
+                "
+              >
+                {formatPercent(player.podiumRate, 1)}
+              </td>
+              <td className="px-3 py-2 text-right text-(--cream) tabular-nums">{player.podiums}</td>
+              <td className="
+                px-3 py-2 text-right text-(--cream)/70 tabular-nums
+              ">
+                {player.games}
+              </td>
+            </DataRow>
+          ))}
+        </StatsLeaderboardTable>
+      ),
+    bridesmaid:
+      bridesmaidSorted.length === 0 ? (
+        <EmptyState>No games recorded yet.</EmptyState>
+      ) : (
+        <StatsLeaderboardTable
+          columns={[
+            { label: '#', align: 'center', widthClass: 'w-10' },
+            { label: 'Player' },
+            { label: '2nd Place', align: 'right' },
+            { label: 'Rate', align: 'right' },
+            { label: 'Games', align: 'right' },
+          ]}
+        >
+          {bridesmaidSorted.map((player, index) => (
+            <DataRow key={player.playerId}>
+              <RankCell rank={bridesmaidRanks[index]} />
+              <td className="px-3 py-2 text-(--cream)">
+                <PlayerName name={player.name} tier={player.tier} />
+              </td>
+              <td
+                className="
+                  px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
+                "
+              >
+                {player.seconds}
+              </td>
+              <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
+                {formatPercent(player.secondRate, 1)}
+              </td>
+              <td className="
+                px-3 py-2 text-right text-(--cream)/70 tabular-nums
+              ">
+                {player.games}
+              </td>
+            </DataRow>
+          ))}
+        </StatsLeaderboardTable>
+      ),
     'expected-vs-actual-wins': expectedVsActualWins.some((player) => player.games > 0) ? (
       <StatsLeaderboardTable
         columns={[
@@ -1190,47 +1279,52 @@ export default async function StatsPage() {
     ) : (
       <EmptyState>No games recorded yet.</EmptyState>
     ),
-    'finish-breakdown': finishBreakdowns.length === 0 ? (
-      <EmptyState>No games recorded yet.</EmptyState>
-    ) : (
-      <StatsLeaderboardTable
-        columns={[
-          { label: '#', align: 'center', widthClass: 'w-10' },
-          { label: 'Player' },
-          { label: '1st', align: 'right' },
-          { label: '2nd', align: 'right' },
-          { label: '3rd', align: 'right' },
-          { label: 'Last', align: 'right' },
-          { label: 'Games', align: 'right' },
-        ]}
-      >
-        {finishBreakdowns.map((player, index) => (
-          <DataRow key={player.playerId}>
-            <RankCell rank={finishBreakdownRanks[index]} />
-            <td className="px-3 py-2 text-(--cream)">
-              <PlayerName name={player.name} tier={player.tier} />
-            </td>
-            <td className="
-              px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
-            ">
-              {formatPercent(player.firstRate, 1)}
-            </td>
-            <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
-              {formatPercent(player.secondRate, 1)}
-            </td>
-            <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
-              {formatPercent(player.thirdRate, 1)}
-            </td>
-            <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
-              {formatPercent(player.lastRate, 1)}
-            </td>
-            <td className="px-3 py-2 text-right text-(--cream)/70 tabular-nums">
-              {player.games}
-            </td>
-          </DataRow>
-        ))}
-      </StatsLeaderboardTable>
-    ),
+    'finish-breakdown':
+      finishBreakdowns.length === 0 ? (
+        <EmptyState>No games recorded yet.</EmptyState>
+      ) : (
+        <StatsLeaderboardTable
+          columns={[
+            { label: '#', align: 'center', widthClass: 'w-10' },
+            { label: 'Player' },
+            { label: '1st', align: 'right' },
+            { label: '2nd', align: 'right' },
+            { label: '3rd', align: 'right' },
+            { label: 'Last', align: 'right' },
+            { label: 'Games', align: 'right' },
+          ]}
+        >
+          {finishBreakdowns.map((player, index) => (
+            <DataRow key={player.playerId}>
+              <RankCell rank={finishBreakdownRanks[index]} />
+              <td className="px-3 py-2 text-(--cream)">
+                <PlayerName name={player.name} tier={player.tier} />
+              </td>
+              <td
+                className="
+                  px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
+                "
+              >
+                {formatPercent(player.firstRate, 1)}
+              </td>
+              <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
+                {formatPercent(player.secondRate, 1)}
+              </td>
+              <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
+                {formatPercent(player.thirdRate, 1)}
+              </td>
+              <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
+                {formatPercent(player.lastRate, 1)}
+              </td>
+              <td className="
+                px-3 py-2 text-right text-(--cream)/70 tabular-nums
+              ">
+                {player.games}
+              </td>
+            </DataRow>
+          ))}
+        </StatsLeaderboardTable>
+      ),
     'tier-showdown': tierShowdown.some((row) => row.appearances > 0) ? (
       <StatsLeaderboardTable
         columns={[
@@ -1246,24 +1340,26 @@ export default async function StatsPage() {
           <DataRow key={row.tier}>
             <RankCell rank={tierShowdownRanks[index]} />
             <td className="px-3 py-2 text-(--cream)">
-              <span className={row.tier === PlayerTier.Premium ? `
-                font-semibold text-(--gold)
-              ` : ''}>
+              <span
+                className={
+                  row.tier === PlayerTier.Premium
+                    ? `font-semibold text-(--gold)`
+                    : ''
+                }
+              >
                 {formatTierLabel(row.tier)}
               </span>
             </td>
-            <td className="
-              px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
-            ">
+            <td
+              className="
+                px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
+              "
+            >
               {formatPercent(row.winRate, 1)}
             </td>
             <td className="px-3 py-2 text-right text-(--cream) tabular-nums">{row.wins}</td>
-            <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
-              {row.appearances}
-            </td>
-            <td className="px-3 py-2 text-right text-(--cream)/70 tabular-nums">
-              {row.players}
-            </td>
+            <td className="px-3 py-2 text-right text-(--cream) tabular-nums">{row.appearances}</td>
+            <td className="px-3 py-2 text-right text-(--cream)/70 tabular-nums">{row.players}</td>
           </DataRow>
         ))}
       </StatsLeaderboardTable>
@@ -1318,9 +1414,11 @@ export default async function StatsPage() {
             <td className="px-3 py-2 text-(--cream)">
               <PlayerName name={player.name} tier={player.tier} />
             </td>
-            <td className="
-              px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
-            ">
+            <td
+              className="
+                px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
+              "
+            >
               {formatPercent(player.participationRate, 1)}
             </td>
             <td className="px-3 py-2 text-right text-(--cream)/70 tabular-nums">
@@ -1341,7 +1439,9 @@ export default async function StatsPage() {
     'time-of-day-pattern': (
       <ActivityDistributionChart playedAtIsos={gameActivityTimestamps} variant="hour" />
     ),
-    'average-games-per-session': <AverageGamesPerSessionCard playedAtIsos={gameActivityTimestamps} />,
+    'average-games-per-session': (
+      <AverageGamesPerSessionCard playedAtIsos={gameActivityTimestamps} />
+    ),
     'most-wins-in-week': (
       <BestWinRecordsLeaderboard
         players={currentWinStreaks}
@@ -1360,38 +1460,41 @@ export default async function StatsPage() {
       <PlayerOfMonthLeaderboard players={currentWinStreaks} winEvents={playerWinEvents} />
     ),
     'single-game-records': <SingleGameRecordsContent records={singleGameRecords} />,
-    'longest-win-streak-ever': longestWinStreakRecords.length > 0 ? (
-      <StatsLeaderboardTable
-        columns={[
-          { label: '#', align: 'center', widthClass: 'w-10' },
-          { label: 'Player' },
-          { label: 'Record', align: 'right' },
-          { label: 'Period', align: 'right' },
-        ]}
-      >
-        {longestWinStreakRecords.map((player, index) => (
-          <DataRow key={player.playerId}>
-            <RankCell rank={longestWinStreakRanks[index]} />
-            <td className="px-3 py-2 text-(--cream)">
-              <PlayerName name={player.name} tier={player.tier} />
-            </td>
-            <td className="
-              px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
-            ">
-              {formatWinLabel(player.longestWinStreak)}
-            </td>
-            <td className="px-3 py-2 text-right text-(--cream)/70">
-              <StreakPeriod
-                startedAt={player.longestWinStreakStartedAt}
-                endedAt={player.longestWinStreakEndedAt}
-              />
-            </td>
-          </DataRow>
-        ))}
-      </StatsLeaderboardTable>
-    ) : (
-      <EmptyState>No games recorded yet.</EmptyState>
-    ),
+    'longest-win-streak-ever':
+      longestWinStreakRecords.length > 0 ? (
+        <StatsLeaderboardTable
+          columns={[
+            { label: '#', align: 'center', widthClass: 'w-10' },
+            { label: 'Player' },
+            { label: 'Record', align: 'right' },
+            { label: 'Period', align: 'right' },
+          ]}
+        >
+          {longestWinStreakRecords.map((player, index) => (
+            <DataRow key={player.playerId}>
+              <RankCell rank={longestWinStreakRanks[index]} />
+              <td className="px-3 py-2 text-(--cream)">
+                <PlayerName name={player.name} tier={player.tier} />
+              </td>
+              <td
+                className="
+                  px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
+                "
+              >
+                {formatWinLabel(player.longestWinStreak)}
+              </td>
+              <td className="px-3 py-2 text-right text-(--cream)/70">
+                <StreakPeriod
+                  startedAt={player.longestWinStreakStartedAt}
+                  endedAt={player.longestWinStreakEndedAt}
+                />
+              </td>
+            </DataRow>
+          ))}
+        </StatsLeaderboardTable>
+      ) : (
+        <EmptyState>No games recorded yet.</EmptyState>
+      ),
     'longest-gap-between-games': <LongestGapCard playedAtIsos={gameActivityTimestamps} />,
     'busiest-records': <BusiestRecordsCard playedAtIsos={gameActivityTimestamps} />,
   };
@@ -1411,10 +1514,12 @@ export default async function StatsPage() {
             <section key={section.id} id={section.id} className="scroll-mt-24">
               <StatsSectionHeader title={section.title} subtitle={section.subtitle} />
 
-              <div className="
-                grid grid-cols-1 gap-5
-                lg:grid-cols-2
-              ">
+              <div
+                className="
+                  grid grid-cols-1 gap-5
+                  lg:grid-cols-2
+                "
+              >
                 {cardsBySection[section.id].map((card) => (
                   <StatsCard key={card.id} {...card}>
                     {cardContents[card.id]}
