@@ -13,6 +13,7 @@ import { RivalryCard } from '@/components/RivalryCard';
 import { LongestGapCard } from '@/components/LongestGapCard';
 import { PageWidth } from '@/components/PageWidth';
 import { PlayerAttendanceChart } from '@/components/PlayerAttendanceChart';
+import { PlayerOfMonthHistoryTable } from '@/components/PlayerOfMonthHistoryTable';
 import { PlayerOfMonthLeaderboard } from '@/components/PlayerOfMonthLeaderboard';
 import { PlayerScoreBoxPlot } from '@/components/PlayerScoreBoxPlot';
 import { ScoreHistogramChart } from '@/components/ScoreHistogramChart';
@@ -790,6 +791,14 @@ export default async function StatsPage() {
       section: 'records',
     },
     {
+      id: 'player-of-month-history',
+      title: 'Player of the Month History',
+      description: 'Monthly winners from all previous completed months.',
+      badge: undefined,
+      span: 'single',
+      section: 'records',
+    },
+    {
       id: 'single-game-records',
       title: 'Single-Game Records',
       description: 'Peak scores, squeaky wins, blowouts, and nail-biters from recorded games.',
@@ -1458,6 +1467,9 @@ export default async function StatsPage() {
     ),
     'player-of-month': (
       <PlayerOfMonthLeaderboard players={currentWinStreaks} winEvents={playerWinEvents} />
+    ),
+    'player-of-month-history': (
+      <PlayerOfMonthHistoryTable players={currentWinStreaks} winEvents={playerWinEvents} />
     ),
     'single-game-records': <SingleGameRecordsContent records={singleGameRecords} />,
     'longest-win-streak-ever':

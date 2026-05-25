@@ -3,6 +3,7 @@ import {
   buildPlayerBestMonthWinRecords,
   buildPlayerBestWeekWinRecords,
   buildPlayerCurrentMonthWinRecords,
+  buildPlayerOfMonthHistoryRecords,
   buildBusiestActivityRecords,
   buildCalendarHeatmapData,
   buildCumulativeGamesSeries,
@@ -609,6 +610,114 @@ describe('activity-local-time', () => {
         days: 7,
       }),
     ).toBe(false)
+  })
+
+  it('buildPlayerOfMonthHistoryRecords returns empty for no events', () => {
+    expect(
+      buildPlayerOfMonthHistoryRecords({
+        players: [],
+        winEvents: [],
+        now: new Date('2026-05-15T12:00:00.000Z'),
+        timeZone: 'America/New_York',
+      }),
+    ).toEqual([])
+  })
+
+  it('buildPlayerOfMonthHistoryRecords produces one record per completed month, most recent first', () => {
+    const players = [
+      { playerId: 1, name: 'Ada', tier: PlayerTier.Premium },
+      { playerId: 2, name: 'Bea', tier: PlayerTier.Standard },
+    ]
+    const winEvents = [
+      { playerId: 1, name: 'Ada', tier: PlayerTier.Premium, playedAt: '2026-03-10T18:00:00.000Z' },
+      { playerId: 1, name: 'Ada', tier: PlayerTier.Premium, playedAt: '2026-03-20T18:00:00.000Z' },
+      { playerId: 2, name: 'Bea', tier: PlayerTier.Standard, playedAt: '2026-04-05T18:00:00.000Z' },
+      // May event — in current month, excluded
+      { playerId: 1, name: 'Ada', tier: PlayerTier.Premium, playedAt: '2026-05-01T18:00:00.000Z' },
+    ]
+
+    const records = buildPlayerOfMonthHistoryRecords({
+      players,
+      winEvents,
+      now: new Date('2026-05-15T12:00:00.000Z'),
+      timeZone: 'America/New_York',
+    })
+
+    expect(records).toHaveLength(2)
+    expect(records[0]).toMatchObject({
+      periodStart: '2026-04-01',
+      periodLabel: 'Apr 2026',
+      wins: 1,
+      winners: [{ playerId: 2, name: 'Bea' }],
+    })
+    expect(records[1]).toMatchObject({
+      periodStart: '2026-03-01',
+      periodLabel: 'Mar 2026',
+      wins: 2,
+      winners: [{ playerId: 1, name: 'Ada' }],
+    })
+  })
+
+  it('buildPlayerOfMonthHistoryRecords excludes the current in-progress month', () => {
+    const players = [{ playerId: 1, name: 'Ada', tier: PlayerTier.Premium }]
+    const winEvents = [
+      { playerId: 1, name: 'Ada', tier: PlayerTier.Premium, playedAt: '2026-05-10T18:00:00.000Z' },
+      { playerId: 1, name: 'Ada', tier: PlayerTier.Premium, playedAt: '2026-05-20T18:00:00.000Z' },
+    ]
+
+    const records = buildPlayerOfMonthHistoryRecords({
+      players,
+      winEvents,
+      now: new Date('2026-05-25T12:00:00.000Z'),
+      timeZone: 'America/New_York',
+    })
+
+    expect(records).toHaveLength(0)
+  })
+
+  it('buildPlayerOfMonthHistoryRecords handles ties with all tied winners sorted by name', () => {
+    const players = [
+      { playerId: 1, name: 'Zara', tier: PlayerTier.Standard },
+      { playerId: 2, name: 'Ada', tier: PlayerTier.Premium },
+      { playerId: 3, name: 'Bea', tier: PlayerTier.Standard },
+    ]
+    const winEvents = [
+      { playerId: 1, name: 'Zara', tier: PlayerTier.Standard, playedAt: '2026-03-05T18:00:00.000Z' },
+      { playerId: 2, name: 'Ada', tier: PlayerTier.Premium, playedAt: '2026-03-10T18:00:00.000Z' },
+      { playerId: 3, name: 'Bea', tier: PlayerTier.Standard, playedAt: '2026-03-15T18:00:00.000Z' },
+    ]
+
+    const records = buildPlayerOfMonthHistoryRecords({
+      players,
+      winEvents,
+      now: new Date('2026-05-01T12:00:00.000Z'),
+      timeZone: 'America/New_York',
+    })
+
+    expect(records).toHaveLength(1)
+    expect(records[0].wins).toBe(1)
+    expect(records[0].winners.map((w) => w.name)).toEqual(['Ada', 'Bea', 'Zara'])
+  })
+
+  it('buildPlayerOfMonthHistoryRecords attributes events to the correct local month across UTC boundaries', () => {
+    const players = [{ playerId: 1, name: 'Ada', tier: PlayerTier.Premium }]
+    // 2026-05-01T03:59:00Z is Apr 30 in America/New_York (UTC-4)
+    // 2026-05-01T04:00:00Z is May 1 in America/New_York
+    const winEvents = [
+      { playerId: 1, name: 'Ada', tier: PlayerTier.Premium, playedAt: '2026-05-01T03:59:00.000Z' },
+      { playerId: 1, name: 'Ada', tier: PlayerTier.Premium, playedAt: '2026-05-01T04:00:00.000Z' },
+    ]
+
+    const records = buildPlayerOfMonthHistoryRecords({
+      players,
+      winEvents,
+      now: new Date('2026-06-15T12:00:00.000Z'),
+      timeZone: 'America/New_York',
+    })
+
+    expect(records).toHaveLength(2)
+    expect(records[0]).toMatchObject({ periodStart: '2026-05-01', wins: 1 })
+    expect(records[1]).toMatchObject({ periodStart: '2026-04-01', wins: 1 })
   })
 
   it('normalizes midnight hour 24 into the 12 AM bucket', () => {

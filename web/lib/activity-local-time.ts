@@ -558,6 +558,70 @@ export function buildPlayerCurrentMonthWinRecords({
     )
 }
 
+export interface PlayerOfMonthHistoryRecord {
+  periodStart: string
+  periodLabel: string
+  wins: number
+  winners: PlayerBestWinRecordIdentity[]
+}
+
+export function buildPlayerOfMonthHistoryRecords({
+  players,
+  winEvents,
+  now,
+  timeZone,
+}: {
+  players: PlayerBestWinRecordIdentity[]
+  winEvents: PlayerBestWinRecordEvent[]
+  now: Date
+  timeZone: string
+}): PlayerOfMonthHistoryRecord[] {
+  const playerLookup = new Map<number, PlayerBestWinRecordIdentity>(
+    players.map((p) => [p.playerId, p]),
+  )
+  const currentMonthKey = toUtcDateKey(getLocalUtcMonthStart(now, timeZone))
+  const countsByMonth = new Map<string, Map<number, number>>()
+
+  winEvents.forEach((event) => {
+    const monthKey = toUtcDateKey(getLocalUtcMonthStart(event.playedAt, timeZone))
+    if (monthKey === currentMonthKey) return
+    const monthCounts = countsByMonth.get(monthKey) ?? new Map<number, number>()
+    monthCounts.set(event.playerId, (monthCounts.get(event.playerId) ?? 0) + 1)
+    countsByMonth.set(monthKey, monthCounts)
+  })
+
+  const records: PlayerOfMonthHistoryRecord[] = []
+
+  countsByMonth.forEach((playerCounts, monthKey) => {
+    let maxWins = 0
+    playerCounts.forEach((count) => {
+      if (count > maxWins) maxWins = count
+    })
+
+    if (maxWins === 0) return
+
+    const winners: PlayerBestWinRecordIdentity[] = []
+    playerCounts.forEach((count, playerId) => {
+      if (count !== maxWins) return
+      const player = playerLookup.get(playerId)
+      if (player) winners.push(player)
+    })
+
+    if (winners.length === 0) return
+
+    winners.sort((a, b) => a.name.localeCompare(b.name))
+
+    records.push({
+      periodStart: monthKey,
+      periodLabel: formatShortUtcMonth(fromUtcDateKey(monthKey)),
+      wins: maxWins,
+      winners,
+    })
+  })
+
+  return records.sort((a, b) => b.periodStart.localeCompare(a.periodStart))
+}
+
 export interface PlayerAttendanceEvent {
   playedAt: string
   playerId: number
