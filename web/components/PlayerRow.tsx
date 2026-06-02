@@ -16,10 +16,10 @@ interface PlayerRowProps {
   selectedPlayerIds: number[]
 }
 
-const SCORE_OPTIONS = Array.from({ length: 21 }, (_unused, score) => score)
+const SCORE_OPTIONS = Array.from({ length: 31 }, (_unused, score) => score)
 
 function getScoreOptions(score: number | null) {
-  if (score !== null && score > 20) {
+  if (score !== null && score > 30) {
     return [...SCORE_OPTIONS, score]
   }
 

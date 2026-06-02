@@ -6,7 +6,7 @@ import { db } from './db'
 export interface GamePlayer { playerId: number; score: number; isWinner: boolean }
 
 const MIN_SCORE = 0
-const MAX_SCORE = 20
+const MAX_SCORE = 30
 
 function assertValidPlayedAt(playedAt: Date) {
   if (!(playedAt instanceof Date) || !Number.isFinite(playedAt.getTime())) {
@@ -26,7 +26,7 @@ function validateAndNormalizeGamePlayers(inputPlayers: GamePlayer[]): GamePlayer
     }
 
     if (!Number.isInteger(player.score) || player.score < MIN_SCORE || player.score > MAX_SCORE) {
-      throw new Error('Score must be an integer from 0 to 20.')
+      throw new Error('Score must be an integer from 0 to 30.')
     }
 
     if (seenPlayerIds.has(player.playerId)) {

@@ -174,9 +174,9 @@ describe('games lib', () => {
         playedAt: new Date('2026-04-20T18:00:00.000Z'),
         notes: '',
         submittedFromIp: null,
-        players: [{ playerId: ada.id, score: 21, isWinner: true }],
+        players: [{ playerId: ada.id, score: 31, isWinner: true }],
       }),
-    ).rejects.toThrow('Score must be an integer from 0 to 20.');
+    ).rejects.toThrow('Score must be an integer from 0 to 30.');
 
     expect(await db.select().from(games)).toHaveLength(0);
   });
