@@ -20,14 +20,16 @@ class MockIntersectionObserver {
 
   readonly unobserve = vi.fn()
 
-  readonly root = null
+  readonly root: Element | Document | null
 
-  readonly rootMargin = '-30% 0px -60% 0px'
+  readonly rootMargin: string
 
   readonly thresholds = [0]
 
-  constructor(callback: IntersectionObserverCallback) {
+  constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
     this.callback = callback
+    this.root = options?.root ?? null
+    this.rootMargin = options?.rootMargin ?? '0px'
     observerInstances.push(this)
   }
 
@@ -109,5 +111,33 @@ describe('StatsAnchorNav', () => {
     })
 
     expect(screen.getByRole('link', { name: 'Headline' })).not.toHaveAttribute('aria-current')
+  })
+
+  it('scopes the observer to the scroll container when scrollContainerId is provided', () => {
+    const sections = [
+      { id: 'headline', title: 'Headline' },
+      { id: 'scoring', title: 'Scoring' },
+      { id: 'records', title: 'Records' },
+    ]
+
+    render(
+      <>
+        <StatsAnchorNav sections={sections} scrollContainerId="stats-scroll" />
+        <div id="stats-scroll">
+          {sections.map((section) => (
+            <section key={section.id} id={section.id}>
+              <h2>{section.title}</h2>
+            </section>
+          ))}
+        </div>
+      </>,
+    )
+
+    const scrollContainer = document.getElementById('stats-scroll')
+
+    expect(scrollContainer).not.toBeNull()
+    expect(observerInstances).toHaveLength(1)
+    expect(observerInstances[0].root).toBe(scrollContainer)
+    expect(observerInstances[0].observe).toHaveBeenCalledTimes(sections.length)
   })
 })

@@ -1512,36 +1512,52 @@ export default async function StatsPage() {
   };
 
   return (
-    <>
-      <StatsAnchorNav sections={STATS_SECTIONS.map(({ id, title }) => ({ id, title }))} />
-      <PageWidth
-        width="7xl"
+    <div
+      className="
+        flex h-[calc(100dvh-3rem)] flex-col overflow-hidden
+        sm:h-dvh
+      "
+    >
+      <StatsAnchorNav
+        sections={STATS_SECTIONS.map(({ id, title }) => ({ id, title }))}
+        scrollContainerId="stats-scroll"
+      />
+      <div
+        id="stats-scroll"
         className="
-          px-4 pb-6
-          sm:px-6 sm:pb-8
+          harbor-scrollbar relative flex-1 overflow-y-auto scroll-smooth pt-6
+          sm:pt-8
         "
       >
-        <div className="space-y-12">
-          {STATS_SECTIONS.map((section) => (
-            <section key={section.id} id={section.id} className="scroll-mt-24">
-              <StatsSectionHeader title={section.title} subtitle={section.subtitle} />
+        <PageWidth
+          width="7xl"
+          className="
+            px-4 pb-6
+            sm:px-6 sm:pb-8
+          "
+        >
+          <div className="space-y-12">
+            {STATS_SECTIONS.map((section) => (
+              <section key={section.id} id={section.id} className="scroll-mt-6">
+                <StatsSectionHeader title={section.title} subtitle={section.subtitle} />
 
-              <div
-                className="
-                  grid grid-cols-1 gap-5
-                  lg:grid-cols-2
-                "
-              >
-                {cardsBySection[section.id].map((card) => (
-                  <StatsCard key={card.id} {...card}>
-                    {cardContents[card.id]}
-                  </StatsCard>
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
-      </PageWidth>
-    </>
+                <div
+                  className="
+                    grid grid-cols-1 gap-5
+                    lg:grid-cols-2
+                  "
+                >
+                  {cardsBySection[section.id].map((card) => (
+                    <StatsCard key={card.id} {...card}>
+                      {cardContents[card.id]}
+                    </StatsCard>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        </PageWidth>
+      </div>
+    </div>
   );
 }

@@ -10,9 +10,10 @@ interface StatsAnchorNavSection {
 
 interface StatsAnchorNavProps {
   sections: StatsAnchorNavSection[]
+  scrollContainerId?: string
 }
 
-export function StatsAnchorNav({ sections }: StatsAnchorNavProps) {
+export function StatsAnchorNav({ sections, scrollContainerId = undefined }: StatsAnchorNavProps) {
   const [activeId, setActiveId] = useState(sections[0]?.id ?? '')
 
   const updateActiveId = useEffectEvent((entries: IntersectionObserverEntry[]) => {
@@ -28,11 +29,12 @@ export function StatsAnchorNav({ sections }: StatsAnchorNavProps) {
       return undefined
     }
 
+    const root = scrollContainerId ? document.getElementById(scrollContainerId) : null
     const observer = new IntersectionObserver(
       (entries) => {
         updateActiveId(entries)
       },
-      { rootMargin: '-30% 0px -60% 0px' },
+      { root, rootMargin: '-30% 0px -60% 0px' },
     )
 
     sections.forEach((section) => {
@@ -46,13 +48,13 @@ export function StatsAnchorNav({ sections }: StatsAnchorNavProps) {
     return () => {
       observer.disconnect()
     }
-  }, [sections])
+  }, [sections, scrollContainerId])
 
   return (
     <nav
       aria-label="Stats sections"
       className="
-        sticky top-0 z-30 mb-8 border-y border-(--gold)/15 bg-(--navy-900)/85
+        z-30 shrink-0 border-y border-(--gold)/15 bg-(--navy-900)/85
         shadow-[0_16px_32px_rgba(0,0,0,0.22)] backdrop-blur-md
       "
     >
@@ -93,4 +95,8 @@ export function StatsAnchorNav({ sections }: StatsAnchorNavProps) {
       </PageWidth>
     </nav>
   )
+}
+
+StatsAnchorNav.defaultProps = {
+  scrollContainerId: undefined,
 }

@@ -522,6 +522,9 @@ describe('StatsPage', () => {
     expect(markup).toContain('data-page-width="7xl"');
     expect(markup).toContain('data-expand-on-collapse="true"');
     expect(markup).toContain('sm:px-6 sm:pb-8');
+    expect(markup).toContain('id="stats-scroll"');
+    expect(markup).toContain('overflow-y-auto');
+    expect(markup.indexOf('href="#headline"')).toBeLessThan(markup.indexOf('id="stats-scroll"'));
     expect(markup).not.toContain('max-w-7xl');
     expect(markup).not.toContain('px-4 py-6');
     expect(markup).not.toContain('sm:px-6 sm:py-8');
