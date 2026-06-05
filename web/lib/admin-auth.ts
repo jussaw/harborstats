@@ -3,6 +3,13 @@ const THIRTY_DAYS_SECS = 60 * 60 * 24 * 30
 const SESSION_SCOPE = 'admin'
 const AUTH_REQUIRED_ERROR = 'Admin authentication required'
 
+// Bumping ADMIN_SESSION_VERSION invalidates every existing admin session
+// without rotating ADMIN_SESSION_SECRET — a redeploy-friendly "log everyone
+// out" lever. Kept stateless (env-based) so verifySession stays edge-safe.
+function getSessionVersion(): string {
+  return process.env.ADMIN_SESSION_VERSION ?? '1'
+}
+
 async function importKey(secret: string, usage: KeyUsage): Promise<CryptoKey> {
   return crypto.subtle.importKey(
     'raw',
@@ -37,7 +44,7 @@ function hexToBytes(hex: string): ArrayBuffer {
 export async function signSession(): Promise<string> {
   const secret = getSessionSecret()
   const iat = Math.floor(Date.now() / 1000).toString()
-  const payload = `${SESSION_SCOPE}:${iat}`
+  const payload = `${SESSION_SCOPE}:${getSessionVersion()}:${iat}`
   const sig = await hmacHex(secret, payload)
   return `${payload}.${sig}`
 }
@@ -52,9 +59,10 @@ export async function verifySession(cookieValue: string | undefined): Promise<bo
 
   const payload = cookieValue.slice(0, dot)
   const receivedSig = cookieValue.slice(dot + 1)
-  const [scope, iat] = payload.split(':')
+  const [scope, version, iat] = payload.split(':')
 
   if (scope !== SESSION_SCOPE || !iat) return false
+  if (version !== getSessionVersion()) return false
 
   const issuedAt = parseInt(iat, 10)
   if (Number.isNaN(issuedAt)) return false
@@ -64,9 +72,33 @@ export async function verifySession(cookieValue: string | undefined): Promise<bo
   return crypto.subtle.verify('HMAC', key, hexToBytes(receivedSig), new TextEncoder().encode(payload))
 }
 
-export function verifyPassword(input: string): boolean {
+// Constant-time XOR-accumulate over two equal-length buffers. node:crypto's
+// timingSafeEqual would be simpler but is not available in the Edge runtime
+// this module is bundled into (via proxy.ts), so the compare is done by hand.
+function timingSafeEqualBytes(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false
+  let diff = 0
+  for (let i = 0; i < a.length; i += 1) {
+    // eslint-disable-next-line no-bitwise -- bitwise ops are required for a constant-time compare
+    diff |= a[i] ^ b[i]
+  }
+  return diff === 0
+}
+
+export async function verifyPassword(input: string): Promise<boolean> {
   const correct = process.env.ADMIN_PASSWORD ?? ''
-  return correct.length > 0 && input === correct
+  if (correct.length === 0) return false
+
+  // SHA-256 both sides to fixed 32-byte digests before comparing: the compare
+  // is constant-time and length-independent, so timing leaks neither the
+  // password contents nor its length. Web Crypto keeps this edge-safe.
+  const encoder = new TextEncoder()
+  const [inputDigest, correctDigest] = await Promise.all([
+    crypto.subtle.digest('SHA-256', encoder.encode(input)),
+    crypto.subtle.digest('SHA-256', encoder.encode(correct)),
+  ])
+
+  return timingSafeEqualBytes(new Uint8Array(inputDigest), new Uint8Array(correctDigest))
 }
 
 export async function isAdminSession(): Promise<boolean> {

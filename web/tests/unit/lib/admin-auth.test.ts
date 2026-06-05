@@ -32,15 +32,17 @@ describe('admin auth helpers', () => {
     vi.useRealTimers();
   });
 
-  it('verifies the configured admin password and rejects missing passwords', () => {
+  it('verifies the configured admin password and rejects missing passwords', async () => {
     vi.stubEnv('ADMIN_PASSWORD', 'harbor-secret');
 
-    expect(verifyPassword('harbor-secret')).toBe(true);
-    expect(verifyPassword('wrong-password')).toBe(false);
+    await expect(verifyPassword('harbor-secret')).resolves.toBe(true);
+    await expect(verifyPassword('wrong-password')).resolves.toBe(false);
+    // A wrong password of a different length is still rejected (length-independent compare).
+    await expect(verifyPassword('x')).resolves.toBe(false);
 
     vi.stubEnv('ADMIN_PASSWORD', '');
 
-    expect(verifyPassword('harbor-secret')).toBe(false);
+    await expect(verifyPassword('harbor-secret')).resolves.toBe(false);
   });
 
   it('signs and verifies a valid session cookie', async () => {
@@ -48,12 +50,27 @@ describe('admin auth helpers', () => {
 
     const cookie = await signSession();
     const [payload, signature] = cookie.split('.');
-    const issuedAt = payload.replace('admin:', '');
+    const [scope, version, issuedAt] = payload.split(':');
 
-    expect(payload).toMatch(/^admin:\d+$/);
+    expect(payload).toMatch(/^admin:\d+:\d+$/);
+    expect(scope).toBe('admin');
+    expect(version).toBe('1');
     expect(issuedAt).toBe(String(Math.floor(new Date('2026-04-20T12:00:00.000Z').getTime() / 1000)));
     expect(signature).toMatch(/^[0-9a-f]+$/);
     await expect(verifySession(cookie)).resolves.toBe(true);
+  });
+
+  it('honours a custom ADMIN_SESSION_VERSION and rejects stale-version cookies', async () => {
+    vi.stubEnv('ADMIN_SESSION_SECRET', 'session-secret');
+    vi.stubEnv('ADMIN_SESSION_VERSION', '2');
+
+    const cookie = await signSession();
+    expect(cookie).toMatch(/^admin:2:\d+\./);
+    await expect(verifySession(cookie)).resolves.toBe(true);
+
+    // Bumping the version invalidates the previously-signed cookie.
+    vi.stubEnv('ADMIN_SESSION_VERSION', '3');
+    await expect(verifySession(cookie)).resolves.toBe(false);
   });
 
   it('rejects malformed session cookies', async () => {

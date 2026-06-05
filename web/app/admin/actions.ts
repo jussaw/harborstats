@@ -1,8 +1,10 @@
 'use server'
 
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { verifyPassword, signSession, COOKIE_NAME } from '@/lib/admin-auth'
+import { checkRateLimit } from '@/lib/rate-limit'
+import { getClientIp } from '@/lib/request-ip'
 
 const SESSION_COOKIE_OPTIONS = {
   httpOnly: true,
@@ -22,7 +24,15 @@ export async function loginAction(formData: FormData) {
   const password = (formData.get('password') as string) ?? ''
   const safeNext = sanitizeAdminNext(formData.get('next'))
 
-  if (!verifyPassword(password)) {
+  const hdrs = await headers()
+  const rateKey = `admin-login:${getClientIp(hdrs) ?? 'unknown'}`
+  if (!checkRateLimit(rateKey).allowed) {
+    // Reuse the generic error so a throttled attacker learns nothing about
+    // whether the submitted password was correct.
+    redirect(`/admin/login?error=1&next=${encodeURIComponent(safeNext)}`)
+  }
+
+  if (!(await verifyPassword(password))) {
     redirect(`/admin/login?error=1&next=${encodeURIComponent(safeNext)}`)
   }
 

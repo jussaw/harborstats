@@ -1,9 +1,11 @@
 'use server'
 
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { signGameSession, COOKIE_NAME } from '@/lib/game-auth'
 import { getNewGamePasswordHash } from '@/lib/settings'
 import { verifyPasswordHash } from '@/lib/password-hash'
+import { checkRateLimit } from '@/lib/rate-limit'
+import { getClientIp } from '@/lib/request-ip'
 
 export interface UnlockState {
   ok: boolean
@@ -23,6 +25,14 @@ export async function unlockGameCreationAction(
   formData: FormData,
 ): Promise<UnlockState> {
   const password = (formData.get('password') as string) ?? ''
+
+  const hdrs = await headers()
+  const rateKey = `game-unlock:${getClientIp(hdrs) ?? 'unknown'}`
+  if (!checkRateLimit(rateKey).allowed) {
+    // Reuse the generic 'incorrect' shape so a throttled client learns nothing
+    // about whether the submitted password was correct.
+    return { ok: false, error: 'incorrect' }
+  }
 
   const hash = await getNewGamePasswordHash()
   if (hash === null) {
