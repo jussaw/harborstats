@@ -13,6 +13,7 @@ import {
   Users,
   Settings,
 } from 'lucide-react'
+import { StatsSidebarSections } from './StatsSidebarSections'
 
 const cinzelStyle = {
   fontFamily: 'var(--font-cinzel), Georgia, serif',
@@ -140,6 +141,9 @@ export function Sidebar({
             collapsed={collapsed}
             onClick={onNavigate}
           />
+          {isActive('/stats', true) && (
+            <StatsSidebarSections collapsed={collapsed} onNavigate={onNavigate} />
+          )}
           <NavLink
             href="/games"
             Icon={ScrollText}

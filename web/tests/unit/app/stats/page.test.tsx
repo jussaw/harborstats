@@ -111,7 +111,7 @@ describe('StatsPage', () => {
     mockDefaultStatsPageData();
   });
 
-  it('renders grouped stat sections with section nav and the planned card order', async () => {
+  it('renders grouped stat sections and the planned card order', async () => {
     vi.mocked(getPlayerWinRates).mockResolvedValue([
       {
         playerId: 1,
@@ -511,20 +511,14 @@ describe('StatsPage', () => {
 
     expect(markup).not.toContain('All-Time Leaderboards');
     expect(markup).not.toContain('Stats Overview');
-    expect(markup).toContain('href="#headline"');
-    expect(markup).toContain('href="#scoring"');
-    expect(markup).toContain('href="#finishes"');
-    expect(markup).toContain('href="#head-to-head"');
-    expect(markup).toContain('href="#activity"');
-    expect(markup).toContain('href="#records"');
+    // Section navigation now lives in the global sidebar, so the page renders no anchor nav links.
+    expect(markup).not.toContain('href="#headline"');
     expect(markup).not.toContain('href="#total-wins"');
-    expect(markup).not.toContain('href="#win-rate"');
     expect(markup).toContain('data-page-width="7xl"');
     expect(markup).toContain('data-expand-on-collapse="true"');
     expect(markup).toContain('sm:px-6 sm:pb-8');
     expect(markup).toContain('id="stats-scroll"');
     expect(markup).toContain('overflow-y-auto');
-    expect(markup.indexOf('href="#headline"')).toBeLessThan(markup.indexOf('id="stats-scroll"'));
     expect(markup).not.toContain('max-w-7xl');
     expect(markup).not.toContain('px-4 py-6');
     expect(markup).not.toContain('sm:px-6 sm:py-8');

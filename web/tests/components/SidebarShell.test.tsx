@@ -185,6 +185,38 @@ describe('SidebarShell', () => {
     expect(publicLabels).toEqual(['Home', 'Stats', 'Games', 'Players'])
   })
 
+  it('reveals the stat subsections under Stats only on the Stats page', () => {
+    mockPathname = '/stats'
+
+    const { unmount } = render(
+      <SidebarShell isAdmin={false} logoutAction={vi.fn().mockResolvedValue(undefined)}>
+        <main>Stats</main>
+      </SidebarShell>,
+    )
+
+    const primaryNav = screen.getByRole('navigation', { name: 'Primary navigation' })
+
+    expect(within(primaryNav).getByRole('link', { name: 'Headline' })).toHaveAttribute(
+      'href',
+      '#headline',
+    )
+    expect(within(primaryNav).getByRole('link', { name: 'Records & Streaks' })).toHaveAttribute(
+      'href',
+      '#records',
+    )
+
+    unmount()
+    mockPathname = '/games'
+
+    render(
+      <SidebarShell isAdmin={false} logoutAction={vi.fn().mockResolvedValue(undefined)}>
+        <main>Games</main>
+      </SidebarShell>,
+    )
+
+    expect(screen.queryByRole('link', { name: 'Headline' })).not.toBeInTheDocument()
+  })
+
   it('shows the public Players link and marks it active on /players', () => {
     mockPathname = '/players'
 

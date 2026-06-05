@@ -17,7 +17,6 @@ import { PlayerOfMonthHistoryTable } from '@/components/PlayerOfMonthHistoryTabl
 import { PlayerOfMonthLeaderboard } from '@/components/PlayerOfMonthLeaderboard';
 import { PlayerScoreBoxPlot } from '@/components/PlayerScoreBoxPlot';
 import { ScoreHistogramChart } from '@/components/ScoreHistogramChart';
-import { StatsAnchorNav } from '@/components/StatsAnchorNav';
 import { StatsCard } from '@/components/StatsCard';
 import { StatsLeaderboardTable } from '@/components/StatsLeaderboardTable';
 import { StatsSectionHeader } from '@/components/StatsSectionHeader';
@@ -52,21 +51,11 @@ import {
   type RivalryAggregate,
   type SingleGameRecords,
 } from '@/lib/stats';
+import { STATS_SECTIONS, type StatsSectionId } from '@/lib/stats-sections';
 
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = { title: 'Stats — HarborStats' };
-
-type StatsSectionId = 'headline' | 'scoring' | 'finishes' | 'head-to-head' | 'activity' | 'records';
-
-const STATS_SECTIONS: { id: StatsSectionId; title: string; subtitle: string }[] = [
-  { id: 'headline', title: 'Headline', subtitle: 'Top-line standings.' },
-  { id: 'scoring', title: 'Scoring', subtitle: 'How players score.' },
-  { id: 'finishes', title: 'Finishes & Tiers', subtitle: 'Where players land.' },
-  { id: 'head-to-head', title: 'Head-to-Head', subtitle: 'Rivalries and matchups.' },
-  { id: 'activity', title: 'Activity & Trends', subtitle: 'When games happen.' },
-  { id: 'records', title: 'Records & Streaks', subtitle: 'Personal bests and milestones.' },
-];
 
 interface StatsCardMeta {
   id: string;
@@ -1518,10 +1507,6 @@ export default async function StatsPage() {
         sm:h-dvh
       "
     >
-      <StatsAnchorNav
-        sections={STATS_SECTIONS.map(({ id, title }) => ({ id, title }))}
-        scrollContainerId="stats-scroll"
-      />
       <div
         id="stats-scroll"
         className="
