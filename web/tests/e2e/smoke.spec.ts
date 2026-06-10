@@ -109,8 +109,10 @@ test('public games page paginates and supports page-size changes', async ({ page
         playedAt: new Date(`2026-04-${String(gameNumber).padStart(2, '0')}T12:00:00.000Z`),
         notes: `Harbor game ${gameNumber}`,
         players: [
-          { playerId: ada.id, score: 10 + gameNumber, isWinner: true },
-          { playerId: bea.id, score: 5 + gameNumber, isWinner: false },
+          // Constant scores: gameNumber-based values would exceed the 0-30
+          // DB check constraint.
+          { playerId: ada.id, score: 10, isWinner: true },
+          { playerId: bea.id, score: 5, isWinner: false },
         ],
       });
     }),
@@ -156,7 +158,7 @@ test('public games page filters by players and date range while preserving pagin
       return createE2eGame({
         playedAt: new Date(`2026-04-${String(day).padStart(2, '0')}T12:00:00.000Z`),
         notes: `Bea game ${day}`,
-        players: [{ playerId: bea.id, score: 20 + day, isWinner: true }],
+        players: [{ playerId: bea.id, score: 15, isWinner: true }],
       });
     }),
   );
@@ -167,7 +169,7 @@ test('public games page filters by players and date range while preserving pagin
       return createE2eGame({
         playedAt: new Date(`2026-04-${String(day).padStart(2, '0')}T12:00:00.000Z`),
         notes: `Cara game ${day}`,
-        players: [{ playerId: cara.id, score: 30 + day, isWinner: true }],
+        players: [{ playerId: cara.id, score: 20, isWinner: true }],
       });
     }),
   );

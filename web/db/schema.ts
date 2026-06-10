@@ -45,7 +45,8 @@ export const gamePlayers = pgTable(
     isWinner: boolean('is_winner').notNull().default(false),
   },
   (t) => [
-    check('game_players_score_check', sql`${t.score} >= 0`),
+    // Upper bound mirrors MAX_SCORE in lib/games.ts — change both together.
+    check('game_players_score_check', sql`${t.score} >= 0 AND ${t.score} <= 30`),
     index('idx_game_players_game').on(t.gameId),
     index('idx_game_players_player').on(t.playerId),
     uniqueIndex('game_players_game_id_player_id_unique').on(t.gameId, t.playerId),

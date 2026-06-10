@@ -413,7 +413,8 @@ describe('games lib', () => {
       return createTestGame({
         playedAt: new Date(`2026-04-${String(gameNumber).padStart(2, '0')}T10:00:00.000Z`),
         notes: `Game ${gameNumber}`,
-        players: [{ playerId: ada.id, score: gameNumber, isWinner: true }],
+        // Constant score: gameNumber would exceed the 0-30 DB check constraint.
+        players: [{ playerId: ada.id, score: 10, isWinner: true }],
       });
     }));
 
@@ -565,7 +566,8 @@ describe('games lib', () => {
       return createTestGame({
         playedAt: new Date(`2026-03-${String((gameNumber % 28) + 1).padStart(2, '0')}T${String(gameNumber % 24).padStart(2, '0')}:00:00.000Z`),
         notes: `Game ${gameNumber}`,
-        players: [{ playerId: ada.id, score: gameNumber, isWinner: true }],
+        // Constant score: gameNumber would exceed the 0-30 DB check constraint.
+        players: [{ playerId: ada.id, score: 10, isWinner: true }],
       })
     }))
 
