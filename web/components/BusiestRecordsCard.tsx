@@ -79,7 +79,3 @@ export function BusiestRecordsCard({ playedAtIsos, timeZone = undefined }: Props
     </div>
   )
 }
-
-BusiestRecordsCard.defaultProps = {
-  timeZone: undefined,
-}

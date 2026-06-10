@@ -297,7 +297,3 @@ export function CumulativeGamesAreaChart({
     </div>
   )
 }
-
-CumulativeGamesAreaChart.defaultProps = {
-  timeZone: undefined,
-}

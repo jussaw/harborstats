@@ -66,7 +66,3 @@ export function RivalryCard({ title, description, badge, pair, emptyMessage }: R
     </StatsCardDetailSlot>
   );
 }
-
-RivalryCard.defaultProps = {
-  badge: undefined,
-};

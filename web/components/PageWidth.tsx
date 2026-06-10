@@ -30,8 +30,3 @@ export function PageWidth({
     </Component>
   );
 }
-
-PageWidth.defaultProps = {
-  as: 'main',
-  expandOnCollapse: true,
-};

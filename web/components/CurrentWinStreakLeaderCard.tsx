@@ -101,8 +101,3 @@ export function CurrentWinStreakLeaderCard({
     </div>
   )
 }
-
-CurrentWinStreakLeaderCard.defaultProps = {
-  timeZone: undefined,
-  now: undefined,
-}

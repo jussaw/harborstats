@@ -109,8 +109,3 @@ export function PlayerOfMonthHistoryTable({
     </StatsLeaderboardTable>
   )
 }
-
-PlayerOfMonthHistoryTable.defaultProps = {
-  timeZone: undefined,
-  now: undefined,
-}

@@ -398,7 +398,3 @@ export function PlayerAttendanceChart({ events, defaultView, timeZone }: Props) 
     </div>
   )
 }
-
-PlayerAttendanceChart.defaultProps = {
-  timeZone: undefined,
-}

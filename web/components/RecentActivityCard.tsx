@@ -52,8 +52,3 @@ export function RecentActivityCard({ latestPlayedAt, timeZone, now }: Props) {
     </div>
   )
 }
-
-RecentActivityCard.defaultProps = {
-  timeZone: undefined,
-  now: undefined,
-}

@@ -47,7 +47,3 @@ export function AverageGamesPerSessionCard({ playedAtIsos, timeZone }: Props) {
     </div>
   )
 }
-
-AverageGamesPerSessionCard.defaultProps = {
-  timeZone: undefined,
-}

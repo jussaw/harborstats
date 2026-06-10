@@ -71,8 +71,3 @@ export function PlayerOfMonthCard({
     </div>
   )
 }
-
-PlayerOfMonthCard.defaultProps = {
-  timeZone: undefined,
-  now: undefined,
-}

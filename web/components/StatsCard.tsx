@@ -102,7 +102,3 @@ export function StatsCardDetailSlot({
     </div>
   )
 }
-
-StatsCardDetailSlot.defaultProps = {
-  className: undefined,
-}

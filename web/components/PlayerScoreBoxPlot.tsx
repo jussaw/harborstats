@@ -369,7 +369,3 @@ export function PlayerScoreBoxPlot({ distributions, density }: Props) {
     </div>
   );
 }
-
-PlayerScoreBoxPlot.defaultProps = {
-  density: 'roomy',
-};

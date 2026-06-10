@@ -142,7 +142,3 @@ export function BestWinRecordsLeaderboard({
     </StatsLeaderboardTable>
   )
 }
-
-BestWinRecordsLeaderboard.defaultProps = {
-  timeZone: undefined,
-}

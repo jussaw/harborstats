@@ -139,8 +139,3 @@ export function PlayerOfMonthLeaderboard({
     </div>
   )
 }
-
-PlayerOfMonthLeaderboard.defaultProps = {
-  timeZone: undefined,
-  now: undefined,
-}

@@ -226,7 +226,3 @@ export function ActivityDistributionChart({
     </div>
   )
 }
-
-ActivityDistributionChart.defaultProps = {
-  timeZone: undefined,
-}

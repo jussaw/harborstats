@@ -209,7 +209,3 @@ export function CalendarHeatmap({
     </div>
   )
 }
-
-CalendarHeatmap.defaultProps = {
-  timeZone: undefined,
-}

@@ -81,7 +81,3 @@ export function LongestGapCard({ playedAtIsos, timeZone = undefined }: Props) {
     </div>
   )
 }
-
-LongestGapCard.defaultProps = {
-  timeZone: undefined,
-}

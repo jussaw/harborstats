@@ -266,7 +266,3 @@ export function GamesOverTimeChart({
     </div>
   )
 }
-
-GamesOverTimeChart.defaultProps = {
-  timeZone: undefined,
-}

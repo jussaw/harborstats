@@ -85,7 +85,3 @@ export function PlayerBestWinRecordCard({
     </StatsCard>
   )
 }
-
-PlayerBestWinRecordCard.defaultProps = {
-  timeZone: undefined,
-}

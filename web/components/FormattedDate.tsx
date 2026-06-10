@@ -48,8 +48,3 @@ export function FormattedDate({ iso, className, dateOnly = false, timeZone = und
     </time>
   )
 }
-
-FormattedDate.defaultProps = {
-  dateOnly: false,
-  timeZone: undefined,
-}

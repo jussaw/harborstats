@@ -94,8 +94,3 @@ export function HotHandIndicatorCard({
     </div>
   )
 }
-
-HotHandIndicatorCard.defaultProps = {
-  timeZone: undefined,
-  now: undefined,
-}

@@ -91,7 +91,3 @@ export function StatsSidebarSections({
     </ul>
   )
 }
-
-StatsSidebarSections.defaultProps = {
-  scrollContainerId: 'stats-scroll',
-}

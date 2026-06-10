@@ -53,10 +53,18 @@ const eslintConfig = defineConfig([
         'error',
         { namedComponents: 'function-declaration' },
       ],
+      // React 19 removed defaultProps for function components; ES default
+      // parameters cover optional props, so don't require the dead blocks.
+      'react/require-default-props': 'off',
     },
   },
   {
-    files: ['playwright.config.ts', 'vitest*.ts', 'drizzle.config.ts'],
+    files: [
+      'playwright.config.ts',
+      'vitest*.ts',
+      'drizzle.config.ts',
+      'scripts/generate-pwa-icons.ts',
+    ],
     rules: {
       'import-x/no-extraneous-dependencies': 'off',
     },

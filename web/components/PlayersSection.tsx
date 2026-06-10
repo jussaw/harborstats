@@ -193,10 +193,6 @@ function StreakPeriodDetail({
   );
 }
 
-StreakPeriodDetail.defaultProps = {
-  dateOnly: false,
-};
-
 function ProfileLossStreakCard({ streakRecord }: { streakRecord: PlayerStreakRecord | null }) {
   return (
     <StatsCard
