@@ -44,6 +44,7 @@ Required values:
 | --- | --- | --- | --- |
 | `ADMIN_PASSWORD` | Yes | `web` | Shared password for the admin UI |
 | `ADMIN_SESSION_SECRET` | Yes | `web` | Secret used to sign admin session cookies |
+| `POSTGRES_PASSWORD` | No (defaults to `postgres`) | `db`, `web`, `migrate`, `baseline` | Password for the internal Postgres user; set a real value in production |
 
 Required values when using the `pgadmin` profile:
 
@@ -63,8 +64,9 @@ Optional backup and restore script values:
 
 Notes:
 
-- `DATABASE_URL` for the deployed app is set directly in the compose file as `postgres://postgres:postgres@db:5432/harborstats`
+- `DATABASE_URL` for the deployed app is built in the compose file as `postgres://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/harborstats`
 - `migrate` and `baseline` also get their `DATABASE_URL` from the compose file
+- `POSTGRES_PASSWORD` is only applied when the `pgdata` volume is first initialized. To change it for an existing deployment, run `docker exec -it harborstats-db psql -U postgres -d harborstats -c "ALTER USER postgres WITH PASSWORD 'new-password';"`, update `devops/.env`, then restart the stack
 - `restore-db.sh` restarts `web`, so `ADMIN_PASSWORD` and `ADMIN_SESSION_SECRET` need to be present in `devops/.env` or exported in the shell before you restore
 - If you want the scripts to read a different env file, set `ENV_FILE=/path/to/file.env`
 

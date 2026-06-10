@@ -6,7 +6,9 @@ services:
     container_name: harborstats-db
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      # Only applied when the data volume is first initialized; changing it
+      # later requires ALTER USER inside the running container (see README).
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: harborstats
     volumes:
       - pgdata:/var/lib/postgresql
@@ -27,7 +29,7 @@ services:
         condition: service_healthy
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgres://postgres:postgres@db:5432/harborstats
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/harborstats
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       ADMIN_SESSION_SECRET: ${ADMIN_SESSION_SECRET}
     ports:
@@ -42,7 +44,7 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://postgres:postgres@db:5432/harborstats
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/harborstats
     command: ["./node_modules/.bin/tsx", "scripts/migrate.ts"]
     profiles: ["migrate"]
     restart: "no"
@@ -55,7 +57,7 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://postgres:postgres@db:5432/harborstats
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/harborstats
     command: ["./node_modules/.bin/tsx", "scripts/baseline.ts"]
     profiles: ["migrate"]
     restart: "no"
