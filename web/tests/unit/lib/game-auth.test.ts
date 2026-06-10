@@ -8,6 +8,7 @@ import {
   COOKIE_NAME,
 } from '@/lib/game-auth';
 import { signSession } from '@/lib/admin-auth';
+import { getNewGamePasswordHash } from '@/lib/settings';
 
 vi.mock('next/headers', () => ({
   cookies: vi.fn(),
@@ -25,6 +26,7 @@ describe('game auth helpers', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-04-20T12:00:00.000Z'));
+    vi.mocked(getNewGamePasswordHash).mockResolvedValue('scrypt$somesalt$somehash');
   });
 
   afterEach(() => {
@@ -37,9 +39,9 @@ describe('game auth helpers', () => {
 
     const cookie = await signGameSession();
     const [payload, signature] = cookie.split('.');
-    const issuedAt = payload.replace('game:', '');
+    const issuedAt = payload.split(':')[2];
 
-    expect(payload).toMatch(/^game:\d+$/);
+    expect(payload).toMatch(/^game:[0-9a-f]{12}:\d+$/);
     expect(issuedAt).toBe(String(Math.floor(new Date('2026-04-20T12:00:00.000Z').getTime() / 1000)));
     expect(signature).toMatch(/^[0-9a-f]+$/);
     await expect(verifyGameSession(cookie)).resolves.toBe(true);
@@ -53,6 +55,34 @@ describe('game auth helpers', () => {
     await expect(verifyGameSession('not-a-number.deadbeef')).resolves.toBe(false);
     await expect(verifyGameSession('1234.deadbeef')).resolves.toBe(false);
     await expect(verifyGameSession('admin:1234.deadbeef')).resolves.toBe(false);
+    // Legacy pre-key-id format: no longer accepted.
+    await expect(verifyGameSession('game:1234.deadbeef')).resolves.toBe(false);
+  });
+
+  it('rejects sessions once the game password hash changes', async () => {
+    vi.stubEnv('ADMIN_SESSION_SECRET', 'session-secret');
+
+    const cookie = await signGameSession();
+    await expect(verifyGameSession(cookie)).resolves.toBe(true);
+
+    vi.mocked(getNewGamePasswordHash).mockResolvedValue('scrypt$othersalt$otherhash');
+    await expect(verifyGameSession(cookie)).resolves.toBe(false);
+  });
+
+  it('rejects sessions once the game password is cleared', async () => {
+    vi.stubEnv('ADMIN_SESSION_SECRET', 'session-secret');
+
+    const cookie = await signGameSession();
+    vi.mocked(getNewGamePasswordHash).mockResolvedValue(null);
+
+    await expect(verifyGameSession(cookie)).resolves.toBe(false);
+  });
+
+  it('refuses to sign a session when no game password is configured', async () => {
+    vi.stubEnv('ADMIN_SESSION_SECRET', 'session-secret');
+    vi.mocked(getNewGamePasswordHash).mockResolvedValue(null);
+
+    await expect(signGameSession()).rejects.toThrow(/No game creation password/);
   });
 
   it('rejects an admin-scoped cookie signed with the same secret', async () => {
@@ -106,7 +136,6 @@ describe('game auth helpers', () => {
 
   describe('verifyGamePassword', () => {
     it('returns false when no hash is stored', async () => {
-      const { getNewGamePasswordHash } = await import('@/lib/settings');
       const { verifyPasswordHash } = await import('@/lib/password-hash');
       vi.mocked(getNewGamePasswordHash).mockResolvedValue(null);
       vi.mocked(verifyPasswordHash).mockResolvedValue(false);
@@ -115,7 +144,6 @@ describe('game auth helpers', () => {
     });
 
     it('returns true when verifyPasswordHash returns true', async () => {
-      const { getNewGamePasswordHash } = await import('@/lib/settings');
       const { verifyPasswordHash } = await import('@/lib/password-hash');
       vi.mocked(getNewGamePasswordHash).mockResolvedValue('scrypt$somesalt$somehash');
       vi.mocked(verifyPasswordHash).mockResolvedValue(true);
@@ -124,7 +152,6 @@ describe('game auth helpers', () => {
     });
 
     it('returns false when verifyPasswordHash returns false', async () => {
-      const { getNewGamePasswordHash } = await import('@/lib/settings');
       const { verifyPasswordHash } = await import('@/lib/password-hash');
       vi.mocked(getNewGamePasswordHash).mockResolvedValue('scrypt$somesalt$somehash');
       vi.mocked(verifyPasswordHash).mockResolvedValue(false);

@@ -18,7 +18,9 @@ function buildFormData(fields: Record<string, string>): FormData {
 }
 
 const { headersMock, cookiesMock } = vi.hoisted(() => ({
-  headersMock: vi.fn(),
+  // Default implementation survives the configured mockReset between tests,
+  // so actions that read headers() work without per-describe setup.
+  headersMock: vi.fn(async () => new Headers()),
   cookiesMock: vi.fn(),
 }));
 
@@ -29,6 +31,9 @@ vi.mock('next/headers', () => ({
 
 async function setupValidSession() {
   vi.stubEnv('ADMIN_SESSION_SECRET', 'test-secret');
+  // Game sessions are bound to the configured password hash, so one must
+  // exist before a session can be signed.
+  await setNewGamePassword('session-password');
   const sessionCookie = await signGameSession();
   vi.mocked(cookies).mockResolvedValue({
     get: vi.fn((name: string) =>
@@ -43,13 +48,35 @@ describe('createGameAction', () => {
     headersMock.mockResolvedValue(new Headers());
   });
 
-  test('throws when no valid hs_game session cookie is present', async () => {
+  test('returns a locked error when no valid hs_game session cookie is present', async () => {
     cookiesMock.mockResolvedValue({
       get: vi.fn(() => undefined),
     } as Awaited<ReturnType<typeof cookies>>);
 
     const formData = new FormData();
-    await expect(createGameAction(formData)).rejects.toThrow('Game creation is locked');
+    await expect(createGameAction(formData)).resolves.toEqual({
+      ok: false,
+      error: expect.stringContaining('Game creation is locked'),
+    });
+  });
+
+  test('returns the validation message instead of throwing for invalid form data', async () => {
+    await setupValidSession();
+
+    const alice = await createTestPlayer({ name: 'Alice' });
+
+    const formData = new FormData();
+    formData.set('played_at', '2026-01-02T12:00:00.000Z');
+    formData.set('player_id_0', String(alice.id));
+    formData.set('score_0', '99');
+
+    await expect(createGameAction(formData)).resolves.toEqual({
+      ok: false,
+      error: 'Score must be an integer from 0 to 30.',
+    });
+
+    const storedGames = await db.select().from(games);
+    expect(storedGames).toHaveLength(0);
   });
 
   test('parses submitted form data and persists a game using the first forwarded IP', async () => {
@@ -74,7 +101,7 @@ describe('createGameAction', () => {
     formData.set('player_id_1', String(bob.id));
     formData.set('score_1', '8');
 
-    await createGameAction(formData);
+    await expect(createGameAction(formData)).resolves.toEqual({ ok: true });
 
     const storedGames = await db.select().from(games);
     expect(storedGames).toHaveLength(1);
@@ -177,7 +204,7 @@ describe('unlockGameCreationAction', () => {
     expect(state).toEqual({ ok: true });
     expect(setCookieMock).toHaveBeenCalledWith(
       'hs_game',
-      expect.stringMatching(/^game:\d+\.[0-9a-f]+$/),
+      expect.stringMatching(/^game:[0-9a-f]{12}:\d+\.[0-9a-f]+$/),
       expect.objectContaining({ httpOnly: true, path: '/', maxAge: 60 * 60 * 24 * 30 }),
     );
   });

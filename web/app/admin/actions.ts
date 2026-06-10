@@ -3,7 +3,7 @@
 import { cookies, headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { verifyPassword, signSession, COOKIE_NAME } from '@/lib/admin-auth'
-import { checkRateLimit } from '@/lib/rate-limit'
+import { checkRateLimit, clearRateLimit } from '@/lib/rate-limit'
 import { getClientIp } from '@/lib/request-ip'
 
 const SESSION_COOKIE_OPTIONS = {
@@ -35,6 +35,10 @@ export async function loginAction(formData: FormData) {
   if (!(await verifyPassword(password))) {
     redirect(`/admin/login?error=1&next=${encodeURIComponent(safeNext)}`)
   }
+
+  // A successful login shouldn't count toward the failure budget, or a few
+  // legitimate logins from one NAT would lock out the rest of the group.
+  clearRateLimit(rateKey)
 
   const sessionValue = await signSession()
   const cookieStore = await cookies()

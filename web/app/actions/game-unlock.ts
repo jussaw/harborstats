@@ -4,7 +4,7 @@ import { cookies, headers } from 'next/headers'
 import { signGameSession, COOKIE_NAME } from '@/lib/game-auth'
 import { getNewGamePasswordHash } from '@/lib/settings'
 import { verifyPasswordHash } from '@/lib/password-hash'
-import { checkRateLimit } from '@/lib/rate-limit'
+import { checkRateLimit, clearRateLimit } from '@/lib/rate-limit'
 import { getClientIp } from '@/lib/request-ip'
 
 export interface UnlockState {
@@ -43,6 +43,10 @@ export async function unlockGameCreationAction(
   if (!valid) {
     return { ok: false, error: 'incorrect' }
   }
+
+  // A successful unlock shouldn't count toward the failure budget, or a few
+  // legitimate unlocks from one NAT would lock out the rest of the group.
+  clearRateLimit(rateKey)
 
   const sessionValue = await signGameSession()
   const cookieStore = await cookies()

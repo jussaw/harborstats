@@ -32,6 +32,9 @@ const mocked = vi.hoisted(() => {
     }),
     revalidatePathMock: vi.fn(),
     cookiesMock: vi.fn(),
+    // Default implementation survives the configured mockReset between tests;
+    // loginAction reads headers() for its rate-limit key.
+    headersMock: vi.fn(async () => new Headers()),
   };
 });
 
@@ -45,6 +48,7 @@ vi.mock('next/cache', () => ({
 
 vi.mock('next/headers', () => ({
   cookies: mocked.cookiesMock,
+  headers: mocked.headersMock,
 }));
 
 function buildFormData(fields: Record<string, string>): FormData {
@@ -165,6 +169,31 @@ describe('admin game actions', () => {
       ]),
     );
     expect(mocked.redirectMock).toHaveBeenCalledWith('/admin/games');
+  });
+
+  test('updateGameAction returns the validation message and does not redirect for invalid data', async () => {
+    await setupValidAdminSession();
+    const alice = await createTestPlayer({ name: 'Alice' });
+    const game = await createTestGame({
+      notes: 'Original',
+      players: [{ playerId: alice.id, score: 6, isWinner: true }],
+    });
+
+    const formData = new FormData();
+    formData.set('game_id', String(game.id));
+    formData.set('played_at', '2026-01-03T12:00:00.000Z');
+    formData.set('notes', 'Updated game');
+    formData.set('player_id_0', String(alice.id));
+    formData.set('score_0', '99');
+
+    await expect(updateGameAction(formData)).resolves.toEqual({
+      ok: false,
+      error: 'Score must be an integer from 0 to 30.',
+    });
+    expect(mocked.redirectMock).not.toHaveBeenCalled();
+
+    const [storedGame] = await db.select().from(games).where(eq(games.id, game.id));
+    expect(storedGame).toMatchObject({ notes: 'Original' });
   });
 
   test('deleteGameAction removes the stored game and its rows before redirecting', async () => {

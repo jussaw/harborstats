@@ -36,10 +36,30 @@ function hexToBytes(hex: string): ArrayBuffer {
   return bytes.buffer
 }
 
+/**
+ * Short fingerprint of the stored game password hash, baked into each session
+ * payload. Changing or clearing the password at /admin/settings changes the
+ * fingerprint, which invalidates every outstanding hs_game cookie — the
+ * stateless equivalent of ADMIN_SESSION_VERSION for admin sessions.
+ */
+async function currentKeyId(): Promise<string | null> {
+  const hash = await getNewGamePasswordHash()
+  if (hash == null) return null
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(hash))
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+    .slice(0, 12)
+}
+
 export async function signGameSession(): Promise<string> {
   const secret = getSessionSecret()
+  const keyId = await currentKeyId()
+  if (keyId === null) {
+    throw new Error('No game creation password is configured')
+  }
   const iat = Math.floor(Date.now() / 1000).toString()
-  const payload = `${SESSION_SCOPE}:${iat}`
+  const payload = `${SESSION_SCOPE}:${keyId}:${iat}`
   const sig = await hmacHex(secret, payload)
   return `${payload}.${sig}`
 }
@@ -54,13 +74,16 @@ export async function verifyGameSession(cookieValue: string | undefined): Promis
 
   const payload = cookieValue.slice(0, dot)
   const receivedSig = cookieValue.slice(dot + 1)
-  const [scope, iat] = payload.split(':')
+  const [scope, keyId, iat] = payload.split(':')
 
-  if (scope !== SESSION_SCOPE || !iat) return false
+  if (scope !== SESSION_SCOPE || !keyId || !iat) return false
 
   const issuedAt = parseInt(iat, 10)
   if (Number.isNaN(issuedAt)) return false
   if (Math.floor(Date.now() / 1000) - issuedAt > THIRTY_DAYS_SECS) return false
+
+  const expectedKeyId = await currentKeyId()
+  if (expectedKeyId === null || keyId !== expectedKeyId) return false
 
   const key = await importKey(secret, 'verify')
   return crypto.subtle.verify('HMAC', key, hexToBytes(receivedSig), new TextEncoder().encode(payload))

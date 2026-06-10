@@ -9,6 +9,7 @@ import {
   verifySession,
 } from '@/lib/admin-auth';
 import { signGameSession } from '@/lib/game-auth';
+import { getNewGamePasswordHash } from '@/lib/settings';
 
 vi.mock('next/headers', () => ({
   cookies: vi.fn(),
@@ -26,6 +27,7 @@ describe('admin auth helpers', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-04-20T12:00:00.000Z'));
+    vi.mocked(getNewGamePasswordHash).mockResolvedValue('scrypt$somesalt$somehash');
   });
 
   afterEach(() => {

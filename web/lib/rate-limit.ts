@@ -9,6 +9,10 @@
 
 const WINDOW_MS = 15 * 60 * 1000
 const MAX_ATTEMPTS = 5
+// Once the map grows past this many keys, expired windows are swept on the
+// next attempt. Bounds memory growth when an attacker fabricates many client
+// IPs via spoofed forwarding headers.
+const SWEEP_THRESHOLD = 1000
 
 interface WindowState {
   count: number
@@ -16,6 +20,14 @@ interface WindowState {
 }
 
 const buckets = new Map<string, WindowState>()
+
+function sweepExpired(now: number): void {
+  buckets.forEach((state, key) => {
+    if (now >= state.resetAt) {
+      buckets.delete(key)
+    }
+  })
+}
 
 export interface RateLimitResult {
   allowed: boolean
@@ -28,6 +40,10 @@ export interface RateLimitResult {
  * attempts are blocked until the window resets. `now` is injectable for tests.
  */
 export function checkRateLimit(key: string, now: number = Date.now()): RateLimitResult {
+  if (buckets.size >= SWEEP_THRESHOLD) {
+    sweepExpired(now)
+  }
+
   const existing = buckets.get(key)
 
   if (!existing || now >= existing.resetAt) {
@@ -41,6 +57,16 @@ export function checkRateLimit(key: string, now: number = Date.now()): RateLimit
 
   existing.count += 1
   return { allowed: true }
+}
+
+/**
+ * Forgets all attempts for `key`. Call after a successful authentication so
+ * legitimate logins don't count toward the failure budget — otherwise a few
+ * people unlocking from the same NAT (one game-night Wi-Fi) would lock out the
+ * rest of the group.
+ */
+export function clearRateLimit(key: string): void {
+  buckets.delete(key)
 }
 
 /** Test-only: clears all rate-limit state. */
