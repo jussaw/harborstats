@@ -66,6 +66,44 @@ export default async function AdminHomePage() {
             </p>
           </Link>
         </div>
+
+        <div
+          className="rounded-lg border p-6"
+          style={{ borderColor: 'color-mix(in srgb, var(--gold) 20%, transparent)', background: 'color-mix(in srgb, var(--navy-900) 80%, black)' }}
+        >
+          <h2 className="
+            font-cinzel text-xs tracking-widest text-(--cream)/60 uppercase
+          ">
+            Export Data
+          </h2>
+          <p className="mt-1 text-xs text-(--cream)/40">
+            Download every recorded game for backups or offline analysis
+          </p>
+          <div className="mt-4 flex gap-3">
+            <a
+              href="/admin/export?format=csv"
+              download
+              className="
+                font-cinzel rounded-sm border border-(--gold) px-4 py-2 text-xs
+                font-semibold tracking-wide text-(--gold) transition-colors
+                hover:bg-(--gold) hover:text-(--navy-900)
+              "
+            >
+              Download CSV
+            </a>
+            <a
+              href="/admin/export?format=json"
+              download
+              className="
+                font-cinzel rounded-sm border border-(--gold) px-4 py-2 text-xs
+                font-semibold tracking-wide text-(--gold) transition-colors
+                hover:bg-(--gold) hover:text-(--navy-900)
+              "
+            >
+              Download JSON
+            </a>
+          </div>
+        </div>
       </div>
     </PageWidth>
   )
