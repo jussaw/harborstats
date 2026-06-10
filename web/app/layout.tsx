@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Cinzel } from 'next/font/google'
 import './globals.css'
 import { SidebarShell } from '@/components/SidebarShell'
@@ -14,6 +14,10 @@ const cinzel = Cinzel({
 export const metadata: Metadata = {
   title: 'HarborStats',
   description: 'Catan game recorder for the harbor crew',
+}
+
+export const viewport: Viewport = {
+  themeColor: '#0a2130',
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
