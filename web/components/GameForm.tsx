@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react'
 import type { Player } from '@/lib/players'
+import type { GameActionResult } from '@/lib/games'
 import { datetimeLocalToIso, isoToDatetimeLocal, nowDatetimeLocal } from '@/lib/dates'
 import { PlayerRow } from './PlayerRow'
 
@@ -32,7 +33,7 @@ function createFormRow(index: number, row: RowState = emptyRow()): FormRow {
 }
 
 interface Props {
-  action: (formData: FormData) => Promise<void>
+  action: (formData: FormData) => Promise<GameActionResult | void>
   players: Player[]
   initial?: GameFormInitial
   submitLabel?: string
@@ -130,7 +131,11 @@ export function GameForm({
     }
     setIsSubmitting(true)
     try {
-      await action(formData)
+      const result = await action(formData)
+      if (result && !result.ok) {
+        setError(result.error ?? 'Something went wrong saving the game. Please try again.')
+        return
+      }
       onSuccess?.()
     } finally {
       isSubmittingRef.current = false
@@ -185,6 +190,10 @@ export function GameForm({
               value={playedAtLocal}
               onChange={(e) => setPlayedAtLocal(e.target.value)}
               required
+              // The initial value renders in the server's timezone during SSR
+              // but is recomputed in the browser's timezone on hydration; the
+              // client value is the correct one.
+              suppressHydrationWarning
               className="
                 rounded-sm border border-(--gold) bg-(--navy-900) px-3 py-1.5
                 text-sm text-(--cream) scheme-dark
@@ -226,11 +235,4 @@ export function GameForm({
       </button>
     </form>
   )
-}
-
-GameForm.defaultProps = {
-  initial: undefined,
-  submitLabel: 'Save Game',
-  hiddenFields: undefined,
-  onSuccess: undefined,
 }

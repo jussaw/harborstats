@@ -5,39 +5,62 @@ import { db } from './db'
 
 export interface GamePlayer { playerId: number; score: number; isWinner: boolean }
 
+/** Validation failure whose message is safe to show to the user. */
+export class GameValidationError extends Error {}
+
+/** Result shape returned by the create/update game server actions. */
+export interface GameActionResult {
+  ok: boolean
+  error?: string
+}
+
+/**
+ * Maps an error thrown while saving a game to a user-facing action result.
+ * Validation messages pass through; anything else (DB failures, bugs) gets a
+ * generic message so internals don't leak to the client.
+ */
+export function gameActionError(err: unknown): GameActionResult {
+  if (err instanceof GameValidationError) {
+    return { ok: false, error: err.message }
+  }
+  return { ok: false, error: 'Something went wrong saving the game. Please try again.' }
+}
+
 const MIN_SCORE = 0
+// Upper bound is mirrored by the game_players_score_check DB constraint in
+// db/schema.ts — change both together.
 const MAX_SCORE = 30
 
 function assertValidPlayedAt(playedAt: Date) {
   if (!(playedAt instanceof Date) || !Number.isFinite(playedAt.getTime())) {
-    throw new Error('Played date must be valid.')
+    throw new GameValidationError('Played date must be valid.')
   }
 }
 
 function validateAndNormalizeGamePlayers(inputPlayers: GamePlayer[]): GamePlayer[] {
   if (inputPlayers.length === 0) {
-    throw new Error('Game must include at least one player.')
+    throw new GameValidationError('Game must include at least one player.')
   }
 
   const seenPlayerIds = new Set<number>()
   inputPlayers.forEach((player) => {
     if (!Number.isInteger(player.playerId) || player.playerId <= 0) {
-      throw new Error('Player id must be a positive integer.')
+      throw new GameValidationError('Player id must be a positive integer.')
     }
 
     if (!Number.isInteger(player.score) || player.score < MIN_SCORE || player.score > MAX_SCORE) {
-      throw new Error('Score must be an integer from 0 to 30.')
+      throw new GameValidationError('Score must be an integer from 0 to 30.')
     }
 
     if (seenPlayerIds.has(player.playerId)) {
-      throw new Error('Each player can only appear once per game.')
+      throw new GameValidationError('Each player can only appear once per game.')
     }
     seenPlayerIds.add(player.playerId)
   })
 
   const explicitWinnerCount = inputPlayers.filter((player) => player.isWinner).length
   if (explicitWinnerCount > 1) {
-    throw new Error('Game must have exactly one winner.')
+    throw new GameValidationError('Game must have exactly one winner.')
   }
 
   if (explicitWinnerCount === 1) {
@@ -47,7 +70,7 @@ function validateAndNormalizeGamePlayers(inputPlayers: GamePlayer[]): GamePlayer
   const maxScore = Math.max(...inputPlayers.map((player) => player.score))
   const topPlayers = inputPlayers.filter((player) => player.score === maxScore)
   if (topPlayers.length !== 1) {
-    throw new Error('Tie games require an explicit single winner.')
+    throw new GameValidationError('Tie games require an explicit single winner.')
   }
 
   const normalizedPlayers = inputPlayers.map((player) => ({
@@ -56,7 +79,7 @@ function validateAndNormalizeGamePlayers(inputPlayers: GamePlayer[]): GamePlayer
   }))
 
   if (normalizedPlayers.filter((player) => player.isWinner).length !== 1) {
-    throw new Error('Game must have exactly one winner.')
+    throw new GameValidationError('Game must have exactly one winner.')
   }
 
   return normalizedPlayers

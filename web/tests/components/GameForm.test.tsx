@@ -137,6 +137,48 @@ describe('GameForm', () => {
     await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1))
   })
 
+  it('shows the server error and skips onSuccess when the action returns ok: false', async () => {
+    const action = vi.fn().mockResolvedValue({ ok: false, error: 'Game creation is locked.' })
+    const onSuccess = vi.fn()
+
+    renderGameForm(
+      {
+        played_at: '2026-04-20T18:15:00.000Z',
+        notes: '',
+        rows: [{ playerId: 1, score: 12, isWinner: true }],
+      },
+      action,
+      onSuccess,
+    )
+
+    submitGameForm()
+
+    expect(await screen.findByText('Game creation is locked.')).toBeInTheDocument()
+    expect(onSuccess).not.toHaveBeenCalled()
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /save game/i })).toBeEnabled(),
+    )
+  })
+
+  it('falls back to a generic message when the action returns ok: false without an error', async () => {
+    const action = vi.fn().mockResolvedValue({ ok: false })
+
+    renderGameForm(
+      {
+        played_at: '2026-04-20T18:15:00.000Z',
+        notes: '',
+        rows: [{ playerId: 1, score: 12, isWinner: true }],
+      },
+      action,
+    )
+
+    submitGameForm()
+
+    expect(
+      await screen.findByText('Something went wrong saving the game. Please try again.'),
+    ).toBeInTheDocument()
+  })
+
   it('only submits once while a submission is pending', async () => {
     const actionGate = deferred()
     const action = vi.fn().mockReturnValue(actionGate.promise)
