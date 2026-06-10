@@ -1,6 +1,6 @@
 # HarborStats
 
-HarborStats is a Catan results tracker for a friend group. The tracked repository contains the main web app in `web/`, deployment assets in `devops/`, CI config in `.github/`, and a running feature/idea inventory in `PLAN.md`.
+HarborStats is a Catan results tracker for a friend group. The tracked repository contains the main web app in `web/`, deployment assets in `devops/`, CI config in `.github/`, and product specs in `docs/`.
 
 This root README is the primary entrypoint for the repo. It covers how the project is laid out, how to run it locally, which commands matter day to day, and where deployment guidance lives.
 
@@ -19,8 +19,8 @@ This root README is the primary entrypoint for the repo. It covers how the proje
 .
 ├── .github/     GitHub Actions workflows
 ├── devops/      Docker Compose deployment stack, backup/restore scripts, and ops docs
+├── docs/        Product specs and planning artifacts
 ├── web/         Next.js app, database schema, scripts, tests, and app-level README
-├── PLAN.md      Feature ideas and implementation status tracker
 └── README.md    Root project guide
 ```
 
@@ -139,4 +139,4 @@ For the full deployment guide, including service roles, environment assumptions,
 
 - [web/README.md](web/README.md): lower-level app README focused on the Next.js app itself
 - [devops/README.md](devops/README.md): deployment, backup, and restore guide
-- [PLAN.md](PLAN.md): implemented and planned feature ideas; treat unchecked items as roadmap, not current behavior
+- [docs/superpowers/specs/](docs/superpowers/specs/): product specs; treat spec docs as guidance for planned work, not necessarily current behavior
