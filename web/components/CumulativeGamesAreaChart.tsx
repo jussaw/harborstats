@@ -232,7 +232,13 @@ export function CumulativeGamesAreaChart({
               opacity="0.55"
             />
           ) : null}
-          <path d={areaPath} fill="var(--gold)" opacity="0.18" />
+          <defs>
+            <linearGradient id="hs-area-gold" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--gold-500)" stopOpacity="0.32" />
+              <stop offset="100%" stopColor="var(--gold-500)" stopOpacity="0.02" />
+            </linearGradient>
+          </defs>
+          <path d={areaPath} fill="url(#hs-area-gold)" />
           <polyline
             fill="none"
             stroke="var(--gold)"

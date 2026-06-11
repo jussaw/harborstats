@@ -117,6 +117,12 @@ export function ScoreHistogramChart({ buckets }: Props) {
               </g>
             );
           })}
+          <defs>
+            <linearGradient id="hs-histogram-gold" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--gold-300)" />
+              <stop offset="100%" stopColor="var(--gold-600)" />
+            </linearGradient>
+          </defs>
           <line
             x1={plotLeft}
             y1={plotBottom}
@@ -145,7 +151,7 @@ export function ScoreHistogramChart({ buckets }: Props) {
                 width={barWidth}
                 height={barHeight}
                 rx="8"
-                fill="var(--gold)"
+                fill="url(#hs-histogram-gold)"
                 opacity={activeBucket?.score === bucket.score ? 1 : 0.84}
               />
             );
