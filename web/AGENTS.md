@@ -116,11 +116,20 @@ Schema change protocol:
 - Avoid adding dependencies unless necessary.
 
 ## UI/UX Guardrails
-- Preserve current Harbor visual language:
-  - CSS vars in `app/globals.css` (`--navy-900`, `--navy-800`, `--gold`, `--cream`)
-  - Cinzel font usage for key headings/buttons
+- Preserve the "Elevated Harbor" visual language (see `docs/superpowers/specs/2026-06-11-harborstats-visual-redesign-design.md` at the repo root):
+  - `app/globals.css` is the single source for design tokens. Color scale: `--navy-950/900/800/700`, `--gold-300/500/600` (`--gold` aliases `--gold-500`), `--cream`. Semantic tokens: `--surface`, `--surface-subtle`, `--border-gold`, `--border-gold-subtle`, `--shadow-card`, `--gradient-gold`.
+  - Use semantic tokens in components; never hard-code hex colors or `color-mix()` recipes inline.
+  - The page background is a fixed navy gradient set on `body` in `globals.css`; surfaces layer translucent glass cards over it.
+- Typography rule:
+  - Cinzel (`font-cinzel`) is reserved for the brand wordmark, page titles, and card/section headings.
+  - Everything else — body text, tables, buttons, nav items, badges, form labels — uses Inter (the default sans, loaded as `--font-inter`). Do not put Cinzel on dense UI controls.
+- Use the shared primitives in `components/ui/` instead of hand-rolling Tailwind class strings:
+  - `Button` (variants `primary`/`secondary`/`ghost`/`danger`; `danger` for destructive admin actions), or `buttonClasses()` for links/`NewGameButton`-style class props.
+  - `Input`/`Select`/`Textarea`/`Label`, or `fieldClasses` on native elements when inline handlers would trip `react/jsx-no-bind` (the rule exempts DOM elements but not custom components).
+  - `Card` for glass surfaces with an optional title/description/badge header, or `cardSurfaceClasses` for custom containers; `Badge` for uppercase gold pills.
+  - Game listings use `components/GameCard.tsx`; it must stay an `<article>` whose text content includes player names, scores, and notes (e2e contract).
 - New game creation is modal-based via `components/NewGameButton.tsx` (no `/new` route currently).
-- Keep admin shell/nav consistent via `app/admin/AdminShell.tsx`.
+- Keep stats section IDs (`#win-rate`, `#podium-rate`, …) stable — e2e tests and the stats sidebar anchors depend on them.
 
 ## Testing and Verification
 Automated tests are configured and should be part of normal feature work.
