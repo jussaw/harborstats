@@ -355,7 +355,7 @@ describe('PlayersPage', () => {
     expect(markup).toContain('/players/1');
     expect(markup).toContain('/players/2');
     expect(markup).toContain('View Games (1)');
-    expect(markup).toContain('PREMIUM');
+    expect(markup).toContain('Premium');
     expect(markup).not.toContain('lucide-user');
     expect(markup).not.toContain('size-16 shrink-0');
     expect(markup.match(/aria-current="page"/g)).toHaveLength(1);

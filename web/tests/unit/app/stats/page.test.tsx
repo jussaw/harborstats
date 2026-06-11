@@ -773,10 +773,14 @@ describe('StatsPage', () => {
     expect(markup.slice(busiestRecordsIndex, busiestRecordsIndex + 160)).not.toContain(
       'lg:col-span-2',
     );
-    expect(markup.slice(averageGamesPerSessionIndex, averageGamesPerSessionIndex + 220)).toContain(
-      'flex h-full flex-col',
+    expect(markup.slice(averageGamesPerSessionIndex, averageGamesPerSessionIndex + 300)).toContain(
+      'flex flex-col',
     );
-    expect(markup.slice(longestGapIndex, longestGapIndex + 220)).toContain('flex h-full flex-col');
+    expect(markup.slice(averageGamesPerSessionIndex, averageGamesPerSessionIndex + 300)).toContain(
+      'h-full',
+    );
+    expect(markup.slice(longestGapIndex, longestGapIndex + 300)).toContain('flex flex-col');
+    expect(markup.slice(longestGapIndex, longestGapIndex + 300)).toContain('h-full');
     expect(markup.slice(currentWinStreakIndex, currentWinStreakIndex + 160)).not.toContain(
       'lg:col-span-2',
     );

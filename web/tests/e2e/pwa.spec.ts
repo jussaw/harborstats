@@ -9,7 +9,7 @@ test('serves an installable web app manifest', async ({ request }) => {
     name: 'HarborStats',
     display: 'standalone',
     start_url: '/',
-    theme_color: '#0a2130',
+    theme_color: '#07181f',
   });
   expect(manifest.icons).toEqual(
     expect.arrayContaining([
