@@ -15,10 +15,6 @@ import {
 } from 'lucide-react'
 import { StatsSidebarSections } from './StatsSidebarSections'
 
-const cinzelStyle = {
-  fontFamily: 'var(--font-cinzel), Georgia, serif',
-}
-
 interface Props {
   isAdmin: boolean
   pathname: string
@@ -44,25 +40,27 @@ function NavLink({ href, Icon, label, active, collapsed, onClick }: NavLinkProps
       onClick={onClick}
       title={collapsed ? label : undefined}
       className={`
-        flex items-center gap-3 rounded-md p-2 text-xs transition-colors
+        flex items-center gap-3 rounded-lg p-2 text-[13px] transition-colors
         ${
         collapsed ? 'sm:justify-center' : ''
       }
         ${
         active
-          ? 'bg-(--gold)/10 text-(--gold)'
+          ? `
+            bg-(--gold)/10 font-semibold text-(--gold)
+            shadow-[inset_3px_0_0_0_var(--gold-500)]
+          `
           : `
             text-(--cream)/60
-            hover:bg-(--navy-800)/50 hover:text-(--cream)
+            hover:bg-(--cream)/5 hover:text-(--cream)
           `
       }
       `}
     >
       <Icon className="size-4 shrink-0" />
       <span
-        style={cinzelStyle}
         className={`
-          truncate tracking-widest uppercase
+          truncate
           ${collapsed ? 'sm:hidden' : ''}
         `}
       >
@@ -88,20 +86,20 @@ export function Sidebar({
     <div className="flex h-full flex-col">
       <div
         className={`
-          flex items-center border-b border-(--gold)/15 px-3 py-4
+          flex items-center border-b border-(--border-gold-subtle) px-3 py-4
           ${collapsed ? `sm:justify-center` : `justify-between`}
         `}
       >
         <Link
           href="/"
           onClick={onNavigate}
-          style={cinzelStyle}
           className={`
-            text-sm tracking-[0.2em] text-(--gold) uppercase
+            font-cinzel text-sm font-bold tracking-[0.2em] text-(--cream)
+            uppercase
             ${collapsed ? `sm:hidden` : ''}
           `}
         >
-          HarborStats
+          Harbor<span className="text-(--gold)">Stats</span>
         </Link>
         <button
           type="button"
@@ -162,13 +160,15 @@ export function Sidebar({
           />
         </nav>
 
-        <div className="shrink-0 border-t border-(--gold)/15 px-2 py-3">
+        <div className="
+          shrink-0 border-t border-(--border-gold-subtle) px-2 py-3
+        ">
           {isAdmin ? (
             <nav aria-label="Admin navigation" className="space-y-0.5">
               <p
-                style={cinzelStyle}
                 className={`
-                  px-2 pb-1 text-xs tracking-widest text-(--cream)/30 uppercase
+                  px-2 pb-1 text-[10px] font-medium tracking-[0.2em]
+                  text-(--cream)/35 uppercase
                   ${collapsed ? `sm:hidden` : ''}
                 `}
               >
@@ -204,7 +204,7 @@ export function Sidebar({
                     type="submit"
                     title={collapsed ? 'Logout' : undefined}
                     className={`
-                      flex w-full items-center gap-3 rounded-md p-2 text-xs
+                      flex w-full items-center gap-3 rounded-lg p-2 text-[13px]
                       text-(--cream)/40 transition-colors
                       hover:bg-red-950/30 hover:text-red-400
                       ${collapsed ? `sm:justify-center` : ''}
@@ -212,11 +212,10 @@ export function Sidebar({
                   >
                     <LogOut className="size-4 shrink-0" />
                     <span
-                      style={cinzelStyle}
-                      className={`
-                        tracking-widest uppercase
-                        ${collapsed ? `sm:hidden` : ''}
-                      `}
+                      className={collapsed ? `
+                        truncate
+                        sm:hidden
+                      ` : 'truncate'}
                     >
                       Logout
                     </span>

@@ -6,10 +6,6 @@ import { Menu } from 'lucide-react'
 import Link from 'next/link'
 import { Sidebar } from './Sidebar'
 
-const cinzelStyle = {
-  fontFamily: 'var(--font-cinzel), Georgia, serif',
-}
-
 const SIDEBAR_COLLAPSED_KEY = 'hs_sidebar_collapsed'
 const SIDEBAR_COLLAPSED_EVENT = 'hs-sidebar-collapsed'
 
@@ -59,7 +55,7 @@ export function SidebarShell({ isAdmin, logoutAction, children }: Props) {
       {mobileOpen && (
         <div
           className="
-            fixed inset-0 z-20 bg-black/60
+            fixed inset-0 z-20 bg-black/60 backdrop-blur-sm
             sm:hidden
           "
           onClick={closeMobile}
@@ -71,7 +67,7 @@ export function SidebarShell({ isAdmin, logoutAction, children }: Props) {
       <aside
         className={[
           'fixed inset-y-0 left-0 z-30 flex flex-col',
-          'bg-[var(--navy-900)] border-r border-[var(--gold)]/15',
+          'bg-(--navy-950)/65 backdrop-blur-md border-r border-(--border-gold-subtle)',
           'transition-all duration-200',
           'w-60',
           collapsed ? 'sm:w-16' : 'sm:w-60',
@@ -101,8 +97,8 @@ export function SidebarShell({ isAdmin, logoutAction, children }: Props) {
       >
         {/* Mobile header */}
         <div className="
-          flex h-12 items-center border-b border-(--gold)/15 bg-(--navy-900)
-          px-4
+          flex h-12 items-center border-b border-(--border-gold-subtle)
+          bg-(--navy-950)/80 px-4 backdrop-blur-md
           sm:hidden
         ">
           <button
@@ -118,10 +114,12 @@ export function SidebarShell({ isAdmin, logoutAction, children }: Props) {
           </button>
           <Link
             href="/"
-            style={cinzelStyle}
-            className="ml-3 text-sm tracking-[0.2em] text-(--gold) uppercase"
+            className="
+              font-cinzel ml-3 text-sm font-bold tracking-[0.2em] text-(--cream)
+              uppercase
+            "
           >
-            HarborStats
+            Harbor<span className="text-(--gold)">Stats</span>
           </Link>
         </div>
         {children}

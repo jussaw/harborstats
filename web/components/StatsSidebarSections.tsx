@@ -3,10 +3,6 @@
 import { useEffect, useEffectEvent, useState } from 'react'
 import { STATS_SECTIONS } from '@/lib/stats-sections'
 
-const cinzelStyle = {
-  fontFamily: 'var(--font-cinzel), Georgia, serif',
-}
-
 interface StatsSidebarSectionsProps {
   collapsed: boolean
   onNavigate: () => void
@@ -58,7 +54,7 @@ export function StatsSidebarSections({
     <ul
       aria-label="Stats sections"
       className={`
-        my-1 ml-4 space-y-0.5 border-l border-(--gold)/15 pl-3
+        my-1 ml-4 space-y-0.5 border-l border-(--border-gold-subtle) pl-3
         ${collapsed ? 'sm:hidden' : ''}
       `}
     >
@@ -71,15 +67,13 @@ export function StatsSidebarSections({
               href={`#${section.id}`}
               aria-current={isActive ? 'true' : undefined}
               onClick={onNavigate}
-              style={cinzelStyle}
               className={`
-                block rounded-md px-2 py-1.5 text-[11px] tracking-widest
-                uppercase transition-colors
+                block rounded-md px-2 py-1.5 text-xs transition-colors
                 ${isActive
-                  ? 'bg-(--gold)/10 text-(--gold)'
+                  ? 'bg-(--gold)/10 font-medium text-(--gold)'
                   : `
                     text-(--cream)/50
-                    hover:bg-(--navy-800)/50 hover:text-(--cream)
+                    hover:bg-(--cream)/5 hover:text-(--cream)
                   `}
               `}
             >
