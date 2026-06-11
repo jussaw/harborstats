@@ -11,10 +11,6 @@ interface Props {
   children: ReactNode
 }
 
-const cinzelStyle = {
-  fontFamily: 'var(--font-cinzel), Georgia, serif',
-}
-
 function getAlignmentClass(align: Column['align']) {
   if (align === 'center') return 'text-center'
   if (align === 'right') return 'text-right'
@@ -23,19 +19,20 @@ function getAlignmentClass(align: Column['align']) {
 
 export function StatsLeaderboardTable({ columns, children }: Props) {
   return (
-    <div className="overflow-hidden rounded-xl border border-(--gold)/20">
+    <div className="
+      overflow-hidden rounded-xl border border-(--border-gold-subtle)
+    ">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-(--gold)/20 bg-(--navy-900)/80">
+            <tr className="border-b border-(--border-gold) bg-(--navy-950)/60">
               {columns.map((column) => (
                 <th
                   key={column.label}
                   scope="col"
-                  style={cinzelStyle}
                   className={`
-                    px-3 py-2 text-xs tracking-widest text-(--cream)/50
-                    uppercase
+                    px-3 py-2 text-[10px] font-semibold tracking-[0.18em]
+                    text-(--gold)/85 uppercase
                     ${getAlignmentClass(column.align)}
                     ${column.widthClass ?? ''}
                   `}

@@ -94,9 +94,10 @@ function DataRow({ children }: { children: ReactNode }) {
   return (
     <tr
       className="
-        border-b border-(--gold)/10 bg-(--navy-900)/35 transition-colors
+        border-b border-(--border-gold-subtle) bg-(--surface-subtle)
+        transition-colors
         last:border-0
-        hover:bg-(--navy-900)/70
+        hover:bg-(--gold)/5
       "
     >
       {children}
@@ -132,11 +133,12 @@ function ScoreComparisonMetric({
   rowLabel: string;
 }) {
   return (
-    <div className="rounded-xl border border-(--gold)/10 bg-(--navy-900)/35 p-3">
-      <p
-        style={{ fontFamily: 'var(--font-cinzel), Georgia, serif' }}
-        className="text-xs tracking-widest text-(--cream)/50 uppercase"
-      >
+    <div className="
+      rounded-xl border border-(--border-gold-subtle) bg-(--surface-subtle) p-3
+    ">
+      <p className="
+        text-[10px] font-medium tracking-[0.18em] text-(--cream)/45 uppercase
+      ">
         {label}
       </p>
       <p className="mt-2 font-semibold text-(--gold) tabular-nums">{formatAverage(value)}</p>
@@ -248,13 +250,15 @@ function SingleGameRecordRow({
   playedAt: string;
 }) {
   return (
-    <div className="rounded-xl border border-(--gold)/10 bg-(--navy-900)/35 p-3">
+    <div className="
+      rounded-xl border border-(--border-gold-subtle) bg-(--surface-subtle) p-3
+    ">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p
-            style={{ fontFamily: 'var(--font-cinzel), Georgia, serif' }}
-            className="text-xs tracking-widest text-(--cream)/50 uppercase"
-          >
+          <p className="
+            text-[10px] font-medium tracking-[0.18em] text-(--cream)/45
+            uppercase
+          ">
             {label}
           </p>
           <div className="mt-1 text-sm text-(--cream)">{detail}</div>
@@ -1077,10 +1081,14 @@ export default async function StatsPage() {
           </div>
           <div
             className="
-              rounded-xl border border-(--gold)/10 bg-(--navy-900)/35 p-3
+              rounded-xl border border-(--border-gold-subtle)
+              bg-(--surface-subtle) p-3
             "
           >
-            <p className="text-xs tracking-widest text-(--cream)/50 uppercase">Gap</p>
+            <p className="
+              text-[10px] font-medium tracking-[0.18em] text-(--cream)/45
+              uppercase
+            ">Gap</p>
             <p className="mt-2 font-semibold text-(--gold) tabular-nums">
               {formatSignedNumber(winningScoreComparison.scoreGap)}
             </p>
