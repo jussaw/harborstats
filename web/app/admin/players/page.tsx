@@ -2,6 +2,9 @@ import { listPlayersWithUsage } from '@/lib/players'
 import { PLAYER_TIER_OPTIONS } from '@/lib/player-tier'
 import { ConfirmDeleteButton } from '@/app/admin/ConfirmDeleteButton'
 import { PageWidth } from '@/components/PageWidth'
+import { buttonClasses } from '@/components/ui/Button'
+import { cardSurfaceClasses } from '@/components/ui/Card'
+import { fieldClasses } from '@/components/ui/Field'
 import { createPlayerAction, updatePlayerAction, deletePlayerAction } from './actions'
 
 export const dynamic = 'force-dynamic'
@@ -18,13 +21,13 @@ export default async function AdminPlayersPage({ searchParams }: Props) {
     <PageWidth width="5xl" className="px-6 py-8">
       <PageWidth as="div" width="3xl" className="space-y-8">
         <div>
-          <h1 className="font-cinzel text-xl tracking-wide text-(--gold)">Players</h1>
+          <h1 className="font-cinzel text-xl tracking-wide text-(--cream)">Players</h1>
           <p className="mt-0.5 text-xs text-(--cream)/50">{players.length} on roster</p>
         </div>
 
         {error === 'player-in-use' && (
           <p className="
-            rounded-sm border border-amber-500/40 bg-amber-950/40 px-4 py-2.5
+            rounded-lg border border-amber-500/40 bg-amber-950/40 px-4 py-2.5
             text-sm text-amber-300
           ">
             Cannot delete — this player appears in {inUseCount} game
@@ -33,7 +36,7 @@ export default async function AdminPlayersPage({ searchParams }: Props) {
         )}
         {error === 'name-required' && (
           <p className="
-            rounded-sm border border-red-500/40 bg-red-950/40 px-4 py-2.5
+            rounded-lg border border-red-500/40 bg-red-950/40 px-4 py-2.5
             text-sm text-red-300
           ">
             Player name is required.
@@ -42,14 +45,14 @@ export default async function AdminPlayersPage({ searchParams }: Props) {
 
         {/* Add new player */}
         <div
-          className="rounded-lg border p-5"
-          style={{
-            borderColor: 'color-mix(in srgb, var(--gold) 20%, transparent)',
-            background: 'color-mix(in srgb, var(--navy-900) 80%, black)',
-          }}
+          className={`
+            p-5
+            ${cardSurfaceClasses}
+          `}
         >
           <p className="
-            font-cinzel mb-4 text-xs tracking-widest text-(--gold) uppercase
+            mb-4 text-[10px] font-medium tracking-[0.2em] text-(--gold)
+            uppercase
           ">
             Add Player
           </p>
@@ -57,7 +60,9 @@ export default async function AdminPlayersPage({ searchParams }: Props) {
             flex flex-wrap items-end gap-3
           ">
             <div className="flex min-w-40 flex-1 flex-col gap-1.5">
-              <label className="flex flex-col gap-1.5 text-xs text-(--cream)/50" htmlFor="new-name">
+              <label className="
+                flex flex-col gap-1.5 text-xs font-medium text-(--cream)/60
+              " htmlFor="new-name">
                 <span>Name</span>
                 <input
                   id="new-name"
@@ -65,26 +70,19 @@ export default async function AdminPlayersPage({ searchParams }: Props) {
                   type="text"
                   required
                   placeholder="Player name"
-                  className="
-                    rounded-sm border border-(--gold)/40 bg-(--navy-900) px-3
-                    py-2 text-sm text-(--cream) transition-colors
-                    placeholder:text-(--cream)/30
-                    focus:border-(--gold) focus:outline-none
-                  "
+                  className={fieldClasses}
                 />
               </label>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="flex flex-col gap-1.5 text-xs text-(--cream)/50" htmlFor="new-tier">
+              <label className="
+                flex flex-col gap-1.5 text-xs font-medium text-(--cream)/60
+              " htmlFor="new-tier">
                 <span>Tier</span>
                 <select
                   id="new-tier"
                   name="tier"
-                  className="
-                    rounded-sm border border-(--gold)/40 bg-(--navy-900) px-3
-                    py-2 text-sm text-(--cream) transition-colors
-                    focus:border-(--gold) focus:outline-none
-                  "
+                  className={fieldClasses}
                 >
                   {PLAYER_TIER_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -94,15 +92,7 @@ export default async function AdminPlayersPage({ searchParams }: Props) {
                 </select>
               </label>
             </div>
-            <button
-              type="submit"
-              className="
-                font-cinzel rounded-sm border border-(--gold) bg-(--gold) px-4
-                py-2 text-xs font-semibold tracking-widest text-(--navy-900)
-                uppercase transition-colors
-                hover:bg-(--cream)
-              "
-            >
+            <button type="submit" className={buttonClasses('primary', 'sm')}>
               Add
             </button>
           </form>
@@ -111,23 +101,19 @@ export default async function AdminPlayersPage({ searchParams }: Props) {
         {/* Existing players */}
         {players.length > 0 && (
           <div
-            className="overflow-hidden rounded-lg border"
-            style={{ borderColor: 'color-mix(in srgb, var(--gold) 20%, transparent)' }}
+            className="
+              overflow-hidden rounded-xl border border-(--border-gold-subtle)
+            "
           >
-            {players.map((player, idx) => (
+            {players.map((player) => (
               <div
                 key={player.id}
-                className="flex items-center gap-4 px-5 py-3"
-                style={{
-                  borderBottom:
-                    idx < players.length - 1
-                      ? '1px solid color-mix(in srgb, var(--gold) 12%, transparent)'
-                      : undefined,
-                  background:
-                    idx % 2 === 0
-                      ? 'color-mix(in srgb, var(--navy-900) 90%, black)'
-                      : 'transparent',
-                }}
+                className="
+                  flex items-center gap-4 border-b border-(--border-gold-subtle)
+                  bg-(--surface-subtle) px-5 py-3 transition-colors
+                  last:border-b-0
+                  hover:bg-(--gold)/5
+                "
               >
                 <form action={updatePlayerAction} className="
                   flex min-w-0 flex-1 items-center gap-3
@@ -139,9 +125,9 @@ export default async function AdminPlayersPage({ searchParams }: Props) {
                     defaultValue={player.name}
                     required
                     className="
-                      min-w-0 flex-1 rounded-sm border border-(--gold)/30
-                      bg-transparent px-2 py-1.5 text-sm text-(--cream)
-                      transition-colors
+                      min-w-0 flex-1 rounded-lg border
+                      border-(--border-gold-subtle) bg-transparent px-2 py-1.5
+                      text-sm text-(--cream) transition-colors
                       focus:border-(--gold) focus:outline-none
                     "
                   />
@@ -149,8 +135,9 @@ export default async function AdminPlayersPage({ searchParams }: Props) {
                     name="tier"
                     defaultValue={player.tier}
                     className="
-                      rounded-sm border border-(--gold)/30 bg-(--navy-900) px-2
-                      py-1.5 text-xs text-(--cream) transition-colors
+                      rounded-lg border border-(--border-gold-subtle)
+                      bg-(--navy-950)/60 px-2 py-1.5 text-xs text-(--cream)
+                      transition-colors
                       focus:border-(--gold) focus:outline-none
                     "
                   >
@@ -168,8 +155,8 @@ export default async function AdminPlayersPage({ searchParams }: Props) {
                   <button
                     type="submit"
                     className="
-                      font-cinzel shrink-0 text-xs tracking-widest
-                      text-(--gold)/60 uppercase transition-colors
+                      shrink-0 text-xs font-medium text-(--gold)/60
+                      transition-colors
                       hover:text-(--gold)
                     "
                   >
@@ -183,8 +170,7 @@ export default async function AdminPlayersPage({ searchParams }: Props) {
                   confirmMessage={`Delete player "${player.name}"?`}
                   label="Delete"
                   className="
-                    font-cinzel text-xs tracking-widest text-red-500/50
-                    uppercase transition-colors
+                    text-xs font-medium text-red-500/50 transition-colors
                     hover:text-red-400
                   "
                 />

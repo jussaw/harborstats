@@ -1,4 +1,7 @@
 import { PageWidth } from '@/components/PageWidth';
+import { buttonClasses } from '@/components/ui/Button';
+import { cardSurfaceClasses } from '@/components/ui/Card';
+import { fieldClasses } from '@/components/ui/Field';
 import { getSettings, hasNewGamePassword } from '@/lib/settings';
 import { saveSettings } from './actions';
 import { GamePasswordForm } from './GamePasswordForm';
@@ -12,20 +15,20 @@ export default async function AdminSettingsPage() {
     <PageWidth width="5xl" className="px-6 py-8">
       <PageWidth as="div" width="3xl" className="space-y-8">
         <div>
-          <h1 className="font-cinzel text-xl tracking-wide text-(--gold)">Settings</h1>
+          <h1 className="font-cinzel text-xl tracking-wide text-(--cream)">Settings</h1>
           <p className="mt-0.5 text-xs text-(--cream)/50">App-wide configuration</p>
         </div>
 
         <div
-          className="rounded-lg border p-5"
-          style={{
-            borderColor: 'color-mix(in srgb, var(--gold) 20%, transparent)',
-            background: 'color-mix(in srgb, var(--navy-900) 80%, black)',
-          }}
+          className={`
+            p-5
+            ${cardSurfaceClasses}
+          `}
         >
           <p
             className="
-              font-cinzel mb-4 text-xs tracking-widest text-(--gold) uppercase
+              mb-4 text-[10px] font-medium tracking-[0.2em] text-(--gold)
+              uppercase
             "
           >
             Stats
@@ -33,7 +36,9 @@ export default async function AdminSettingsPage() {
           <form action={saveSettings} className="flex flex-wrap items-end gap-4">
             <div className="flex min-w-48 flex-1 flex-col gap-1.5">
               <label
-                className="flex flex-col gap-1.5 text-xs text-(--cream)/50"
+                className="
+                  flex flex-col gap-1.5 text-xs font-medium text-(--cream)/60
+                "
                 htmlFor="win-rate-min-games"
               >
                 <span>Win Rate — Min Games Threshold</span>
@@ -43,18 +48,15 @@ export default async function AdminSettingsPage() {
                   type="number"
                   min="0"
                   defaultValue={settings.winRateMinGames}
-                  className="
-                    rounded-sm border border-(--gold)/40 bg-(--navy-900) px-3
-                    py-2 text-sm text-(--cream) transition-colors
-                    placeholder:text-(--cream)/30
-                    focus:border-(--gold) focus:outline-none
-                  "
+                  className={fieldClasses}
                 />
               </label>
             </div>
             <div className="flex min-w-48 flex-1 flex-col gap-1.5">
               <label
-                className="flex flex-col gap-1.5 text-xs text-(--cream)/50"
+                className="
+                  flex flex-col gap-1.5 text-xs font-medium text-(--cream)/60
+                "
                 htmlFor="podium-rate-min-games"
               >
                 <span>Podium Rate — Min Games Threshold</span>
@@ -64,24 +66,11 @@ export default async function AdminSettingsPage() {
                   type="number"
                   min="0"
                   defaultValue={settings.podiumRateMinGames}
-                  className="
-                    rounded-sm border border-(--gold)/40 bg-(--navy-900) px-3
-                    py-2 text-sm text-(--cream) transition-colors
-                    placeholder:text-(--cream)/30
-                    focus:border-(--gold) focus:outline-none
-                  "
+                  className={fieldClasses}
                 />
               </label>
             </div>
-            <button
-              type="submit"
-              className="
-                font-cinzel rounded-sm border border-(--gold) bg-(--gold) px-4
-                py-2 text-xs font-semibold tracking-widest text-(--navy-900)
-                uppercase transition-colors
-                hover:bg-(--cream)
-              "
-            >
+            <button type="submit" className={buttonClasses('primary', 'sm')}>
               Save
             </button>
           </form>

@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { PageWidth } from '@/components/PageWidth'
+import { cardSurfaceClasses } from '@/components/ui/Card'
 import { listAllGames } from '@/lib/games'
 import { listPlayersWithUsage } from '@/lib/players'
 
@@ -12,7 +13,7 @@ export default async function AdminHomePage() {
     <PageWidth width="5xl" className="px-6 py-8">
       <div className="space-y-8">
         <div>
-          <h1 className="font-cinzel text-2xl tracking-wide text-(--gold)">Command Deck</h1>
+          <h1 className="font-cinzel text-2xl tracking-wide text-(--cream)">Command Deck</h1>
           <p className="mt-1 text-sm text-(--cream)/50">Manage recorded games and player roster</p>
         </div>
 
@@ -22,15 +23,15 @@ export default async function AdminHomePage() {
         ">
           <Link
             href="/admin/games"
-            className="
-              group rounded-lg border p-6 transition-colors
+            className={`
+              group p-6 transition-colors
               hover:border-(--gold)/50
-            "
-            style={{ borderColor: 'color-mix(in srgb, var(--gold) 20%, transparent)', background: 'color-mix(in srgb, var(--navy-900) 80%, black)' }}
+              ${cardSurfaceClasses}
+            `}
           >
-            <p className="font-cinzel text-3xl font-semibold text-(--gold)">{games.length}</p>
+            <p className="text-3xl font-semibold text-(--gold)">{games.length}</p>
             <p className="
-              font-cinzel mt-1 text-xs tracking-widest text-(--cream)/60
+              mt-1 text-[10px] font-medium tracking-[0.2em] text-(--cream)/60
               uppercase
             ">
               Games Recorded
@@ -45,15 +46,15 @@ export default async function AdminHomePage() {
 
           <Link
             href="/admin/players"
-            className="
-              group rounded-lg border p-6 transition-colors
+            className={`
+              group p-6 transition-colors
               hover:border-(--gold)/50
-            "
-            style={{ borderColor: 'color-mix(in srgb, var(--gold) 20%, transparent)', background: 'color-mix(in srgb, var(--navy-900) 80%, black)' }}
+              ${cardSurfaceClasses}
+            `}
           >
-            <p className="font-cinzel text-3xl font-semibold text-(--gold)">{players.length}</p>
+            <p className="text-3xl font-semibold text-(--gold)">{players.length}</p>
             <p className="
-              font-cinzel mt-1 text-xs tracking-widest text-(--cream)/60
+              mt-1 text-[10px] font-medium tracking-[0.2em] text-(--cream)/60
               uppercase
             ">
               Players on Roster
@@ -68,11 +69,13 @@ export default async function AdminHomePage() {
         </div>
 
         <div
-          className="rounded-lg border p-6"
-          style={{ borderColor: 'color-mix(in srgb, var(--gold) 20%, transparent)', background: 'color-mix(in srgb, var(--navy-900) 80%, black)' }}
+          className={`
+            p-6
+            ${cardSurfaceClasses}
+          `}
         >
           <h2 className="
-            font-cinzel text-xs tracking-widest text-(--cream)/60 uppercase
+            text-[10px] font-medium tracking-[0.2em] text-(--cream)/60 uppercase
           ">
             Export Data
           </h2>
@@ -84,9 +87,9 @@ export default async function AdminHomePage() {
               href="/admin/export?format=csv"
               download
               className="
-                font-cinzel rounded-sm border border-(--gold) px-4 py-2 text-xs
-                font-semibold tracking-wide text-(--gold) transition-colors
-                hover:bg-(--gold) hover:text-(--navy-900)
+                rounded-lg border border-(--border-gold) px-4 py-2 text-xs
+                font-semibold text-(--gold) transition-colors
+                hover:border-(--gold) hover:bg-(--gold)/10
               "
             >
               Download CSV
@@ -95,9 +98,9 @@ export default async function AdminHomePage() {
               href="/admin/export?format=json"
               download
               className="
-                font-cinzel rounded-sm border border-(--gold) px-4 py-2 text-xs
-                font-semibold tracking-wide text-(--gold) transition-colors
-                hover:bg-(--gold) hover:text-(--navy-900)
+                rounded-lg border border-(--border-gold) px-4 py-2 text-xs
+                font-semibold text-(--gold) transition-colors
+                hover:border-(--gold) hover:bg-(--gold)/10
               "
             >
               Download JSON

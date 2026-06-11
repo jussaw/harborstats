@@ -1,6 +1,9 @@
 'use client'
 
 import { useActionState } from 'react'
+import { buttonClasses } from '@/components/ui/Button'
+import { cardSurfaceClasses } from '@/components/ui/Card'
+import { fieldClasses } from '@/components/ui/Field'
 import { setNewGamePasswordAction } from './actions'
 import type { SetPasswordState } from './actions'
 
@@ -16,15 +19,14 @@ export function GamePasswordForm({ isSet }: Props) {
 
   return (
     <div
-      className="rounded-lg border p-5"
-      style={{
-        borderColor: 'color-mix(in srgb, var(--gold) 20%, transparent)',
-        background: 'color-mix(in srgb, var(--navy-900) 80%, black)',
-      }}
+      className={`
+        p-5
+        ${cardSurfaceClasses}
+      `}
     >
       <p
         className="
-          font-cinzel mb-4 text-xs tracking-widest text-(--gold) uppercase
+          mb-4 text-[10px] font-medium tracking-[0.2em] text-(--gold) uppercase
         "
       >
         Game creation password
@@ -38,7 +40,7 @@ export function GamePasswordForm({ isSet }: Props) {
 
       {state.ok && (
         <p className="
-          mb-4 rounded-sm border border-green-500/50 bg-green-950/60 px-4 py-2.5
+          mb-4 rounded-lg border border-green-500/50 bg-green-950/60 px-4 py-2.5
           text-sm tracking-wide text-green-300
         ">
           Password updated successfully.
@@ -46,7 +48,7 @@ export function GamePasswordForm({ isSet }: Props) {
       )}
       {state.error && (
         <p className="
-          mb-4 rounded-sm border border-red-500/50 bg-red-950/60 px-4 py-2.5
+          mb-4 rounded-lg border border-red-500/50 bg-red-950/60 px-4 py-2.5
           text-sm tracking-wide text-red-300
         ">
           {state.error}
@@ -55,7 +57,9 @@ export function GamePasswordForm({ isSet }: Props) {
 
       <form action={action} className="flex flex-wrap items-end gap-4">
         <div className="flex min-w-48 flex-1 flex-col gap-1.5">
-          <label className="flex flex-col gap-1.5 text-xs text-(--cream)/50" htmlFor="new-game-password">
+          <label className="
+            flex flex-col gap-1.5 text-xs font-medium text-(--cream)/60
+          " htmlFor="new-game-password">
             <span>{isSet ? 'Change password' : 'Set password'}</span>
             <input
               id="new-game-password"
@@ -64,25 +68,12 @@ export function GamePasswordForm({ isSet }: Props) {
               autoComplete="new-password"
               minLength={4}
               required
-              className="
-                rounded-sm border border-(--gold)/40 bg-(--navy-900) px-3 py-2
-                text-sm text-(--cream) transition-colors
-                placeholder:text-(--cream)/30
-                focus:border-(--gold) focus:outline-none
-              "
+              className={fieldClasses}
               placeholder="New password"
             />
           </label>
         </div>
-        <button
-          type="submit"
-          className="
-            font-cinzel rounded-sm border border-(--gold) bg-(--gold) px-4 py-2
-            text-xs font-semibold tracking-widest text-(--navy-900) uppercase
-            transition-colors
-            hover:bg-(--cream)
-          "
-        >
+        <button type="submit" className={buttonClasses('primary', 'sm')}>
           Save
         </button>
       </form>

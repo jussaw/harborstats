@@ -40,7 +40,7 @@ function UnlockForm({ onUnlocked }: UnlockFormProps) {
     <form onSubmit={handleSubmit} className="space-y-5">
       {state.error === 'not-configured' && (
         <p className="
-          rounded-sm border border-amber-500/50 bg-amber-950/60 px-4 py-2.5
+          rounded-lg border border-amber-500/50 bg-amber-950/60 px-4 py-2.5
           text-sm tracking-wide text-amber-300
         ">
           No game password has been set yet. Ask an admin to configure one.
@@ -48,16 +48,14 @@ function UnlockForm({ onUnlocked }: UnlockFormProps) {
       )}
       {state.error === 'incorrect' && (
         <p className="
-          rounded-sm border border-red-500/50 bg-red-950/60 px-4 py-2.5 text-sm
+          rounded-lg border border-red-500/50 bg-red-950/60 px-4 py-2.5 text-sm
           tracking-wide text-red-300
         ">
           Incorrect password. Try again.
         </p>
       )}
       <label className="flex flex-col gap-2" htmlFor="game-password">
-        <span className="
-          font-cinzel text-xs tracking-widest text-(--gold) uppercase
-        ">
+        <span className="text-xs font-medium tracking-wide text-(--cream)/70">
           Password
         </span>
         <input
@@ -68,10 +66,11 @@ function UnlockForm({ onUnlocked }: UnlockFormProps) {
           autoComplete="current-password"
           required
           className="
-            rounded-sm border border-(--gold)/50 bg-(--navy-900) px-4 py-3
-            text-(--cream) transition-colors
+            rounded-lg border border-(--border-gold) bg-(--navy-950)/60 px-4
+            py-3 text-(--cream) transition-colors
             placeholder:text-(--cream)/30
-            focus:border-(--gold) focus:outline-none
+            focus:border-(--gold) focus:ring-2 focus:ring-(--gold)/30
+            focus:outline-none
           "
           placeholder="••••••••••••"
         />
@@ -80,10 +79,11 @@ function UnlockForm({ onUnlocked }: UnlockFormProps) {
         type="submit"
         disabled={isPending}
         className="
-          font-cinzel w-full rounded-sm border border-(--gold) bg-(--gold) px-6
-          py-3 font-semibold tracking-widest text-(--navy-900) uppercase
-          transition-colors
-          hover:bg-(--cream)
+          w-full rounded-lg border border-(--gold-600)
+          bg-(image:--gradient-gold) px-6 py-3 text-sm font-semibold
+          text-(--navy-900) shadow-[0_6px_16px_rgb(232_178_58/0.25)]
+          transition-all
+          hover:brightness-110
           disabled:opacity-60
         "
       >
@@ -135,17 +135,18 @@ export function NewGameButton({ players, className, isUnlocked }: Props) {
         <button
           type="button"
           tabIndex={-1}
-          className="fixed inset-0 bg-black/70"
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm"
           onClick={closeDialog}
           aria-label="Dismiss dialog"
         />
         <div className="
-          relative z-10 flex w-full max-w-2xl flex-col rounded-lg border
-          border-(--gold) bg-(--navy-900) p-6
+          relative z-10 flex w-full max-w-2xl flex-col rounded-2xl border
+          border-(--border-gold) bg-(--navy-900) p-6
+          shadow-[0_24px_60px_rgba(0,0,0,0.4)]
         ">
           <div className="mb-6 flex items-center justify-between">
             <h2 id={titleId} className="
-              font-cinzel text-2xl tracking-wide text-(--gold)
+              font-cinzel text-2xl tracking-wide text-(--cream)
             ">
               New Game
             </h2>

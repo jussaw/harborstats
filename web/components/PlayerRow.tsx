@@ -55,8 +55,10 @@ export function PlayerRow({ value, onChange, players, selectedPlayerIds }: Playe
           onChange={handleScoreChange}
           disabled={value.playerId === null}
           className="
-            w-20 rounded-sm border border-(--gold) bg-(--navy-900) px-2 py-1
-            text-sm text-(--cream)
+            w-20 rounded-lg border border-(--border-gold) bg-(--navy-950)/60
+            px-2 py-1 text-sm text-(--cream)
+            focus:border-(--gold) focus:ring-2 focus:ring-(--gold)/30
+            focus:outline-none
           "
         >
           {scoreOptions.map((score) => (

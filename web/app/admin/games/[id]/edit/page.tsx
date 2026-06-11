@@ -49,8 +49,8 @@ export default async function EditGamePage({ params }: Props) {
             ← Games
           </Link>
           <span className="text-(--cream)/20">/</span>
-          <h1 className="font-cinzel text-xl tracking-wide text-(--gold)">
-            Edit Game <span className="text-(--gold)/50">#{game.id}</span>
+          <h1 className="font-cinzel text-xl tracking-wide text-(--cream)">
+            Edit Game <span className="text-(--cream)/50">#{game.id}</span>
           </h1>
         </div>
         <EditGameForm gameId={game.id} players={players} initial={initial} />

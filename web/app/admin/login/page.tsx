@@ -27,8 +27,8 @@ export default async function AdminLoginPage({ searchParams }: Props) {
         </div>
 
         <div className="
-          rounded-lg border border-(--gold)/20 bg-(--navy-900)/80 p-8
-          backdrop-blur-sm
+          rounded-2xl border border-(--border-gold-subtle) bg-(--navy-900)/80
+          p-8 shadow-(--shadow-card) backdrop-blur-md
         ">
           <LoginForm next={next} hasError={hasError} />
         </div>

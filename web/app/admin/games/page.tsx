@@ -5,6 +5,7 @@ import { ConfirmDeleteButton } from '@/app/admin/ConfirmDeleteButton'
 import { NewGameButton } from '@/components/NewGameButton'
 import { PageWidth } from '@/components/PageWidth'
 import { FormattedDate } from '@/components/FormattedDate'
+import { buttonClasses } from '@/components/ui/Button'
 import { isGameSession } from '@/lib/game-auth'
 import { deleteGameAction } from './actions'
 
@@ -22,18 +23,13 @@ export default async function AdminGamesPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="font-cinzel text-xl tracking-wide text-(--gold)">Games</h1>
+            <h1 className="font-cinzel text-xl tracking-wide text-(--cream)">Games</h1>
             <p className="mt-0.5 text-xs text-(--cream)/50">{games.length} recorded</p>
           </div>
           <NewGameButton
             players={players}
             isUnlocked={isUnlocked}
-            className="
-              font-cinzel rounded-sm border border-(--gold) bg-(--gold) px-4
-              py-2 text-xs font-semibold tracking-widest text-(--navy-900)
-              uppercase transition-colors
-              hover:bg-(--cream)
-            "
+            className={buttonClasses('primary', 'sm')}
           />
         </div>
 
@@ -41,23 +37,19 @@ export default async function AdminGamesPage() {
           <p className="py-16 text-center text-sm text-(--cream)/40">No games recorded yet.</p>
         ) : (
           <div
-            className="overflow-hidden rounded-lg border"
-            style={{ borderColor: 'color-mix(in srgb, var(--gold) 20%, transparent)' }}
+            className="
+              overflow-hidden rounded-xl border border-(--border-gold-subtle)
+            "
           >
-            {games.map((game, idx) => (
+            {games.map((game) => (
               <div
                 key={game.id}
-                className="flex items-center gap-4 px-5 py-4"
-                style={{
-                  borderBottom:
-                    idx < games.length - 1
-                      ? '1px solid color-mix(in srgb, var(--gold) 15%, transparent)'
-                      : undefined,
-                  background:
-                    idx % 2 === 0
-                      ? 'color-mix(in srgb, var(--navy-900) 90%, black)'
-                      : 'transparent',
-                }}
+                className="
+                  flex items-center gap-4 border-b border-(--border-gold-subtle)
+                  bg-(--surface-subtle) px-5 py-4 transition-colors
+                  last:border-b-0
+                  hover:bg-(--gold)/5
+                "
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-baseline gap-3">
@@ -95,8 +87,7 @@ export default async function AdminGamesPage() {
                   <Link
                     href={`/admin/games/${game.id}/edit`}
                     className="
-                      font-cinzel text-xs tracking-widest text-(--gold)/70
-                      uppercase transition-colors
+                      text-xs font-medium text-(--gold)/70 transition-colors
                       hover:text-(--gold)
                     "
                   >
@@ -108,8 +99,7 @@ export default async function AdminGamesPage() {
                     confirmMessage={`Delete game #${game.id}? This cannot be undone.`}
                     label="Delete"
                     className="
-                      font-cinzel text-xs tracking-widest text-red-500/60
-                      uppercase transition-colors
+                      text-xs font-medium text-red-500/60 transition-colors
                       hover:text-red-400
                     "
                   />

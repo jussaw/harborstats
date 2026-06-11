@@ -154,7 +154,7 @@ export function GameForm({
         ))}
       {error && (
         <p className="
-          rounded-sm border border-red-400 bg-red-900/30 px-4 py-2 text-sm
+          rounded-lg border border-red-400 bg-red-900/30 px-4 py-2 text-sm
           text-red-300
         ">
           {error}
@@ -180,7 +180,7 @@ export function GameForm({
       <div className="grid grid-cols-2 gap-4">
         <div className="flex flex-col gap-1">
           <label className="
-            flex flex-col gap-1 text-xs text-(--cream) opacity-70
+            flex flex-col gap-1 text-xs font-medium text-(--cream)/70
           " htmlFor="played_at">
             <span>Date &amp; Time</span>
             <input
@@ -195,15 +195,17 @@ export function GameForm({
               // client value is the correct one.
               suppressHydrationWarning
               className="
-                rounded-sm border border-(--gold) bg-(--navy-900) px-3 py-1.5
-                text-sm text-(--cream) scheme-dark
+                rounded-lg border border-(--border-gold) bg-(--navy-950)/60 px-3
+                py-1.5 text-sm text-(--cream) scheme-dark
+                focus:border-(--gold) focus:ring-2 focus:ring-(--gold)/30
+                focus:outline-none
               "
             />
           </label>
         </div>
         <div className="col-span-2 flex flex-col gap-1">
           <label className="
-            flex flex-col gap-1 text-xs text-(--cream) opacity-70
+            flex flex-col gap-1 text-xs font-medium text-(--cream)/70
           " htmlFor="notes">
             <span>Notes</span>
             <textarea
@@ -212,8 +214,10 @@ export function GameForm({
               rows={2}
               defaultValue={initial?.notes ?? ''}
               className="
-                resize-none rounded-sm border border-(--gold) bg-(--navy-900)
-                px-3 py-1.5 text-sm text-(--cream)
+                resize-none rounded-lg border border-(--border-gold)
+                bg-(--navy-950)/60 px-3 py-1.5 text-sm text-(--cream)
+                focus:border-(--gold) focus:ring-2 focus:ring-(--gold)/30
+                focus:outline-none
               "
             />
           </label>
@@ -225,9 +229,11 @@ export function GameForm({
         type="submit"
         disabled={isSubmitting}
         className="
-          font-cinzel w-full rounded-sm border border-(--gold) bg-(--gold) px-6
-          py-3 font-semibold tracking-wide text-(--navy-900) transition-colors
-          hover:bg-(--cream)
+          w-full rounded-lg border border-(--gold-600)
+          bg-(image:--gradient-gold) px-6 py-3 text-sm font-semibold
+          text-(--navy-900) shadow-[0_6px_16px_rgb(232_178_58/0.25)]
+          transition-all
+          hover:brightness-110
           disabled:cursor-not-allowed disabled:opacity-60
         "
       >

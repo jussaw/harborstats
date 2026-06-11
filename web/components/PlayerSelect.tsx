@@ -196,8 +196,10 @@ export function PlayerSelect({ players, value, selectedPlayerIds, onChange }: Pl
         }}
         onKeyDown={handleTriggerKeyDown}
         className="
-          flex w-full items-center justify-between rounded-sm border
-          border-(--gold) bg-(--navy-900) px-2 py-1 text-sm text-(--cream)
+          flex w-full items-center justify-between rounded-lg border
+          border-(--border-gold) bg-(--navy-950)/60 px-2 py-1 text-sm
+          text-(--cream) transition-colors
+          hover:border-(--gold)
         "
       >
         <span className={selectedPlayer ? '' : 'text-(--cream)/55'}>
@@ -208,8 +210,9 @@ export function PlayerSelect({ players, value, selectedPlayerIds, onChange }: Pl
 
       {isOpen && (
         <div className="
-          absolute inset-x-0 top-full z-20 mt-1 space-y-2 rounded-sm border
-          border-(--gold) bg-(--navy-900) p-2 shadow-lg
+          absolute inset-x-0 top-full z-20 mt-1 space-y-2 rounded-xl border
+          border-(--border-gold) bg-(--navy-950)/95 p-2
+          shadow-[0_16px_32px_rgb(0_0_0/0.4)] backdrop-blur-md
         ">
           <input
             ref={inputRef}
@@ -235,8 +238,10 @@ export function PlayerSelect({ players, value, selectedPlayerIds, onChange }: Pl
             onKeyDown={handleInputKeyDown}
             placeholder="Type to search players"
             className="
-              w-full rounded-sm border border-(--gold)/40 bg-(--navy-800) px-2
-              py-1 text-sm text-(--cream)
+              w-full rounded-lg border border-(--border-gold) bg-(--navy-900)/80
+              px-2 py-1 text-sm text-(--cream)
+              placeholder:text-(--cream)/35
+              focus:border-(--gold) focus:outline-none
             "
           />
 
