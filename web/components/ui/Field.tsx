@@ -33,6 +33,7 @@ interface InputProps {
   value?: string
   defaultValue?: string
   onChange?: (e: ChangeEvent<HTMLInputElement>) => void
+  onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void
   placeholder?: string
   required?: boolean
   disabled?: boolean
@@ -49,6 +50,7 @@ export function Input({
   value,
   defaultValue,
   onChange,
+  onBlur,
   placeholder,
   required,
   disabled,
@@ -65,6 +67,7 @@ export function Input({
       value={value}
       defaultValue={defaultValue}
       onChange={onChange}
+      onBlur={onBlur}
       placeholder={placeholder}
       required={required}
       disabled={disabled}

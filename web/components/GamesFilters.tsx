@@ -6,6 +6,7 @@ import { createGamesSearchParams } from '@/lib/games-page-filters'
 import type { GamesPageFilters, GamesPageSize } from '@/lib/games-page-shared'
 import { dateInputToEndOfDay, dateInputToStartOfDay, dateToDateInputValue } from '@/lib/dates'
 import type { Player } from '@/lib/players'
+import { fieldClasses } from './ui/Field'
 
 interface Props {
   players: Player[]
@@ -109,6 +110,14 @@ export function GamesFilters({ players, pageSize, filters }: Props) {
     })
   }
 
+  function handleFromDateChange(event: React.ChangeEvent<HTMLInputElement>) {
+    setDraftFilters({ ...activeFiltersState, fromDate: event.target.value })
+  }
+
+  function handleToDateChange(event: React.ChangeEvent<HTMLInputElement>) {
+    setDraftFilters({ ...activeFiltersState, toDate: event.target.value })
+  }
+
   const activeFilterCount = countActiveFilters({
     playerIds: activeFiltersState.playerIds,
     ...getCurrentDateFilters(),
@@ -116,7 +125,8 @@ export function GamesFilters({ players, pageSize, filters }: Props) {
 
   return (
     <section className="
-      space-y-3 rounded-xl border border-(--gold)/20 bg-(--navy-900)/40 p-4
+      space-y-3 rounded-2xl border border-(--border-gold-subtle)
+      bg-(--surface-subtle) p-4 backdrop-blur-sm
     " aria-busy={isPending}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <button
@@ -125,8 +135,9 @@ export function GamesFilters({ players, pageSize, filters }: Props) {
           aria-expanded={isOpen}
           aria-controls={drawerId}
           className="
-            inline-flex items-center gap-2 rounded-sm border border-(--gold)/40
-            px-3 py-2 text-sm text-(--cream) transition-colors
+            inline-flex items-center gap-2 rounded-lg border
+            border-(--border-gold) px-3 py-2 text-sm text-(--cream)
+            transition-colors
             hover:border-(--gold) hover:text-(--gold)
           "
         >
@@ -147,11 +158,14 @@ export function GamesFilters({ players, pageSize, filters }: Props) {
 
       {isOpen && (
         <div id={drawerId} className="
-          grid gap-4 border-t border-(--gold)/15 pt-4
+          grid gap-4 border-t border-(--border-gold-subtle) pt-4
           md:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,1fr)]
         ">
           <div className="space-y-2">
-            <p className="text-xs tracking-[0.2em] text-(--cream)/55 uppercase">Players</p>
+            <p className="
+              text-[10px] font-medium tracking-[0.2em] text-(--cream)/45
+              uppercase
+            ">Players</p>
             <div className="space-y-2">
               <button
                 id="games-players-filter"
@@ -160,8 +174,8 @@ export function GamesFilters({ players, pageSize, filters }: Props) {
                 aria-expanded={isPlayersOpen}
                 onClick={() => setIsPlayersOpen((open) => !open)}
                 className="
-                  flex w-full items-center justify-between rounded-sm border
-                  border-(--gold)/30 bg-(--navy-900) px-3 py-2 text-sm
+                  flex w-full items-center justify-between rounded-lg border
+                  border-(--border-gold) bg-(--navy-950)/60 px-3 py-2 text-sm
                   text-(--cream) transition-colors
                   hover:border-(--gold)
                 "
@@ -172,8 +186,8 @@ export function GamesFilters({ players, pageSize, filters }: Props) {
 
               {isPlayersOpen && (
                 <div className="
-                  max-h-56 space-y-2 overflow-y-auto rounded-sm border
-                  border-(--gold)/20 bg-(--navy-900)/80 p-3
+                  max-h-56 space-y-2 overflow-y-auto rounded-lg border
+                  border-(--border-gold-subtle) bg-(--navy-950)/90 p-3
                 ">
                   {players.map((player) => {
                     const isChecked = activeFiltersState.playerIds.includes(player.id)
@@ -188,8 +202,8 @@ export function GamesFilters({ players, pageSize, filters }: Props) {
                           checked={isChecked}
                           onChange={() => togglePlayer(player.id)}
                           className="
-                            size-4 rounded-sm border-(--gold)/40 bg-(--navy-900)
-                            text-(--gold)
+                            size-4 rounded-sm border-(--border-gold)
+                            bg-(--navy-950) accent-(--gold)
                           "
                         />
                         <span>{player.name}</span>
@@ -214,34 +228,40 @@ export function GamesFilters({ players, pageSize, filters }: Props) {
           </div>
 
           <div className="space-y-2">
-            <p className="text-xs tracking-[0.2em] text-(--cream)/55 uppercase">From</p>
+            <p className="
+              text-[10px] font-medium tracking-[0.2em] text-(--cream)/45
+              uppercase
+            ">From</p>
             <input
               id="games-filter-from"
               aria-label="From"
               type="date"
               value={activeFiltersState.fromDate}
-              onChange={(event) => setDraftFilters({ ...activeFiltersState, fromDate: event.target.value })}
+              onChange={handleFromDateChange}
               onBlur={commitDateFilters}
-              className="
-                w-full rounded-sm border border-(--gold)/30 bg-(--navy-900) px-3
-                py-2 text-sm text-(--cream) scheme-dark
-              "
+              className={`
+                ${fieldClasses}
+                w-full scheme-dark
+              `}
             />
           </div>
 
           <div className="space-y-2">
-            <p className="text-xs tracking-[0.2em] text-(--cream)/55 uppercase">To</p>
+            <p className="
+              text-[10px] font-medium tracking-[0.2em] text-(--cream)/45
+              uppercase
+            ">To</p>
             <input
               id="games-filter-to"
               aria-label="To"
               type="date"
               value={activeFiltersState.toDate}
-              onChange={(event) => setDraftFilters({ ...activeFiltersState, toDate: event.target.value })}
+              onChange={handleToDateChange}
               onBlur={commitDateFilters}
-              className="
-                w-full rounded-sm border border-(--gold)/30 bg-(--navy-900) px-3
-                py-2 text-sm text-(--cream) scheme-dark
-              "
+              className={`
+                ${fieldClasses}
+                w-full scheme-dark
+              `}
             />
           </div>
         </div>

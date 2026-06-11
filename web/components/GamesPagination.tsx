@@ -83,7 +83,7 @@ function PageLink({
       href={href}
       aria-label={label}
       className="
-        rounded-sm border border-(--gold)/30 px-3 py-1.5 text-xs
+        rounded-lg border border-(--border-gold) px-3 py-1.5 text-xs
         text-(--cream)/70 transition-colors
         hover:border-(--gold) hover:text-(--gold)
       "
@@ -102,18 +102,20 @@ export function GamesPagination({ page, pageSize, totalPages, filters }: Props) 
       <div className="
         flex flex-wrap items-center gap-2 text-xs text-(--cream)/60
       ">
-        <span className="tracking-widest text-(--cream)/50 uppercase">Show per page</span>
+        <span className="
+          text-[10px] font-medium tracking-[0.2em] text-(--cream)/50 uppercase
+        ">Show per page</span>
         {GAMES_PAGE_SIZES.map((size) => (
           <Link
             key={size}
             href={buildGamesHref(1, size, filters)}
             className={`
-              rounded-sm border px-3 py-1.5 transition-colors
+              rounded-lg border px-3 py-1.5 transition-colors
               ${
               size === pageSize
-                ? 'border-(--gold) bg-(--gold)/10 text-(--gold)'
+                ? 'border-(--gold) bg-(--gold)/10 font-semibold text-(--gold)'
                 : `
-                  border-(--gold)/30 text-(--cream)/70
+                  border-(--border-gold) text-(--cream)/70
                   hover:border-(--gold) hover:text-(--gold)
                 `
             }
@@ -140,8 +142,8 @@ export function GamesPagination({ page, pageSize, totalPages, filters }: Props) 
               aria-disabled="true"
               aria-label="Previous"
               className="
-                rounded-sm border border-(--gold)/15 px-3 py-1.5 text-xs
-                text-(--cream)/30
+                rounded-lg border border-(--border-gold-subtle) px-3 py-1.5
+                text-xs text-(--cream)/30
               "
             >
               <span aria-hidden="true">←</span>
@@ -161,7 +163,7 @@ export function GamesPagination({ page, pageSize, totalPages, filters }: Props) 
                     data-slot-type="placeholder"
                     aria-hidden="true"
                     className="
-                      invisible min-w-10 rounded-sm border border-transparent
+                      invisible min-w-10 rounded-lg border border-transparent
                       px-3 py-1.5 text-xs
                     "
                   >
@@ -198,8 +200,9 @@ export function GamesPagination({ page, pageSize, totalPages, filters }: Props) 
                     <span
                       aria-current="page"
                       className="
-                        w-full rounded-sm border border-(--gold) bg-(--gold)/10
-                        px-3 py-1.5 text-center text-xs text-(--gold)
+                        w-full rounded-lg border border-(--gold) bg-(--gold)/10
+                        px-3 py-1.5 text-center text-xs font-semibold
+                        text-(--gold)
                       "
                     >
                       {slot.value}
@@ -227,8 +230,8 @@ export function GamesPagination({ page, pageSize, totalPages, filters }: Props) 
               aria-disabled="true"
               aria-label="Next"
               className="
-                rounded-sm border border-(--gold)/15 px-3 py-1.5 text-xs
-                text-(--cream)/30
+                rounded-lg border border-(--border-gold-subtle) px-3 py-1.5
+                text-xs text-(--cream)/30
               "
             >
               <span aria-hidden="true">→</span>
