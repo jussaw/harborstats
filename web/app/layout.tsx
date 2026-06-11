@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Cinzel } from 'next/font/google'
+import { Cinzel, Inter } from 'next/font/google'
 import './globals.css'
 import { SidebarShell } from '@/components/SidebarShell'
 import { isAdminSession } from '@/lib/admin-auth'
@@ -11,21 +11,27 @@ const cinzel = Cinzel({
   display: 'swap',
 })
 
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+})
+
 export const metadata: Metadata = {
   title: 'HarborStats',
   description: 'Catan game recorder for the harbor crew',
 }
 
 export const viewport: Viewport = {
-  themeColor: '#0a2130',
+  themeColor: '#07181f',
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const isAdmin = await isAdminSession()
 
   return (
-    <html lang="en" className={cinzel.variable}>
-      <body className="min-h-screen bg-(--navy-800)">
+    <html lang="en" className={`${cinzel.variable} ${inter.variable}`}>
+      <body className="min-h-screen">
         <SidebarShell isAdmin={isAdmin} logoutAction={logoutAction}>
           {children}
         </SidebarShell>

@@ -1,19 +1,45 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
 :root {
+  /* color scale */
+  --navy-950: #07181f;
   --navy-900: #0a2130;
   --navy-800: #0e3a4a;
-  --gold: #e8b23a;
+  --navy-700: #134a5e;
+  --gold-300: #f2cf7a;
+  --gold-500: #e8b23a;
+  --gold-600: #c9952e;
+  --gold: var(--gold-500);
   --cream: #f4ecd4;
+
+  /* semantic tokens */
+  --surface: rgb(14 42 58 / 0.55);
+  --surface-subtle: rgb(14 42 58 / 0.35);
+  --border-gold: rgb(232 178 58 / 0.25);
+  --border-gold-subtle: rgb(232 178 58 / 0.15);
+  --shadow-card: 0 16px 32px rgb(0 0 0 / 0.3), inset 0 1px 0 rgb(244 236 212 / 0.05);
+  --gradient-gold: linear-gradient(135deg, var(--gold-500), var(--gold-600));
 }
 
 html {
   scroll-behavior: smooth;
 }
 
+body {
+  background:
+    radial-gradient(600px circle at 85% -5%, rgb(232 178 58 / 0.07), transparent 65%),
+    linear-gradient(160deg, var(--navy-950) 0%, var(--navy-900) 50%, #0d3040 100%);
+  background-attachment: fixed;
+  background-color: var(--navy-950);
+}
+
 @layer components {
   .harbor-bg {
-    background-color: #0e3a4a;
+    background-color: var(--navy-800);
   }
 
   .font-cinzel {
