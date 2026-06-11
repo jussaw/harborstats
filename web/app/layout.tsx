@@ -30,7 +30,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const isAdmin = await isAdminSession()
 
   return (
-    <html lang="en" className={`${cinzel.variable} ${inter.variable}`}>
+    <html lang="en" className={`
+      ${cinzel.variable}
+      ${inter.variable}
+    `}>
       <body className="min-h-screen">
         <SidebarShell isAdmin={isAdmin} logoutAction={logoutAction}>
           {children}
