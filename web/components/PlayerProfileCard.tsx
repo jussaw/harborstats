@@ -2,10 +2,8 @@ import { PlayerTier } from '@/lib/player-tier'
 import type { RecentGame } from '@/lib/games'
 import type { Player } from '@/lib/players'
 import { PlayerGamesModal } from './PlayerGamesModal'
-
-const cinzelStyle = {
-  fontFamily: 'var(--font-cinzel), Georgia, serif',
-}
+import { Badge } from './ui/Badge'
+import { cardSurfaceClasses } from './ui/Card'
 
 interface Props {
   player: Player
@@ -14,7 +12,12 @@ interface Props {
 
 export function PlayerProfileCard({ player, games }: Props) {
   return (
-    <div className="rounded-lg border border-(--gold)/30 bg-(--navy-900)/60 p-8">
+    <div
+      className={`
+        p-8
+        ${cardSurfaceClasses}
+      `}
+    >
       <div
         className="
           flex flex-col gap-4
@@ -22,22 +25,11 @@ export function PlayerProfileCard({ player, games }: Props) {
         "
       >
         <div>
-          <h1
-            style={cinzelStyle}
-            className="text-2xl tracking-wide text-(--gold)"
-          >
+          <h1 className="font-cinzel text-2xl tracking-wide text-(--cream)">
             {player.name}
           </h1>
           {player.tier === PlayerTier.Premium && (
-            <span
-              style={cinzelStyle}
-              className="
-                mt-1 inline-block rounded-sm bg-(--gold)/15 px-1.5 py-0.5
-                text-xs tracking-widest text-(--gold) uppercase
-              "
-            >
-              PREMIUM
-            </span>
+            <Badge className="mt-2">Premium</Badge>
           )}
         </div>
         <div className="sm:self-center">

@@ -105,7 +105,7 @@ export default async function HomePage() {
             {reigningChampion && reigningChampion.winners.length > 0 ? (
               <div className="space-y-3">
                 <p className="
-                  font-cinzel text-4xl leading-none font-semibold tracking-wide
+                  text-4xl leading-none font-semibold tracking-wide
                   text-(--gold)
                 ">
                   {formatNameList(reigningChampion.winners.map((winner) => winner.name))}

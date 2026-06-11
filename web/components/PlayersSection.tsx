@@ -26,10 +26,7 @@ import type {
 } from '@/lib/stats';
 import { PlayerProfileCard } from './PlayerProfileCard';
 import { PlayerBestWinRecordCard } from './PlayerBestWinRecordCard';
-
-const cinzelStyle = {
-  fontFamily: 'var(--font-cinzel), Georgia, serif',
-};
+import { cardSurfaceClasses } from './ui/Card';
 
 interface Props {
   players: Player[];
@@ -59,22 +56,21 @@ interface PlayersListProps {
 function PlayersList({ players, selectedPlayerId }: PlayersListProps) {
   return (
     <aside
-      className="
-        rounded-2xl border border-(--gold)/20 bg-(--navy-900)/40 p-4
+      className={`
+        p-4
         sm:p-5
-      "
+        ${cardSurfaceClasses}
+      `}
     >
       <div className="mb-4 border-b border-(--gold)/10 pb-3">
         <p
-          style={cinzelStyle}
-          className="text-xs tracking-[0.3em] text-(--cream)/40 uppercase"
+          className="
+            text-[10px] font-medium tracking-[0.3em] text-(--cream)/40 uppercase
+          "
         >
           Players
         </p>
-        <h1
-          style={cinzelStyle}
-          className="mt-2 text-xl tracking-wide text-(--gold)"
-        >
+        <h1 className="font-cinzel mt-2 text-xl tracking-wide text-(--cream)">
           Select a player
         </h1>
       </div>
@@ -94,17 +90,16 @@ function PlayersList({ players, selectedPlayerId }: PlayersListProps) {
                   active
                     ? `border-(--gold)/45 bg-(--gold)/10 text-(--gold)`
                     : `
-                      border-transparent bg-(--navy-800)/35 text-(--cream)/70
-                      hover:border-(--gold)/20 hover:text-(--cream)
+                      border-transparent bg-(--surface-subtle) text-(--cream)/70
+                      hover:border-(--border-gold-subtle) hover:text-(--cream)
                     `
                 }
               `}
             >
               <div className="min-w-0">
                 <p
-                  style={cinzelStyle}
                   className={`
-                    truncate tracking-widest uppercase
+                    truncate font-medium
                     ${player.tier === PlayerTier.Premium ? 'text-(--gold)' : ''}
                   `}
                 >
@@ -145,7 +140,6 @@ function ProfileMetricCard({ id, title, description, value, detail }: ProfileMet
       {value && detail ? (
         <div className="space-y-2">
           <p
-            style={cinzelStyle}
             className="
               text-4xl leading-none font-semibold tracking-wide text-(--gold)
             "
@@ -207,7 +201,6 @@ function ProfileLossStreakCard({ streakRecord }: { streakRecord: PlayerStreakRec
           <div>
             <p className="text-sm tracking-wide text-(--cream)">Current</p>
             <p
-              style={cinzelStyle}
               className="
                 mt-1 text-3xl leading-none font-semibold tracking-wide
                 text-(--gold)
@@ -384,7 +377,6 @@ function ProfileHeadToHeadCard({
         <div className="space-y-2">
           <Link
             href={`/players/${record.opponentId}`}
-            style={cinzelStyle}
             className="
               block text-3xl/tight font-semibold tracking-wide text-(--gold)
               transition-colors
@@ -708,7 +700,7 @@ function PlayersDetailEmptyState() {
     <div
       className="
         flex min-h-full items-center justify-center rounded-xl border
-        border-dashed border-(--gold)/15 bg-(--navy-900)/20 p-8
+        border-dashed border-(--border-gold-subtle) bg-(--navy-900)/20 p-8
       "
     >
       <p className="text-center text-sm text-(--cream)/45">Choose a player to see their profile.</p>
@@ -739,15 +731,12 @@ export function PlayersSection({
     return (
       <PageWidth width="3xl" className="px-4 py-12">
         <div
-          className="
-            rounded-lg border border-(--gold)/30 bg-(--navy-900)/60 p-8
-            text-center
-          "
+          className={`
+            p-8 text-center
+            ${cardSurfaceClasses}
+          `}
         >
-          <h1
-            style={cinzelStyle}
-            className="text-2xl tracking-wide text-(--gold)"
-          >
+          <h1 className="font-cinzel text-2xl tracking-wide text-(--cream)">
             Players
           </h1>
           <p className="mt-4 text-sm text-(--cream)/70">No players yet.</p>
@@ -772,12 +761,11 @@ export function PlayersSection({
           <div className="space-y-4">
             <Link
               href="/players"
-              style={cinzelStyle}
               className="
-                inline-flex items-center gap-2 rounded-md border
-                border-(--gold)/20 bg-(--navy-900)/40 px-3 py-2 text-xs
-                tracking-widest text-(--cream)/70 uppercase transition-colors
-                hover:border-(--gold)/40 hover:text-(--gold)
+                inline-flex items-center gap-2 rounded-lg border
+                border-(--border-gold) px-3 py-2 text-xs text-(--cream)/70
+                transition-colors
+                hover:border-(--gold) hover:text-(--gold)
               "
             >
               <ArrowLeft className="size-4" />
@@ -815,7 +803,8 @@ export function PlayersSection({
         <PlayersList players={players} selectedPlayerId={selectedPlayer?.id ?? null} />
         <div
           className="
-            rounded-2xl border border-(--gold)/20 bg-(--navy-900)/30 p-6
+            rounded-2xl border border-(--border-gold-subtle) bg-(--navy-900)/30
+            p-6
           "
         >
           {selectedPlayer ? (
