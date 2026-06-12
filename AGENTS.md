@@ -7,7 +7,6 @@ This repository has multiple areas with different responsibilities. Start at the
 - `web/`: main Next.js application, database schema, scripts, and tests
 - `devops/`: deployment stack, compose files, and operational docs
 - `.github/`: CI workflows
-- `docs/`: specs and planning artifacts
 
 ## Instruction Scope
 
@@ -21,6 +20,18 @@ This repository has multiple areas with different responsibilities. Start at the
 - Run app commands from `web/`, not from the repo root.
 - Keep deployment and infrastructure changes scoped to `devops/` unless the task explicitly spans both app and ops.
 - Prefer small, targeted changes that match existing project structure.
+
+## Commit Messages
+
+Use the Conventional Commits format: `type(scope): subject`.
+
+- Types: `feat`, `fix`, `refactor`, `style`, `test`, `docs`, `chore`.
+- Scope is optional but preferred; use the area touched. Established scopes include `ui`,
+  `stats`, `games`, `players`, `admin`, `db`, `security`, `pwa`, `components`, `devops`,
+  `agents`.
+- Subject: imperative mood, lowercase, no trailing period (e.g.
+  `fix(db): enforce the 0-30 score range with a check constraint`).
+- One logical change per commit; explain non-obvious context in the body, not the subject.
 
 ## Common Entry Points
 
