@@ -124,7 +124,7 @@ describe('StatsPage', () => {
       {
         playerId: 2,
         name: 'Bea',
-        tier: PlayerTier.Standard,
+        tier: PlayerTier.Premium,
         games: 4,
         wins: 2,
         winRate: 0.5,
@@ -463,7 +463,7 @@ describe('StatsPage', () => {
         playerTier: PlayerTier.Premium,
         opponentId: 2,
         opponentName: 'Bea',
-        opponentTier: PlayerTier.Standard,
+        opponentTier: PlayerTier.Premium,
         gamesTogether: 4,
         winsAgainstOpponent: 2,
         lossesToOpponent: 1,
@@ -473,7 +473,7 @@ describe('StatsPage', () => {
       {
         playerId: 2,
         playerName: 'Bea',
-        playerTier: PlayerTier.Standard,
+        playerTier: PlayerTier.Premium,
         opponentId: 1,
         opponentName: 'Ada',
         opponentTier: PlayerTier.Premium,
