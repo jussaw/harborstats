@@ -440,7 +440,10 @@ describe('StatsPage', () => {
       biggestBlowout: {
         gameId: 5,
         playedAt: '2026-04-24T18:00:00.000Z',
-        winner: 'Ada, Eve',
+        winners: [
+          { playerId: 1, name: 'Ada', tier: PlayerTier.Premium },
+          { playerId: 2, name: 'Bea', tier: PlayerTier.Standard },
+        ],
         winnerScore: 15,
         runnerUpScore: 4,
         margin: 11,
@@ -449,7 +452,7 @@ describe('StatsPage', () => {
       closestGame: {
         gameId: 4,
         playedAt: '2026-04-23T18:00:00.000Z',
-        winner: 'Eve',
+        winners: [{ playerId: 4, name: 'Eve', tier: PlayerTier.Premium }],
         winnerScore: 7,
         runnerUpScore: 7,
         margin: 0,
@@ -687,7 +690,11 @@ describe('StatsPage', () => {
     expect(markup).toContain('11-point margin');
     expect(markup).toContain('0-point margin');
     expect(markup).toContain('Cara');
-    expect(markup).toContain('Ada, Eve');
+    const singleGameRecordsMarkup = markup.slice(singleGameRecordsIndex, longestWinStreakEverIndex);
+    expect(singleGameRecordsMarkup).toContain('text-(--gold)">Ada</span>, ');
+    expect(singleGameRecordsMarkup).toContain('>Bea</span>');
+    expect(singleGameRecordsMarkup).not.toContain('text-(--gold)">Bea</span>');
+    expect(singleGameRecordsMarkup).toContain('text-(--gold)">Eve</span>');
     expect(markup).toContain('dateTime="2026-04-22T18:00:00.000Z"');
     expect(markup).toContain('>Last Win<');
     expect(markup).toContain('>Period<');

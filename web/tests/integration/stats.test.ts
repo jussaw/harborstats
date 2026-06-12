@@ -1431,7 +1431,7 @@ describe('stats integration', () => {
       biggestBlowout: {
         gameId: blowout.id,
         playedAt: '2026-04-25T18:00:00.000Z',
-        winner: 'Alice',
+        winners: [{ playerId: alice.id, name: 'Alice', tier: PlayerTier.Premium }],
         winnerScore: 15,
         runnerUpScore: 4,
         margin: 11,
@@ -1440,7 +1440,7 @@ describe('stats integration', () => {
       closestGame: {
         gameId: closestTie.id,
         playedAt: '2026-04-23T18:00:00.000Z',
-        winner: 'Eve',
+        winners: [{ playerId: eve.id, name: 'Eve', tier: PlayerTier.Premium }],
         winnerScore: 7,
         runnerUpScore: 7,
         margin: 0,

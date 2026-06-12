@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import type { Metadata } from 'next';
 import { ActivityDistributionChart } from '@/components/ActivityDistributionChart';
 import { AverageGamesPerSessionCard } from '@/components/AverageGamesPerSessionCard';
@@ -79,6 +79,27 @@ function PlayerName({ name, tier }: { name: string; tier: PlayerTier }) {
         {name}
       </span>
     </div>
+  );
+}
+
+function MarginWinnerNames({ winners }: { winners: PlayerIdentity[] }) {
+  return (
+    <>
+      {winners.map((winner, index) => (
+        <Fragment key={winner.playerId}>
+          {index > 0 ? ', ' : null}
+          <span
+            className={
+              winner.tier === PlayerTier.Premium
+                ? `font-semibold text-(--gold)`
+                : ''
+            }
+          >
+            {winner.name}
+          </span>
+        </Fragment>
+      ))}
+    </>
   );
 }
 
@@ -311,7 +332,7 @@ function SingleGameRecordsContent({ records }: { records: SingleGameRecords }) {
           value: formatMarginLabel(records.biggestBlowout.margin),
           detail: (
             <span>
-              {records.biggestBlowout.winner}
+              <MarginWinnerNames winners={records.biggestBlowout.winners} />
               <span className="text-(--cream)/50">
                 {' '}
                 ({records.biggestBlowout.winnerScore}-{records.biggestBlowout.runnerUpScore})
@@ -328,7 +349,7 @@ function SingleGameRecordsContent({ records }: { records: SingleGameRecords }) {
           value: formatMarginLabel(records.closestGame.margin),
           detail: (
             <span>
-              {records.closestGame.winner}
+              <MarginWinnerNames winners={records.closestGame.winners} />
               <span className="text-(--cream)/50">
                 {' '}
                 ({records.closestGame.winnerScore}-{records.closestGame.runnerUpScore})

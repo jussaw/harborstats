@@ -1127,7 +1127,7 @@ export type WinningScoreRecord = HighestScoreRecord;
 export interface MarginGameRecord {
   gameId: number;
   playedAt: string;
-  winner: string;
+  winners: PlayerIdentity[];
   winnerScore: number;
   runnerUpScore: number;
   margin: number;
@@ -1157,7 +1157,7 @@ interface InternalScoreRecord extends PlayerIdentity {
 interface InternalMarginGameRecord {
   gameId: number;
   playedAt: Date;
-  winner: string;
+  winners: PlayerIdentity[];
   winnerScore: number;
   runnerUpScore: number;
   margin: number;
@@ -1250,7 +1250,7 @@ function toMarginRecord(record: InternalMarginGameRecord): MarginGameRecord {
   return {
     gameId: record.gameId,
     playedAt: record.playedAt.toISOString(),
-    winner: record.winner,
+    winners: record.winners,
     winnerScore: record.winnerScore,
     runnerUpScore: record.runnerUpScore,
     margin: record.margin,
@@ -1335,7 +1335,7 @@ export async function getSingleGameRecords(): Promise<SingleGameRecords> {
     const marginRecord: InternalMarginGameRecord = {
       gameId: participants[0].gameId,
       playedAt: participants[0].playedAt,
-      winner: topWinners.map((winner) => winner.name).join(', '),
+      winners: topWinners.map(({ playerId, name, tier }) => ({ playerId, name, tier })),
       winnerScore,
       runnerUpScore,
       margin: winnerScore - runnerUpScore,
