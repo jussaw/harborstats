@@ -27,8 +27,13 @@ export function GameCard({ game }: GameCardProps) {
           text-xs text-(--cream)/60
         " />
         {winners.length > 0 && (
-          <p className="text-xs font-semibold text-(--gold)">
-            ♛ {winners.map((winner) => winner.playerName).join(', ')}
+          <p className="
+            inline-flex items-center gap-1 text-xs font-semibold text-(--gold)
+          ">
+            <span aria-hidden="true" className="leading-none">
+              ♛
+            </span>
+            <span>{winners.map((winner) => winner.playerName).join(', ')}</span>
           </p>
         )}
       </div>

@@ -18,7 +18,9 @@ describe('GameCard', () => {
     const { container } = render(<GameCard game={game} />)
 
     expect(container.querySelector('article')).not.toBeNull()
-    expect(screen.getByText('♛ Magnus')).toBeInTheDocument()
+    const winnerCallout = screen.getByText('♛').closest('p')
+    expect(winnerCallout).toHaveTextContent('Magnus')
+    expect(winnerCallout).toHaveClass('items-center')
     expect(screen.getByText('Elena')).toBeInTheDocument()
     expect(screen.getByText('11')).toBeInTheDocument()
     expect(screen.getByText('Three-way port battle')).toBeInTheDocument()
