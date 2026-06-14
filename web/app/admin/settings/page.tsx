@@ -70,6 +70,24 @@ export default async function AdminSettingsPage() {
                 />
               </label>
             </div>
+            <div className="flex min-w-48 flex-1 flex-col gap-1.5">
+              <label
+                className="
+                  flex flex-col gap-1.5 text-xs font-medium text-(--cream)/60
+                "
+                htmlFor="stat-card-min-games"
+              >
+                <span>Stat Cards — Min Games Threshold</span>
+                <input
+                  id="stat-card-min-games"
+                  name="stat_card_min_games"
+                  type="number"
+                  min="0"
+                  defaultValue={settings.statCardMinGames}
+                  className={fieldClasses}
+                />
+              </label>
+            </div>
             <button type="submit" className={buttonClasses('primary', 'sm')}>
               Save
             </button>

@@ -348,11 +348,15 @@ describe('admin settings action', () => {
   });
 
   test('saveSettings throws when no valid admin session cookie is present', async () => {
-    await updateRateMinGames({ winRateMinGames: 5, podiumRateMinGames: 5 });
+    await updateRateMinGames({ winRateMinGames: 5, podiumRateMinGames: 5, statCardMinGames: 5 });
     setupMissingAdminSession();
 
     await expect(saveSettings(new FormData())).rejects.toThrow('Admin authentication required');
-    expect(await getSettings()).toEqual({ winRateMinGames: 5, podiumRateMinGames: 5 });
+    expect(await getSettings()).toEqual({
+      winRateMinGames: 5,
+      podiumRateMinGames: 5,
+      statCardMinGames: 5,
+    });
   });
 
   test('saveSettings clamps negative values to zero, persists them, and revalidates stats pages', async () => {
@@ -360,10 +364,15 @@ describe('admin settings action', () => {
     const formData = new FormData();
     formData.set('win_rate_min_games', '-4');
     formData.set('podium_rate_min_games', '-9');
+    formData.set('stat_card_min_games', '-3');
 
     await saveSettings(formData);
 
-    expect(await getSettings()).toEqual({ winRateMinGames: 0, podiumRateMinGames: 0 });
+    expect(await getSettings()).toEqual({
+      winRateMinGames: 0,
+      podiumRateMinGames: 0,
+      statCardMinGames: 0,
+    });
     expect(mocked.revalidatePathMock).toHaveBeenCalledWith('/stats');
     expect(mocked.revalidatePathMock).toHaveBeenCalledWith('/admin/settings');
   });
@@ -373,9 +382,14 @@ describe('admin settings action', () => {
     const formData = new FormData();
     formData.set('win_rate_min_games', '12');
     formData.set('podium_rate_min_games', '7');
+    formData.set('stat_card_min_games', '9');
 
     await saveSettings(formData);
 
-    expect(await getSettings()).toEqual({ winRateMinGames: 12, podiumRateMinGames: 7 });
+    expect(await getSettings()).toEqual({
+      winRateMinGames: 12,
+      podiumRateMinGames: 7,
+      statCardMinGames: 9,
+    });
   });
 });

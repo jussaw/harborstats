@@ -12,22 +12,35 @@ import {
 
 describe('settings integration', () => {
   test('getSettings returns defaults when no settings row exists', async () => {
-    await expect(getSettings()).resolves.toEqual({ winRateMinGames: 0, podiumRateMinGames: 0 });
+    await expect(getSettings()).resolves.toEqual({
+      winRateMinGames: 0,
+      podiumRateMinGames: 0,
+      statCardMinGames: 5,
+    });
   });
 
-  test('updateRateMinGames upserts a single row and updates both stored values independently', async () => {
-    await updateRateMinGames({ winRateMinGames: 3, podiumRateMinGames: 5 });
+  test('updateRateMinGames upserts a single row and updates all stored values independently', async () => {
+    await updateRateMinGames({ winRateMinGames: 3, podiumRateMinGames: 5, statCardMinGames: 7 });
 
-    expect(await getSettings()).toEqual({ winRateMinGames: 3, podiumRateMinGames: 5 });
+    expect(await getSettings()).toEqual({
+      winRateMinGames: 3,
+      podiumRateMinGames: 5,
+      statCardMinGames: 7,
+    });
 
-    await updateRateMinGames({ winRateMinGames: 8, podiumRateMinGames: 2 });
+    await updateRateMinGames({ winRateMinGames: 8, podiumRateMinGames: 2, statCardMinGames: 4 });
 
-    expect(await getSettings()).toEqual({ winRateMinGames: 8, podiumRateMinGames: 2 });
+    expect(await getSettings()).toEqual({
+      winRateMinGames: 8,
+      podiumRateMinGames: 2,
+      statCardMinGames: 4,
+    });
 
     const rows = await db.select().from(appSettings);
     expect(rows).toHaveLength(1);
     expect(rows[0].winRateMinGames).toBe(8);
     expect(rows[0].podiumRateMinGames).toBe(2);
+    expect(rows[0].statCardMinGames).toBe(4);
   });
 
   test('hasNewGamePassword returns false initially when no hash is set', async () => {

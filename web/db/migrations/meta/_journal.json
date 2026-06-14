@@ -43,6 +43,13 @@
       "when": 1781108859468,
       "tag": "0005_graceful_killraven",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1781347974472,
+      "tag": "0006_worried_bloodscream",
+      "breakpoints": true
     }
   ]
 }

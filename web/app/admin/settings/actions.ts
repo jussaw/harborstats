@@ -14,8 +14,12 @@ export async function saveSettings(formData: FormData) {
     0,
     parseInt((formData.get('podium_rate_min_games') as string) ?? '0', 10) || 0,
   );
+  const statCardMinGames = Math.max(
+    0,
+    parseInt((formData.get('stat_card_min_games') as string) ?? '0', 10) || 0,
+  );
 
-  await updateRateMinGames({ winRateMinGames, podiumRateMinGames });
+  await updateRateMinGames({ winRateMinGames, podiumRateMinGames, statCardMinGames });
   revalidatePath('/stats');
   revalidatePath('/admin/settings');
 }

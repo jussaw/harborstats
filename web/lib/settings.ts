@@ -6,32 +6,36 @@ import { db } from './db';
 export interface AppSettings {
   winRateMinGames: number;
   podiumRateMinGames: number;
+  statCardMinGames: number;
 }
 
 export async function getSettings(): Promise<AppSettings> {
   const rows = await db.select().from(appSettings).where(eq(appSettings.id, 1));
-  if (rows.length === 0) return { winRateMinGames: 0, podiumRateMinGames: 0 };
+  if (rows.length === 0) return { winRateMinGames: 0, podiumRateMinGames: 0, statCardMinGames: 5 };
   return {
     winRateMinGames: rows[0].winRateMinGames,
     podiumRateMinGames: rows[0].podiumRateMinGames,
+    statCardMinGames: rows[0].statCardMinGames,
   };
 }
 
 interface RateMinGamesInput {
   winRateMinGames: number;
   podiumRateMinGames: number;
+  statCardMinGames: number;
 }
 
 export async function updateRateMinGames({
   winRateMinGames,
   podiumRateMinGames,
+  statCardMinGames,
 }: RateMinGamesInput): Promise<void> {
   await db
     .insert(appSettings)
-    .values({ id: 1, winRateMinGames, podiumRateMinGames })
+    .values({ id: 1, winRateMinGames, podiumRateMinGames, statCardMinGames })
     .onConflictDoUpdate({
       target: appSettings.id,
-      set: { winRateMinGames, podiumRateMinGames, updatedAt: new Date() },
+      set: { winRateMinGames, podiumRateMinGames, statCardMinGames, updatedAt: new Date() },
     });
 }
 
