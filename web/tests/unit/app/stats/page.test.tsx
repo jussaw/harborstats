@@ -790,10 +790,7 @@ describe('StatsPage', () => {
     expect(markup).toContain('>Record<');
     expect(markup).toContain('3 wins');
     expect(markup).toContain('2 wins');
-    const longestWinStreakSection = markup.slice(
-      longestWinStreakEverIndex,
-      longestWinStreakEverIndex + 3000,
-    );
+    const longestWinStreakSection = markup.slice(longestWinStreakEverIndex, longestGapIndex);
     expect(longestWinStreakSection).toContain('dateTime="2026-04-20T18:00:00.000Z"');
     expect(longestWinStreakSection).toContain('dateTime="2026-04-22T18:00:00.000Z"');
     expect(longestWinStreakSection).toContain('>...<');

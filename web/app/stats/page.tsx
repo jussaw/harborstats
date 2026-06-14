@@ -23,7 +23,6 @@ import { StatsSectionHeader } from '@/components/StatsSectionHeader';
 import { WinningScoreByGameSizeChart } from '@/components/WinningScoreByGameSizeChart';
 import { formatAverage, formatPercent, formatSignedNumber } from '@/lib/format';
 import { PlayerTier } from '@/lib/player-tier';
-import { rankWithTies } from '@/lib/rank';
 import { getSettings } from '@/lib/settings';
 import {
   getGameActivityTimestamps,
@@ -105,29 +104,6 @@ function MarginWinnerNames({ winners }: { winners: PlayerIdentity[] }) {
         </Fragment>
       ))}
     </>
-  );
-}
-
-function RankCell({ rank }: { rank: number }) {
-  return (
-    <td className="px-3 py-2 text-center text-(--cream)/50 tabular-nums">
-      {rank === 1 ? '👑' : rank}
-    </td>
-  );
-}
-
-function DataRow({ children }: { children: ReactNode }) {
-  return (
-    <tr
-      className="
-        border-b border-(--border-gold-subtle) bg-(--surface-subtle)
-        transition-colors
-        last:border-0
-        hover:bg-(--gold)/5
-      "
-    >
-      {children}
-    </tr>
   );
 }
 
@@ -510,37 +486,11 @@ export default async function StatsPage() {
       ? 'No rivalries meet the minimum game threshold yet.'
       : 'No decided rivalries recorded yet.';
 
-  const totalWinsRanks = rankWithTies(winRates, (player) => player.wins);
-  const winRateRanks = rankWithTies(winRateQualified, (player) => player.winRate);
-  const avgScoreRanks = rankWithTies(scoreStatsQualified, (player) => player.avgScore);
-  const medianScoreRanks = rankWithTies(medianSorted, (player) => player.medianScore);
-  const totalVpRanks = rankWithTies(cumulativeScoreStats, (player) => player.totalScore);
-  const normalizedAvgScoreRanks = rankWithTies(
-    normalizedScoreStatsQualified,
-    (player) => player.avgScore,
-  );
-  const normalizedMedianScoreRanks = rankWithTies(
-    normalizedMedianSorted,
-    (player) => player.medianScore,
-  );
-  const podiumRateRanks = rankWithTies(podiumRateQualified, (player) => player.podiumRate);
-  const finishBreakdownRanks = rankWithTies(finishBreakdowns, (player) => player.firstRate);
-  const tierShowdownRanks = rankWithTies(tierShowdown, (row) => row.winRate);
-  const expectedVsActualRanks = rankWithTies(expectedVsActualWins, (player) => player.winDelta);
-  const participationRateRanks = rankWithTies(
-    participationRates,
-    (player) => player.participationRate,
-  );
-  const currentWinStreakRanks = rankWithTies(currentWinStreaks, (player) => player.streak);
   const longestWinStreakRecords = [...playerStreakRecords].sort(
     (a, b) =>
       b.longestWinStreak - a.longestWinStreak ||
       compareNullableIsoDesc(a.longestWinStreakEndedAt, b.longestWinStreakEndedAt) ||
       a.name.localeCompare(b.name),
-  );
-  const longestWinStreakRanks = rankWithTies(
-    longestWinStreakRecords,
-    (player) => player.longestWinStreak,
   );
   const bridesmaidSorted = [...finishBreakdowns].sort(
     (a, b) =>
@@ -549,7 +499,6 @@ export default async function StatsPage() {
       b.games - a.games ||
       a.name.localeCompare(b.name),
   );
-  const bridesmaidRanks = rankWithTies(bridesmaidSorted, (player) => player.seconds);
 
   const { statCardMinGames } = settings;
   const statCardBadge =
@@ -576,12 +525,6 @@ export default async function StatsPage() {
     statCardMinGames > 0
       ? `No players have played ${statCardMinGames}+ game${statCardMinGames === 1 ? '' : 's'} yet.`
       : 'No games recorded yet.';
-
-  const consistencyRanks = rankWithTies(consistencyQualified, (player) => player.stdDev);
-  const dominanceRanks = rankWithTies(dominanceQualified, (player) => player.dominance);
-  const clutchRanks = rankWithTies(clutchQualified, (player) => player.bigRate ?? -1);
-  const nailBiterRanks = rankWithTies(nailBiterQualified, (player) => player.winRate);
-  const kingmakerRanks = rankWithTies(kingmakerQualified, (player) => player.edge);
 
   const statsCards: StatsCardMeta[] = [
     {
@@ -952,27 +895,30 @@ export default async function StatsPage() {
       ) : (
         <StatsLeaderboardTable
           columns={[
-            { label: '#', align: 'center', widthClass: 'w-10' },
-            { label: 'Player' },
-            { label: 'Wins', align: 'right' },
-            { label: 'Win Rate', align: 'right' },
+            { label: '#', align: 'center', widthClass: 'w-10', rank: true },
+            { label: 'Player', sortKey: 'player', sortType: 'string' },
+            { label: 'Wins', align: 'right', sortKey: 'wins' },
+            { label: 'Win Rate', align: 'right', sortKey: 'winRate' },
           ]}
-        >
-          {winRates.map((player, index) => (
-            <DataRow key={player.playerId}>
-              <RankCell rank={totalWinsRanks[index]} />
-              <td className="px-3 py-2 text-(--cream)">
-                <PlayerName name={player.name} tier={player.tier} />
-              </td>
-              <td className="px-3 py-2 text-right text-(--cream) tabular-nums">{player.wins}</td>
-              <td className="
-                px-3 py-2 text-right text-(--cream)/70 tabular-nums
-              ">
-                {formatPercent(player.winRate, 1)}
-              </td>
-            </DataRow>
-          ))}
-        </StatsLeaderboardTable>
+          initialSort={{ key: 'wins', direction: 'desc' }}
+          rows={winRates.map((player) => ({
+            key: player.playerId,
+            sortValues: { player: player.name, wins: player.wins, winRate: player.winRate },
+            cells: (
+              <>
+                <td className="px-3 py-2 text-(--cream)">
+                  <PlayerName name={player.name} tier={player.tier} />
+                </td>
+                <td className="px-3 py-2 text-right text-(--cream) tabular-nums">{player.wins}</td>
+                <td className="
+                  px-3 py-2 text-right text-(--cream)/70 tabular-nums
+                ">
+                  {formatPercent(player.winRate, 1)}
+                </td>
+              </>
+            ),
+          }))}
+        />
       ),
     'win-rate':
       winRateQualified.length === 0 ? (
@@ -983,101 +929,123 @@ export default async function StatsPage() {
       ) : (
         <StatsLeaderboardTable
           columns={[
-            { label: '#', align: 'center', widthClass: 'w-10' },
-            { label: 'Player' },
-            { label: 'Win Rate', align: 'right' },
-            { label: 'Wins', align: 'right' },
-            { label: 'Games', align: 'right' },
+            { label: '#', align: 'center', widthClass: 'w-10', rank: true },
+            { label: 'Player', sortKey: 'player', sortType: 'string' },
+            { label: 'Win Rate', align: 'right', sortKey: 'winRate' },
+            { label: 'Wins', align: 'right', sortKey: 'wins' },
+            { label: 'Games', align: 'right', sortKey: 'games' },
           ]}
-        >
-          {winRateQualified.map((player, index) => (
-            <DataRow key={player.playerId}>
-              <RankCell rank={winRateRanks[index]} />
-              <td className="px-3 py-2 text-(--cream)">
-                <PlayerName name={player.name} tier={player.tier} />
-              </td>
-              <td
-                className="
-                  px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
-                "
-              >
-                {formatPercent(player.winRate, 1)}
-              </td>
-              <td className="px-3 py-2 text-right text-(--cream) tabular-nums">{player.wins}</td>
-              <td className="
-                px-3 py-2 text-right text-(--cream)/70 tabular-nums
-              ">
-                {player.games}
-              </td>
-            </DataRow>
-          ))}
-        </StatsLeaderboardTable>
+          initialSort={{ key: 'winRate', direction: 'desc' }}
+          rows={winRateQualified.map((player) => ({
+            key: player.playerId,
+            sortValues: {
+              player: player.name,
+              winRate: player.winRate,
+              wins: player.wins,
+              games: player.games,
+            },
+            cells: (
+              <>
+                <td className="px-3 py-2 text-(--cream)">
+                  <PlayerName name={player.name} tier={player.tier} />
+                </td>
+                <td
+                  className="
+                    px-3 py-2 text-right font-semibold text-(--gold)
+                    tabular-nums
+                  "
+                >
+                  {formatPercent(player.winRate, 1)}
+                </td>
+                <td className="px-3 py-2 text-right text-(--cream) tabular-nums">{player.wins}</td>
+                <td className="
+                  px-3 py-2 text-right text-(--cream)/70 tabular-nums
+                ">
+                  {player.games}
+                </td>
+              </>
+            ),
+          }))}
+        />
       ),
     'current-win-streak':
       currentWinStreaks.length > 0 ? (
         <StatsLeaderboardTable
           columns={[
-            { label: '#', align: 'center', widthClass: 'w-10' },
-            { label: 'Player' },
-            { label: 'Streak', align: 'right' },
-            { label: 'Last Win', align: 'right' },
+            { label: '#', align: 'center', widthClass: 'w-10', rank: true },
+            { label: 'Player', sortKey: 'player', sortType: 'string' },
+            { label: 'Streak', align: 'right', sortKey: 'streak' },
+            { label: 'Last Win', align: 'right', sortKey: 'lastWin', sortType: 'string' },
           ]}
-        >
-          {currentWinStreaks.map((player, index) => (
-            <DataRow key={player.playerId}>
-              <RankCell rank={currentWinStreakRanks[index]} />
-              <td className="px-3 py-2 text-(--cream)">
-                <PlayerName name={player.name} tier={player.tier} />
-              </td>
-              <td
-                className="
-                  px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
-                "
-              >
-                {formatWinLabel(player.streak)}
-              </td>
-              <td className="px-3 py-2 text-right text-(--cream)/70">
-                {player.mostRecentWin ? (
-                  <FormattedDate
-                    iso={player.mostRecentWin}
-                    className="inline text-(--cream)/70"
-                  />
-                ) : (
-                  '—'
-                )}
-              </td>
-            </DataRow>
-          ))}
-        </StatsLeaderboardTable>
+          initialSort={{ key: 'streak', direction: 'desc' }}
+          rows={currentWinStreaks.map((player) => ({
+            key: player.playerId,
+            sortValues: {
+              player: player.name,
+              streak: player.streak,
+              lastWin: player.mostRecentWin,
+            },
+            cells: (
+              <>
+                <td className="px-3 py-2 text-(--cream)">
+                  <PlayerName name={player.name} tier={player.tier} />
+                </td>
+                <td
+                  className="
+                    px-3 py-2 text-right font-semibold text-(--gold)
+                    tabular-nums
+                  "
+                >
+                  {formatWinLabel(player.streak)}
+                </td>
+                <td className="px-3 py-2 text-right text-(--cream)/70">
+                  {player.mostRecentWin ? (
+                    <FormattedDate
+                      iso={player.mostRecentWin}
+                      className="inline text-(--cream)/70"
+                    />
+                  ) : (
+                    '—'
+                  )}
+                </td>
+              </>
+            ),
+          }))}
+        />
       ) : (
         <EmptyState>No games recorded yet.</EmptyState>
       ),
     'total-vp': cumulativeScoreStats.some((player) => player.games > 0) ? (
       <StatsLeaderboardTable
         columns={[
-          { label: '#', align: 'center', widthClass: 'w-10' },
-          { label: 'Player' },
-          { label: 'Total VP', align: 'right' },
-          { label: 'Games', align: 'right' },
+          { label: '#', align: 'center', widthClass: 'w-10', rank: true },
+          { label: 'Player', sortKey: 'player', sortType: 'string' },
+          { label: 'Total VP', align: 'right', sortKey: 'totalScore' },
+          { label: 'Games', align: 'right', sortKey: 'games' },
         ]}
-      >
-        {cumulativeScoreStats.map((player, index) => (
-          <DataRow key={player.playerId}>
-            <RankCell rank={totalVpRanks[index]} />
-            <td className="px-3 py-2 text-(--cream)">
-              <PlayerName name={player.name} tier={player.tier} />
-            </td>
-            <td
-              className="
-                px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
-              "
-            >
-              {player.totalScore}
-            </td>
-            <td className="px-3 py-2 text-right text-(--cream)/70 tabular-nums">{player.games}</td>
-          </DataRow>
-        ))}
-      </StatsLeaderboardTable>
+        initialSort={{ key: 'totalScore', direction: 'desc' }}
+        rows={cumulativeScoreStats.map((player) => ({
+          key: player.playerId,
+          sortValues: { player: player.name, totalScore: player.totalScore, games: player.games },
+          cells: (
+            <>
+              <td className="px-3 py-2 text-(--cream)">
+                <PlayerName name={player.name} tier={player.tier} />
+              </td>
+              <td
+                className="
+                  px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
+                "
+              >
+                {player.totalScore}
+              </td>
+              <td className="
+                px-3 py-2 text-right text-(--cream)/70 tabular-nums
+              ">{player.games}</td>
+            </>
+          ),
+        }))}
+      />
     ) : (
       <EmptyState>No games recorded yet.</EmptyState>
     ),
@@ -1090,44 +1058,54 @@ export default async function StatsPage() {
       ) : (
         <StatsLeaderboardTable
           columns={[
-            { label: '#', align: 'center', widthClass: 'w-10' },
-            { label: 'Player' },
-            { label: 'Avg Score', align: 'right' },
-            { label: 'Total VP', align: 'right' },
-            { label: 'Games', align: 'right' },
+            { label: '#', align: 'center', widthClass: 'w-10', rank: true },
+            { label: 'Player', sortKey: 'player', sortType: 'string' },
+            { label: 'Avg Score', align: 'right', sortKey: 'avgScore' },
+            { label: 'Total VP', align: 'right', sortKey: 'totalScore' },
+            { label: 'Games', align: 'right', sortKey: 'games' },
           ]}
-        >
-          {scoreStatsQualified.map((player, index) => {
+          initialSort={{ key: 'avgScore', direction: 'desc' }}
+          rows={scoreStatsQualified.map((player) => {
             const cumulativeScoreStat = cumulativeScoreStatsByPlayerId.get(player.playerId);
 
-            return (
-              <DataRow key={player.playerId}>
-                <RankCell rank={avgScoreRanks[index]} />
-                <td className="px-3 py-2 text-(--cream)">
-                  <PlayerName name={player.name} tier={player.tier} />
-                </td>
-                <td
-                  className="
-                    px-3 py-2 text-right font-semibold text-(--gold)
-                    tabular-nums
-                  "
-                >
-                  {formatAverage(player.avgScore)}
-                </td>
-                <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
-                  {cumulativeScoreStat?.totalScore ?? 0}
-                </td>
-                <td
-                  className="
-                    px-3 py-2 text-right text-(--cream)/70 tabular-nums
-                  "
-                >
-                  {player.games}
-                </td>
-              </DataRow>
-            );
+            return {
+              key: player.playerId,
+              sortValues: {
+                player: player.name,
+                avgScore: player.avgScore,
+                totalScore: cumulativeScoreStat?.totalScore ?? 0,
+                games: player.games,
+              },
+              cells: (
+                <>
+                  <td className="px-3 py-2 text-(--cream)">
+                    <PlayerName name={player.name} tier={player.tier} />
+                  </td>
+                  <td
+                    className="
+                      px-3 py-2 text-right font-semibold text-(--gold)
+                      tabular-nums
+                    "
+                  >
+                    {formatAverage(player.avgScore)}
+                  </td>
+                  <td className="
+                    px-3 py-2 text-right text-(--cream) tabular-nums
+                  ">
+                    {cumulativeScoreStat?.totalScore ?? 0}
+                  </td>
+                  <td
+                    className="
+                      px-3 py-2 text-right text-(--cream)/70 tabular-nums
+                    "
+                  >
+                    {player.games}
+                  </td>
+                </>
+              ),
+            };
           })}
-        </StatsLeaderboardTable>
+        />
       ),
     'median-score':
       medianSorted.length === 0 ? (
@@ -1138,33 +1116,37 @@ export default async function StatsPage() {
       ) : (
         <StatsLeaderboardTable
           columns={[
-            { label: '#', align: 'center', widthClass: 'w-10' },
-            { label: 'Player' },
-            { label: 'Median Score', align: 'right' },
-            { label: 'Games', align: 'right' },
+            { label: '#', align: 'center', widthClass: 'w-10', rank: true },
+            { label: 'Player', sortKey: 'player', sortType: 'string' },
+            { label: 'Median Score', align: 'right', sortKey: 'medianScore' },
+            { label: 'Games', align: 'right', sortKey: 'games' },
           ]}
-        >
-          {medianSorted.map((player, index) => (
-            <DataRow key={player.playerId}>
-              <RankCell rank={medianScoreRanks[index]} />
-              <td className="px-3 py-2 text-(--cream)">
-                <PlayerName name={player.name} tier={player.tier} />
-              </td>
-              <td
-                className="
-                  px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
-                "
-              >
-                {formatAverage(player.medianScore)}
-              </td>
-              <td className="
-                px-3 py-2 text-right text-(--cream)/70 tabular-nums
-              ">
-                {player.games}
-              </td>
-            </DataRow>
-          ))}
-        </StatsLeaderboardTable>
+          initialSort={{ key: 'medianScore', direction: 'desc' }}
+          rows={medianSorted.map((player) => ({
+            key: player.playerId,
+            sortValues: { player: player.name, medianScore: player.medianScore, games: player.games },
+            cells: (
+              <>
+                <td className="px-3 py-2 text-(--cream)">
+                  <PlayerName name={player.name} tier={player.tier} />
+                </td>
+                <td
+                  className="
+                    px-3 py-2 text-right font-semibold text-(--gold)
+                    tabular-nums
+                  "
+                >
+                  {formatAverage(player.medianScore)}
+                </td>
+                <td className="
+                  px-3 py-2 text-right text-(--cream)/70 tabular-nums
+                ">
+                  {player.games}
+                </td>
+              </>
+            ),
+          }))}
+        />
       ),
     'winning-vs-losing-score':
       winningScoreComparison.winnerRows + winningScoreComparison.nonWinnerRows === 0 ? (
@@ -1213,33 +1195,37 @@ export default async function StatsPage() {
       ) : (
         <StatsLeaderboardTable
           columns={[
-            { label: '#', align: 'center', widthClass: 'w-10' },
-            { label: 'Player' },
-            { label: 'Normalized Avg', align: 'right' },
-            { label: 'Games', align: 'right' },
+            { label: '#', align: 'center', widthClass: 'w-10', rank: true },
+            { label: 'Player', sortKey: 'player', sortType: 'string' },
+            { label: 'Normalized Avg', align: 'right', sortKey: 'avgScore' },
+            { label: 'Games', align: 'right', sortKey: 'games' },
           ]}
-        >
-          {normalizedScoreStatsQualified.map((player, index) => (
-            <DataRow key={player.playerId}>
-              <RankCell rank={normalizedAvgScoreRanks[index]} />
-              <td className="px-3 py-2 text-(--cream)">
-                <PlayerName name={player.name} tier={player.tier} />
-              </td>
-              <td
-                className="
-                  px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
-                "
-              >
-                {formatPercent(player.avgScore, 1)}
-              </td>
-              <td className="
-                px-3 py-2 text-right text-(--cream)/70 tabular-nums
-              ">
-                {player.games}
-              </td>
-            </DataRow>
-          ))}
-        </StatsLeaderboardTable>
+          initialSort={{ key: 'avgScore', direction: 'desc' }}
+          rows={normalizedScoreStatsQualified.map((player) => ({
+            key: player.playerId,
+            sortValues: { player: player.name, avgScore: player.avgScore, games: player.games },
+            cells: (
+              <>
+                <td className="px-3 py-2 text-(--cream)">
+                  <PlayerName name={player.name} tier={player.tier} />
+                </td>
+                <td
+                  className="
+                    px-3 py-2 text-right font-semibold text-(--gold)
+                    tabular-nums
+                  "
+                >
+                  {formatPercent(player.avgScore, 1)}
+                </td>
+                <td className="
+                  px-3 py-2 text-right text-(--cream)/70 tabular-nums
+                ">
+                  {player.games}
+                </td>
+              </>
+            ),
+          }))}
+        />
       ),
     'normalized-median-score':
       normalizedMedianSorted.length === 0 ? (
@@ -1250,33 +1236,37 @@ export default async function StatsPage() {
       ) : (
         <StatsLeaderboardTable
           columns={[
-            { label: '#', align: 'center', widthClass: 'w-10' },
-            { label: 'Player' },
-            { label: 'Normalized Median', align: 'right' },
-            { label: 'Games', align: 'right' },
+            { label: '#', align: 'center', widthClass: 'w-10', rank: true },
+            { label: 'Player', sortKey: 'player', sortType: 'string' },
+            { label: 'Normalized Median', align: 'right', sortKey: 'medianScore' },
+            { label: 'Games', align: 'right', sortKey: 'games' },
           ]}
-        >
-          {normalizedMedianSorted.map((player, index) => (
-            <DataRow key={player.playerId}>
-              <RankCell rank={normalizedMedianScoreRanks[index]} />
-              <td className="px-3 py-2 text-(--cream)">
-                <PlayerName name={player.name} tier={player.tier} />
-              </td>
-              <td
-                className="
-                  px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
-                "
-              >
-                {formatPercent(player.medianScore, 1)}
-              </td>
-              <td className="
-                px-3 py-2 text-right text-(--cream)/70 tabular-nums
-              ">
-                {player.games}
-              </td>
-            </DataRow>
-          ))}
-        </StatsLeaderboardTable>
+          initialSort={{ key: 'medianScore', direction: 'desc' }}
+          rows={normalizedMedianSorted.map((player) => ({
+            key: player.playerId,
+            sortValues: { player: player.name, medianScore: player.medianScore, games: player.games },
+            cells: (
+              <>
+                <td className="px-3 py-2 text-(--cream)">
+                  <PlayerName name={player.name} tier={player.tier} />
+                </td>
+                <td
+                  className="
+                    px-3 py-2 text-right font-semibold text-(--gold)
+                    tabular-nums
+                  "
+                >
+                  {formatPercent(player.medianScore, 1)}
+                </td>
+                <td className="
+                  px-3 py-2 text-right text-(--cream)/70 tabular-nums
+                ">
+                  {player.games}
+                </td>
+              </>
+            ),
+          }))}
+        />
       ),
     'winning-score-by-game-size': <WinningScoreByGameSizeChart buckets={winningScoreByGameSize} />,
     'score-histogram': <ScoreHistogramChart buckets={scoreHistogramBuckets} />,
@@ -1292,35 +1282,44 @@ export default async function StatsPage() {
       ) : (
         <StatsLeaderboardTable
           columns={[
-            { label: '#', align: 'center', widthClass: 'w-10' },
-            { label: 'Player' },
-            { label: 'Podium Rate', align: 'right' },
-            { label: 'Podiums', align: 'right' },
-            { label: 'Games', align: 'right' },
+            { label: '#', align: 'center', widthClass: 'w-10', rank: true },
+            { label: 'Player', sortKey: 'player', sortType: 'string' },
+            { label: 'Podium Rate', align: 'right', sortKey: 'podiumRate' },
+            { label: 'Podiums', align: 'right', sortKey: 'podiums' },
+            { label: 'Games', align: 'right', sortKey: 'games' },
           ]}
-        >
-          {podiumRateQualified.map((player, index) => (
-            <DataRow key={player.playerId}>
-              <RankCell rank={podiumRateRanks[index]} />
-              <td className="px-3 py-2 text-(--cream)">
-                <PlayerName name={player.name} tier={player.tier} />
-              </td>
-              <td
-                className="
-                  px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
-                "
-              >
-                {formatPercent(player.podiumRate, 1)}
-              </td>
-              <td className="px-3 py-2 text-right text-(--cream) tabular-nums">{player.podiums}</td>
-              <td className="
-                px-3 py-2 text-right text-(--cream)/70 tabular-nums
-              ">
-                {player.games}
-              </td>
-            </DataRow>
-          ))}
-        </StatsLeaderboardTable>
+          initialSort={{ key: 'podiumRate', direction: 'desc' }}
+          rows={podiumRateQualified.map((player) => ({
+            key: player.playerId,
+            sortValues: {
+              player: player.name,
+              podiumRate: player.podiumRate,
+              podiums: player.podiums,
+              games: player.games,
+            },
+            cells: (
+              <>
+                <td className="px-3 py-2 text-(--cream)">
+                  <PlayerName name={player.name} tier={player.tier} />
+                </td>
+                <td
+                  className="
+                    px-3 py-2 text-right font-semibold text-(--gold)
+                    tabular-nums
+                  "
+                >
+                  {formatPercent(player.podiumRate, 1)}
+                </td>
+                <td className="px-3 py-2 text-right text-(--cream) tabular-nums">{player.podiums}</td>
+                <td className="
+                  px-3 py-2 text-right text-(--cream)/70 tabular-nums
+                ">
+                  {player.games}
+                </td>
+              </>
+            ),
+          }))}
+        />
       ),
     bridesmaid:
       bridesmaidSorted.length === 0 ? (
@@ -1328,69 +1327,88 @@ export default async function StatsPage() {
       ) : (
         <StatsLeaderboardTable
           columns={[
-            { label: '#', align: 'center', widthClass: 'w-10' },
-            { label: 'Player' },
-            { label: '2nd Place', align: 'right' },
-            { label: 'Rate', align: 'right' },
-            { label: 'Games', align: 'right' },
+            { label: '#', align: 'center', widthClass: 'w-10', rank: true },
+            { label: 'Player', sortKey: 'player', sortType: 'string' },
+            { label: '2nd Place', align: 'right', sortKey: 'seconds' },
+            { label: 'Rate', align: 'right', sortKey: 'secondRate' },
+            { label: 'Games', align: 'right', sortKey: 'games' },
           ]}
-        >
-          {bridesmaidSorted.map((player, index) => (
-            <DataRow key={player.playerId}>
-              <RankCell rank={bridesmaidRanks[index]} />
-              <td className="px-3 py-2 text-(--cream)">
-                <PlayerName name={player.name} tier={player.tier} />
-              </td>
-              <td
-                className="
-                  px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
-                "
-              >
-                {player.seconds}
-              </td>
-              <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
-                {formatPercent(player.secondRate, 1)}
-              </td>
-              <td className="
-                px-3 py-2 text-right text-(--cream)/70 tabular-nums
-              ">
-                {player.games}
-              </td>
-            </DataRow>
-          ))}
-        </StatsLeaderboardTable>
+          initialSort={{ key: 'seconds', direction: 'desc' }}
+          rows={bridesmaidSorted.map((player) => ({
+            key: player.playerId,
+            sortValues: {
+              player: player.name,
+              seconds: player.seconds,
+              secondRate: player.secondRate,
+              games: player.games,
+            },
+            cells: (
+              <>
+                <td className="px-3 py-2 text-(--cream)">
+                  <PlayerName name={player.name} tier={player.tier} />
+                </td>
+                <td
+                  className="
+                    px-3 py-2 text-right font-semibold text-(--gold)
+                    tabular-nums
+                  "
+                >
+                  {player.seconds}
+                </td>
+                <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
+                  {formatPercent(player.secondRate, 1)}
+                </td>
+                <td className="
+                  px-3 py-2 text-right text-(--cream)/70 tabular-nums
+                ">
+                  {player.games}
+                </td>
+              </>
+            ),
+          }))}
+        />
       ),
     'expected-vs-actual-wins': expectedVsActualWins.some((player) => player.games > 0) ? (
       <StatsLeaderboardTable
         columns={[
-          { label: '#', align: 'center', widthClass: 'w-10' },
-          { label: 'Player' },
-          { label: 'Delta', align: 'right' },
-          { label: 'Actual Wins', align: 'right' },
-          { label: 'Expected Wins', align: 'right' },
+          { label: '#', align: 'center', widthClass: 'w-10', rank: true },
+          { label: 'Player', sortKey: 'player', sortType: 'string' },
+          { label: 'Delta', align: 'right', sortKey: 'winDelta' },
+          { label: 'Actual Wins', align: 'right', sortKey: 'wins' },
+          { label: 'Expected Wins', align: 'right', sortKey: 'expectedWins' },
         ]}
-      >
-        {expectedVsActualWins.map((player, index) => (
-          <DataRow key={player.playerId}>
-            <RankCell rank={expectedVsActualRanks[index]} />
-            <td className="px-3 py-2 text-(--cream)">
-              <PlayerName name={player.name} tier={player.tier} />
-            </td>
-            <td
-              className={`
-                px-3 py-2 text-right font-semibold tabular-nums
-                ${player.winDelta >= 0 ? 'text-(--gold)' : 'text-(--cream)'}
-              `}
-            >
-              {formatSignedNumber(player.winDelta)}
-            </td>
-            <td className="px-3 py-2 text-right text-(--cream) tabular-nums">{player.wins}</td>
-            <td className="px-3 py-2 text-right text-(--cream)/70 tabular-nums">
-              {formatAverage(player.expectedWins)}
-            </td>
-          </DataRow>
-        ))}
-      </StatsLeaderboardTable>
+        initialSort={{ key: 'winDelta', direction: 'desc' }}
+        rows={expectedVsActualWins.map((player) => ({
+          key: player.playerId,
+          sortValues: {
+            player: player.name,
+            winDelta: player.winDelta,
+            wins: player.wins,
+            expectedWins: player.expectedWins,
+          },
+          cells: (
+            <>
+              <td className="px-3 py-2 text-(--cream)">
+                <PlayerName name={player.name} tier={player.tier} />
+              </td>
+              <td
+                className={`
+                  px-3 py-2 text-right font-semibold tabular-nums
+                  ${player.winDelta >= 0 ? 'text-(--gold)' : 'text-(--cream)'}
+                `}
+              >
+                {formatSignedNumber(player.winDelta)}
+              </td>
+              <td className="px-3 py-2 text-right text-(--cream) tabular-nums">{player.wins}</td>
+              <td className="
+                px-3 py-2 text-right text-(--cream)/70 tabular-nums
+              ">
+                {formatAverage(player.expectedWins)}
+              </td>
+            </>
+          ),
+        }))}
+      />
     ) : (
       <EmptyState>No games recorded yet.</EmptyState>
     ),
@@ -1400,84 +1418,106 @@ export default async function StatsPage() {
       ) : (
         <StatsLeaderboardTable
           columns={[
-            { label: '#', align: 'center', widthClass: 'w-10' },
-            { label: 'Player' },
-            { label: '1st', align: 'right' },
-            { label: '2nd', align: 'right' },
-            { label: '3rd', align: 'right' },
-            { label: 'Last', align: 'right' },
-            { label: 'Games', align: 'right' },
+            { label: '#', align: 'center', widthClass: 'w-10', rank: true },
+            { label: 'Player', sortKey: 'player', sortType: 'string' },
+            { label: '1st', align: 'right', sortKey: 'firstRate' },
+            { label: '2nd', align: 'right', sortKey: 'secondRate' },
+            { label: '3rd', align: 'right', sortKey: 'thirdRate' },
+            { label: 'Last', align: 'right', sortKey: 'lastRate' },
+            { label: 'Games', align: 'right', sortKey: 'games' },
           ]}
-        >
-          {finishBreakdowns.map((player, index) => (
-            <DataRow key={player.playerId}>
-              <RankCell rank={finishBreakdownRanks[index]} />
+          initialSort={{ key: 'firstRate', direction: 'desc' }}
+          rows={finishBreakdowns.map((player) => ({
+            key: player.playerId,
+            sortValues: {
+              player: player.name,
+              firstRate: player.firstRate,
+              secondRate: player.secondRate,
+              thirdRate: player.thirdRate,
+              lastRate: player.lastRate,
+              games: player.games,
+            },
+            cells: (
+              <>
+                <td className="px-3 py-2 text-(--cream)">
+                  <PlayerName name={player.name} tier={player.tier} />
+                </td>
+                <td
+                  className="
+                    px-3 py-2 text-right font-semibold text-(--gold)
+                    tabular-nums
+                  "
+                >
+                  {formatPercent(player.firstRate, 1)}
+                </td>
+                <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
+                  {formatPercent(player.secondRate, 1)}
+                </td>
+                <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
+                  {formatPercent(player.thirdRate, 1)}
+                </td>
+                <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
+                  {formatPercent(player.lastRate, 1)}
+                </td>
+                <td className="
+                  px-3 py-2 text-right text-(--cream)/70 tabular-nums
+                ">
+                  {player.games}
+                </td>
+              </>
+            ),
+          }))}
+        />
+      ),
+    'tier-showdown': tierShowdown.some((row) => row.appearances > 0) ? (
+      <StatsLeaderboardTable
+        columns={[
+          { label: '#', align: 'center', widthClass: 'w-10', rank: true },
+          { label: 'Tier', sortKey: 'tier', sortType: 'string' },
+          { label: 'Win Rate', align: 'right', sortKey: 'winRate' },
+          { label: 'Wins', align: 'right', sortKey: 'wins' },
+          { label: 'Appearances', align: 'right', sortKey: 'appearances' },
+          { label: 'Players', align: 'right', sortKey: 'players' },
+        ]}
+        initialSort={{ key: 'winRate', direction: 'desc' }}
+        rows={tierShowdown.map((row) => ({
+          key: row.tier,
+          sortValues: {
+            tier: formatTierLabel(row.tier),
+            winRate: row.winRate,
+            wins: row.wins,
+            appearances: row.appearances,
+            players: row.players,
+          },
+          cells: (
+            <>
               <td className="px-3 py-2 text-(--cream)">
-                <PlayerName name={player.name} tier={player.tier} />
+                <span
+                  className={
+                    row.tier === PlayerTier.Premium
+                      ? `font-semibold text-(--gold)`
+                      : ''
+                  }
+                >
+                  {formatTierLabel(row.tier)}
+                </span>
               </td>
               <td
                 className="
                   px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
                 "
               >
-                {formatPercent(player.firstRate, 1)}
+                {formatPercent(row.winRate, 1)}
               </td>
-              <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
-                {formatPercent(player.secondRate, 1)}
-              </td>
-              <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
-                {formatPercent(player.thirdRate, 1)}
-              </td>
-              <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
-                {formatPercent(player.lastRate, 1)}
-              </td>
+              <td className="px-3 py-2 text-right text-(--cream) tabular-nums">{row.wins}</td>
+              <td className="px-3 py-2 text-right text-(--cream) tabular-nums">{row.appearances}</td>
               <td className="
                 px-3 py-2 text-right text-(--cream)/70 tabular-nums
-              ">
-                {player.games}
-              </td>
-            </DataRow>
-          ))}
-        </StatsLeaderboardTable>
-      ),
-    'tier-showdown': tierShowdown.some((row) => row.appearances > 0) ? (
-      <StatsLeaderboardTable
-        columns={[
-          { label: '#', align: 'center', widthClass: 'w-10' },
-          { label: 'Tier' },
-          { label: 'Win Rate', align: 'right' },
-          { label: 'Wins', align: 'right' },
-          { label: 'Appearances', align: 'right' },
-          { label: 'Players', align: 'right' },
-        ]}
-      >
-        {tierShowdown.map((row, index) => (
-          <DataRow key={row.tier}>
-            <RankCell rank={tierShowdownRanks[index]} />
-            <td className="px-3 py-2 text-(--cream)">
-              <span
-                className={
-                  row.tier === PlayerTier.Premium
-                    ? `font-semibold text-(--gold)`
-                    : ''
-                }
-              >
-                {formatTierLabel(row.tier)}
-              </span>
-            </td>
-            <td
-              className="
-                px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
-              "
-            >
-              {formatPercent(row.winRate, 1)}
-            </td>
-            <td className="px-3 py-2 text-right text-(--cream) tabular-nums">{row.wins}</td>
-            <td className="px-3 py-2 text-right text-(--cream) tabular-nums">{row.appearances}</td>
-            <td className="px-3 py-2 text-right text-(--cream)/70 tabular-nums">{row.players}</td>
-          </DataRow>
-        ))}
-      </StatsLeaderboardTable>
+              ">{row.players}</td>
+            </>
+          ),
+        }))}
+      />
     ) : (
       <EmptyState>No games recorded yet.</EmptyState>
     ),
@@ -1517,31 +1557,40 @@ export default async function StatsPage() {
     'participation-rate': participationRates.some((player) => player.totalGames > 0) ? (
       <StatsLeaderboardTable
         columns={[
-          { label: '#', align: 'center', widthClass: 'w-10' },
-          { label: 'Player' },
-          { label: 'Participation', align: 'right' },
-          { label: 'Games Played', align: 'right' },
+          { label: '#', align: 'center', widthClass: 'w-10', rank: true },
+          { label: 'Player', sortKey: 'player', sortType: 'string' },
+          { label: 'Participation', align: 'right', sortKey: 'participationRate' },
+          { label: 'Games Played', align: 'right', sortKey: 'gamesPlayed' },
         ]}
-      >
-        {participationRates.map((player, index) => (
-          <DataRow key={player.playerId}>
-            <RankCell rank={participationRateRanks[index]} />
-            <td className="px-3 py-2 text-(--cream)">
-              <PlayerName name={player.name} tier={player.tier} />
-            </td>
-            <td
-              className="
-                px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
-              "
-            >
-              {formatPercent(player.participationRate, 1)}
-            </td>
-            <td className="px-3 py-2 text-right text-(--cream)/70 tabular-nums">
-              {player.gamesPlayed}
-            </td>
-          </DataRow>
-        ))}
-      </StatsLeaderboardTable>
+        initialSort={{ key: 'participationRate', direction: 'desc' }}
+        rows={participationRates.map((player) => ({
+          key: player.playerId,
+          sortValues: {
+            player: player.name,
+            participationRate: player.participationRate,
+            gamesPlayed: player.gamesPlayed,
+          },
+          cells: (
+            <>
+              <td className="px-3 py-2 text-(--cream)">
+                <PlayerName name={player.name} tier={player.tier} />
+              </td>
+              <td
+                className="
+                  px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
+                "
+              >
+                {formatPercent(player.participationRate, 1)}
+              </td>
+              <td className="
+                px-3 py-2 text-right text-(--cream)/70 tabular-nums
+              ">
+                {player.gamesPlayed}
+              </td>
+            </>
+          ),
+        }))}
+      />
     ) : (
       <EmptyState>No games recorded yet.</EmptyState>
     ),
@@ -1582,34 +1631,42 @@ export default async function StatsPage() {
       longestWinStreakRecords.length > 0 ? (
         <StatsLeaderboardTable
           columns={[
-            { label: '#', align: 'center', widthClass: 'w-10' },
-            { label: 'Player' },
-            { label: 'Record', align: 'right' },
-            { label: 'Period', align: 'right' },
+            { label: '#', align: 'center', widthClass: 'w-10', rank: true },
+            { label: 'Player', sortKey: 'player', sortType: 'string' },
+            { label: 'Record', align: 'right', sortKey: 'record' },
+            { label: 'Period', align: 'right', sortKey: 'period', sortType: 'string' },
           ]}
-        >
-          {longestWinStreakRecords.map((player, index) => (
-            <DataRow key={player.playerId}>
-              <RankCell rank={longestWinStreakRanks[index]} />
-              <td className="px-3 py-2 text-(--cream)">
-                <PlayerName name={player.name} tier={player.tier} />
-              </td>
-              <td
-                className="
-                  px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
-                "
-              >
-                {formatWinLabel(player.longestWinStreak)}
-              </td>
-              <td className="px-3 py-2 text-right text-(--cream)/70">
-                <StreakPeriod
-                  startedAt={player.longestWinStreakStartedAt}
-                  endedAt={player.longestWinStreakEndedAt}
-                />
-              </td>
-            </DataRow>
-          ))}
-        </StatsLeaderboardTable>
+          initialSort={{ key: 'record', direction: 'desc' }}
+          rows={longestWinStreakRecords.map((player) => ({
+            key: player.playerId,
+            sortValues: {
+              player: player.name,
+              record: player.longestWinStreak,
+              period: player.longestWinStreakStartedAt,
+            },
+            cells: (
+              <>
+                <td className="px-3 py-2 text-(--cream)">
+                  <PlayerName name={player.name} tier={player.tier} />
+                </td>
+                <td
+                  className="
+                    px-3 py-2 text-right font-semibold text-(--gold)
+                    tabular-nums
+                  "
+                >
+                  {formatWinLabel(player.longestWinStreak)}
+                </td>
+                <td className="px-3 py-2 text-right text-(--cream)/70">
+                  <StreakPeriod
+                    startedAt={player.longestWinStreakStartedAt}
+                    endedAt={player.longestWinStreakEndedAt}
+                  />
+                </td>
+              </>
+            ),
+          }))}
+        />
       ) : (
         <EmptyState>No games recorded yet.</EmptyState>
       ),
@@ -1621,37 +1678,46 @@ export default async function StatsPage() {
       ) : (
         <StatsLeaderboardTable
           columns={[
-            { label: '#', align: 'center', widthClass: 'w-10' },
-            { label: 'Player' },
-            { label: 'Std Dev', align: 'right' },
-            { label: 'Avg', align: 'right' },
-            { label: 'Games', align: 'right' },
+            { label: '#', align: 'center', widthClass: 'w-10', rank: true },
+            { label: 'Player', sortKey: 'player', sortType: 'string' },
+            { label: 'Std Dev', align: 'right', sortKey: 'stdDev', defaultDirection: 'asc' },
+            { label: 'Avg', align: 'right', sortKey: 'averageScore' },
+            { label: 'Games', align: 'right', sortKey: 'games' },
           ]}
-        >
-          {consistencyQualified.map((player, index) => (
-            <DataRow key={player.playerId}>
-              <RankCell rank={consistencyRanks[index]} />
-              <td className="px-3 py-2 text-(--cream)">
-                <PlayerName name={player.name} tier={player.tier} />
-              </td>
-              <td
-                className="
-                  px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
-                "
-              >
-                {formatAverage(player.stdDev)}
-              </td>
-              <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
-                {formatAverage(player.averageScore)}
-              </td>
-              <td className="
-                px-3 py-2 text-right text-(--cream)/70 tabular-nums
-              ">
-                {player.games}
-              </td>
-            </DataRow>
-          ))}
-        </StatsLeaderboardTable>
+          initialSort={{ key: 'stdDev', direction: 'asc' }}
+          rows={consistencyQualified.map((player) => ({
+            key: player.playerId,
+            sortValues: {
+              player: player.name,
+              stdDev: player.stdDev,
+              averageScore: player.averageScore,
+              games: player.games,
+            },
+            cells: (
+              <>
+                <td className="px-3 py-2 text-(--cream)">
+                  <PlayerName name={player.name} tier={player.tier} />
+                </td>
+                <td
+                  className="
+                    px-3 py-2 text-right font-semibold text-(--gold)
+                    tabular-nums
+                  "
+                >
+                  {formatAverage(player.stdDev)}
+                </td>
+                <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
+                  {formatAverage(player.averageScore)}
+                </td>
+                <td className="
+                  px-3 py-2 text-right text-(--cream)/70 tabular-nums
+                ">
+                  {player.games}
+                </td>
+              </>
+            ),
+          }))}
+        />
       ),
     'dominance-index':
       dominanceQualified.length === 0 ? (
@@ -1659,33 +1725,37 @@ export default async function StatsPage() {
       ) : (
         <StatsLeaderboardTable
           columns={[
-            { label: '#', align: 'center', widthClass: 'w-10' },
-            { label: 'Player' },
-            { label: 'Dominance', align: 'right' },
-            { label: 'Games', align: 'right' },
+            { label: '#', align: 'center', widthClass: 'w-10', rank: true },
+            { label: 'Player', sortKey: 'player', sortType: 'string' },
+            { label: 'Dominance', align: 'right', sortKey: 'dominance' },
+            { label: 'Games', align: 'right', sortKey: 'games' },
           ]}
-        >
-          {dominanceQualified.map((player, index) => (
-            <DataRow key={player.playerId}>
-              <RankCell rank={dominanceRanks[index]} />
-              <td className="px-3 py-2 text-(--cream)">
-                <PlayerName name={player.name} tier={player.tier} />
-              </td>
-              <td
-                className="
-                  px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
-                "
-              >
-                {formatPercent(player.dominance, 1)}
-              </td>
-              <td className="
-                px-3 py-2 text-right text-(--cream)/70 tabular-nums
-              ">
-                {player.games}
-              </td>
-            </DataRow>
-          ))}
-        </StatsLeaderboardTable>
+          initialSort={{ key: 'dominance', direction: 'desc' }}
+          rows={dominanceQualified.map((player) => ({
+            key: player.playerId,
+            sortValues: { player: player.name, dominance: player.dominance, games: player.games },
+            cells: (
+              <>
+                <td className="px-3 py-2 text-(--cream)">
+                  <PlayerName name={player.name} tier={player.tier} />
+                </td>
+                <td
+                  className="
+                    px-3 py-2 text-right font-semibold text-(--gold)
+                    tabular-nums
+                  "
+                >
+                  {formatPercent(player.dominance, 1)}
+                </td>
+                <td className="
+                  px-3 py-2 text-right text-(--cream)/70 tabular-nums
+                ">
+                  {player.games}
+                </td>
+              </>
+            ),
+          }))}
+        />
       ),
     'nail-biter-record':
       nailBiterQualified.length === 0 ? (
@@ -1693,37 +1763,46 @@ export default async function StatsPage() {
       ) : (
         <StatsLeaderboardTable
           columns={[
-            { label: '#', align: 'center', widthClass: 'w-10' },
-            { label: 'Player' },
-            { label: 'Win Rate', align: 'right' },
-            { label: 'Nail-Biters', align: 'right' },
-            { label: 'Wins', align: 'right' },
+            { label: '#', align: 'center', widthClass: 'w-10', rank: true },
+            { label: 'Player', sortKey: 'player', sortType: 'string' },
+            { label: 'Win Rate', align: 'right', sortKey: 'winRate' },
+            { label: 'Nail-Biters', align: 'right', sortKey: 'nailBiterGames' },
+            { label: 'Wins', align: 'right', sortKey: 'nailBiterWins' },
           ]}
-        >
-          {nailBiterQualified.map((player, index) => (
-            <DataRow key={player.playerId}>
-              <RankCell rank={nailBiterRanks[index]} />
-              <td className="px-3 py-2 text-(--cream)">
-                <PlayerName name={player.name} tier={player.tier} />
-              </td>
-              <td
-                className="
-                  px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
-                "
-              >
-                {formatPercent(player.winRate, 1)}
-              </td>
-              <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
-                {player.nailBiterGames}
-              </td>
-              <td className="
-                px-3 py-2 text-right text-(--cream)/70 tabular-nums
-              ">
-                {player.nailBiterWins}
-              </td>
-            </DataRow>
-          ))}
-        </StatsLeaderboardTable>
+          initialSort={{ key: 'winRate', direction: 'desc' }}
+          rows={nailBiterQualified.map((player) => ({
+            key: player.playerId,
+            sortValues: {
+              player: player.name,
+              winRate: player.winRate,
+              nailBiterGames: player.nailBiterGames,
+              nailBiterWins: player.nailBiterWins,
+            },
+            cells: (
+              <>
+                <td className="px-3 py-2 text-(--cream)">
+                  <PlayerName name={player.name} tier={player.tier} />
+                </td>
+                <td
+                  className="
+                    px-3 py-2 text-right font-semibold text-(--gold)
+                    tabular-nums
+                  "
+                >
+                  {formatPercent(player.winRate, 1)}
+                </td>
+                <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
+                  {player.nailBiterGames}
+                </td>
+                <td className="
+                  px-3 py-2 text-right text-(--cream)/70 tabular-nums
+                ">
+                  {player.nailBiterWins}
+                </td>
+              </>
+            ),
+          }))}
+        />
       ),
     'clutch-factor':
       clutchQualified.length === 0 ? (
@@ -1731,37 +1810,46 @@ export default async function StatsPage() {
       ) : (
         <StatsLeaderboardTable
           columns={[
-            { label: '#', align: 'center', widthClass: 'w-10' },
-            { label: 'Player' },
-            { label: 'Full Table', align: 'right' },
-            { label: 'Δ vs Small', align: 'right' },
-            { label: 'Games', align: 'right' },
+            { label: '#', align: 'center', widthClass: 'w-10', rank: true },
+            { label: 'Player', sortKey: 'player', sortType: 'string' },
+            { label: 'Full Table', align: 'right', sortKey: 'bigRate' },
+            { label: 'Δ vs Small', align: 'right', sortKey: 'delta' },
+            { label: 'Games', align: 'right', sortKey: 'games' },
           ]}
-        >
-          {clutchQualified.map((player, index) => (
-            <DataRow key={player.playerId}>
-              <RankCell rank={clutchRanks[index]} />
-              <td className="px-3 py-2 text-(--cream)">
-                <PlayerName name={player.name} tier={player.tier} />
-              </td>
-              <td
-                className="
-                  px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
-                "
-              >
-                {formatPercent(player.bigRate ?? 0, 1)}
-              </td>
-              <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
-                {`${formatSignedNumber((player.delta ?? 0) * 100, 1)}%`}
-              </td>
-              <td className="
-                px-3 py-2 text-right text-(--cream)/70 tabular-nums
-              ">
-                {player.smallGames + player.bigGames}
-              </td>
-            </DataRow>
-          ))}
-        </StatsLeaderboardTable>
+          initialSort={{ key: 'bigRate', direction: 'desc' }}
+          rows={clutchQualified.map((player) => ({
+            key: player.playerId,
+            sortValues: {
+              player: player.name,
+              bigRate: player.bigRate,
+              delta: player.delta,
+              games: player.smallGames + player.bigGames,
+            },
+            cells: (
+              <>
+                <td className="px-3 py-2 text-(--cream)">
+                  <PlayerName name={player.name} tier={player.tier} />
+                </td>
+                <td
+                  className="
+                    px-3 py-2 text-right font-semibold text-(--gold)
+                    tabular-nums
+                  "
+                >
+                  {formatPercent(player.bigRate ?? 0, 1)}
+                </td>
+                <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
+                  {`${formatSignedNumber((player.delta ?? 0) * 100, 1)}%`}
+                </td>
+                <td className="
+                  px-3 py-2 text-right text-(--cream)/70 tabular-nums
+                ">
+                  {player.smallGames + player.bigGames}
+                </td>
+              </>
+            ),
+          }))}
+        />
       ),
     kingmaker:
       kingmakerQualified.length === 0 ? (
@@ -1769,31 +1857,39 @@ export default async function StatsPage() {
       ) : (
         <StatsLeaderboardTable
           columns={[
-            { label: '#', align: 'center', widthClass: 'w-10' },
-            { label: 'Player' },
-            { label: 'Benefits' },
-            { label: 'Over Baseline', align: 'right' },
+            { label: '#', align: 'center', widthClass: 'w-10', rank: true },
+            { label: 'Player', sortKey: 'player', sortType: 'string' },
+            { label: 'Benefits', sortKey: 'benefits', sortType: 'string' },
+            { label: 'Over Baseline', align: 'right', sortKey: 'edge' },
           ]}
-        >
-          {kingmakerQualified.map((player, index) => (
-            <DataRow key={player.playerId}>
-              <RankCell rank={kingmakerRanks[index]} />
-              <td className="px-3 py-2 text-(--cream)">
-                <PlayerName name={player.name} tier={player.tier} />
-              </td>
-              <td className="px-3 py-2 text-(--cream)">
-                <PlayerName name={player.beneficiary.name} tier={player.beneficiary.tier} />
-              </td>
-              <td
-                className="
-                  px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
-                "
-              >
-                {`${formatSignedNumber(player.edge * 100, 1)}%`}
-              </td>
-            </DataRow>
-          ))}
-        </StatsLeaderboardTable>
+          initialSort={{ key: 'edge', direction: 'desc' }}
+          rows={kingmakerQualified.map((player) => ({
+            key: player.playerId,
+            sortValues: {
+              player: player.name,
+              benefits: player.beneficiary.name,
+              edge: player.edge,
+            },
+            cells: (
+              <>
+                <td className="px-3 py-2 text-(--cream)">
+                  <PlayerName name={player.name} tier={player.tier} />
+                </td>
+                <td className="px-3 py-2 text-(--cream)">
+                  <PlayerName name={player.beneficiary.name} tier={player.beneficiary.tier} />
+                </td>
+                <td
+                  className="
+                    px-3 py-2 text-right font-semibold text-(--gold)
+                    tabular-nums
+                  "
+                >
+                  {`${formatSignedNumber(player.edge * 100, 1)}%`}
+                </td>
+              </>
+            ),
+          }))}
+        />
       ),
   };
 

@@ -6,27 +6,13 @@ import { buildPlayerOfMonthHistoryRecords } from '@/lib/activity-local-time'
 import { PlayerTier } from '@/lib/player-tier'
 import type { PlayerCurrentWinStreak, PlayerWinEvent } from '@/lib/stats'
 import { localTimeLoadingMessage, useResolvedTimeZone } from '@/lib/use-resolved-time-zone'
-import { StatsLeaderboardTable } from './StatsLeaderboardTable'
+import { StatsLeaderboardTable, type StatsTableRow } from './StatsLeaderboardTable'
 
 interface Props {
   players: PlayerCurrentWinStreak[]
   winEvents: PlayerWinEvent[]
   timeZone?: string
   now?: Date
-}
-
-function DataRow({ children }: { children: ReactNode }) {
-  return (
-    <tr
-      className="
-        border-b border-(--gold)/10 bg-(--navy-900)/35 transition-colors
-        last:border-0
-        hover:bg-(--navy-900)/70
-      "
-    >
-      {children}
-    </tr>
-  )
 }
 
 export function PlayerOfMonthHistoryTable({
@@ -46,66 +32,61 @@ export function PlayerOfMonthHistoryTable({
     })
   }, [players, winEvents, resolvedTimeZone, now])
 
-  let content: ReactNode
+  let rows: StatsTableRow[] = []
+  let emptyState: ReactNode = null
 
   if (!records) {
-    content = (
-      <tr>
-        <td colSpan={3} className="
-          px-3 py-8 text-center text-sm text-(--cream)/50
-        ">
-          {localTimeLoadingMessage}
-        </td>
-      </tr>
-    )
+    emptyState = localTimeLoadingMessage
   } else if (records.length === 0) {
-    content = (
-      <tr>
-        <td colSpan={3} className="
-          px-3 py-8 text-center text-sm text-(--cream)/50
-        ">
-          No completed months yet.
-        </td>
-      </tr>
-    )
+    emptyState = 'No completed months yet.'
   } else {
-    content = records.map((record) => (
-      <DataRow key={record.periodStart}>
-        <td className="px-3 py-2 text-(--cream)/70">{record.periodLabel}</td>
-        <td className="px-3 py-2 text-(--cream)">
-          {record.winners.map((winner, idx) => (
-            <span key={winner.playerId}>
-              {idx > 0 && <span className="text-(--cream)/50"> &amp; </span>}
-              <span
-                className={
-                  winner.tier === PlayerTier.Premium ? `
-                    font-semibold text-(--gold)
-                  ` : ''
-                }
-              >
-                {winner.name}
+    rows = records.map((record) => ({
+      key: record.periodStart,
+      sortValues: {
+        month: record.periodStart,
+        player: record.winners.map((winner) => winner.name).join(' & '),
+        wins: record.wins,
+      },
+      cells: (
+        <>
+          <td className="px-3 py-2 text-(--cream)/70">{record.periodLabel}</td>
+          <td className="px-3 py-2 text-(--cream)">
+            {record.winners.map((winner, idx) => (
+              <span key={winner.playerId}>
+                {idx > 0 && <span className="text-(--cream)/50"> &amp; </span>}
+                <span
+                  className={
+                    winner.tier === PlayerTier.Premium ? `
+                      font-semibold text-(--gold)
+                    ` : ''
+                  }
+                >
+                  {winner.name}
+                </span>
               </span>
-            </span>
-          ))}
-        </td>
-        <td className="
-          px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
-        ">
-          {record.wins}
-        </td>
-      </DataRow>
-    ))
+            ))}
+          </td>
+          <td className="
+            px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
+          ">
+            {record.wins}
+          </td>
+        </>
+      ),
+    }))
   }
 
   return (
     <StatsLeaderboardTable
       columns={[
-        { label: 'Month' },
-        { label: 'Player' },
-        { label: 'Wins', align: 'right' },
+        { label: 'Month', sortKey: 'month', sortType: 'string', defaultDirection: 'desc' },
+        { label: 'Player', sortKey: 'player', sortType: 'string' },
+        { label: 'Wins', align: 'right', sortKey: 'wins' },
       ]}
-    >
-      {content}
-    </StatsLeaderboardTable>
+      rows={rows}
+      initialSort={{ key: 'month', direction: 'desc' }}
+      rowVariant="subtle"
+      emptyState={emptyState}
+    />
   )
 }

@@ -1,4 +1,7 @@
-export function rankWithTies<T>(items: T[], value: (item: T) => number): number[] {
+export function rankWithTies<T>(
+  items: T[],
+  value: (item: T) => number | string | null,
+): number[] {
   const ranks: number[] = []
 
   items.forEach((item, index) => {
