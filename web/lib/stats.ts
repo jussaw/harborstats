@@ -1435,7 +1435,7 @@ export async function getRecentActivitySummary(): Promise<RecentActivitySummary>
   };
 }
 
-interface GameOutcomeRow {
+export interface GameOutcomeRow {
   gameId: number;
   playedAt: Date;
   playerId: number;
@@ -2207,4 +2207,399 @@ export async function getPlayerParticipationRates(): Promise<PlayerParticipation
       participationRate: totalGames > 0 ? row.gamesPlayed / totalGames : 0,
     }))
     .sort((a, b) => b.participationRate - a.participationRate || a.name.localeCompare(b.name));
+}
+
+// ---------------------------------------------------------------------------
+// Phase 1 derived stat cards: thin async loaders + pure compute engines.
+// Loaders only fetch rows; all math lives in the exported compute functions so
+// they can be unit-tested in isolation (see tests/unit/lib/stats-*.test.ts).
+// ---------------------------------------------------------------------------
+
+export interface GameParticipantRow extends PlayerIdentity {
+  gameId: number;
+  score: number;
+  isWinner: boolean;
+}
+
+async function getGameParticipantRows(): Promise<GameParticipantRow[]> {
+  const rows = await db
+    .select({
+      gameId: gamePlayers.gameId,
+      playerId: players.id,
+      name: players.name,
+      tier: players.tier,
+      score: gamePlayers.score,
+      isWinner: gamePlayers.isWinner,
+    })
+    .from(gamePlayers)
+    .innerJoin(players, eq(players.id, gamePlayers.playerId));
+
+  return rows.map((row) => ({
+    gameId: row.gameId,
+    playerId: row.playerId,
+    name: row.name,
+    tier: parsePlayerTier(row.tier),
+    score: row.score,
+    isWinner: row.isWinner,
+  }));
+}
+
+function groupParticipantsByGameId(
+  rows: GameParticipantRow[],
+): Map<number, GameParticipantRow[]> {
+  const byGameId = new Map<number, GameParticipantRow[]>();
+  rows.forEach((row) => {
+    const existing = byGameId.get(row.gameId) ?? [];
+    existing.push(row);
+    byGameId.set(row.gameId, existing);
+  });
+  return byGameId;
+}
+
+export interface PlayerConsistencyRating extends PlayerIdentity {
+  games: number;
+  averageScore: number;
+  stdDev: number;
+}
+
+// Sample standard deviation of score per player; ascending stdDev = most consistent.
+export function computeConsistencyRatings(
+  rows: GameParticipantRow[],
+): PlayerConsistencyRating[] {
+  const byPlayer = new Map<number, PlayerIdentity & { scores: number[] }>();
+  rows.forEach((row) => {
+    const existing = byPlayer.get(row.playerId) ?? {
+      playerId: row.playerId,
+      name: row.name,
+      tier: row.tier,
+      scores: [],
+    };
+    existing.scores.push(row.score);
+    byPlayer.set(row.playerId, existing);
+  });
+
+  return [...byPlayer.values()]
+    .map((player) => {
+      const gameCount = player.scores.length;
+      const mean =
+        gameCount > 0 ? player.scores.reduce((sum, score) => sum + score, 0) / gameCount : 0;
+      // STDDEV_SAMP: divide by (n - 1); a single game has no spread.
+      const variance =
+        gameCount > 1
+          ? player.scores.reduce((sum, score) => sum + (score - mean) ** 2, 0) / (gameCount - 1)
+          : 0;
+      return {
+        playerId: player.playerId,
+        name: player.name,
+        tier: player.tier,
+        games: gameCount,
+        averageScore: round1(mean),
+        stdDev: round1(Math.sqrt(variance)),
+      };
+    })
+    .sort(
+      (a, b) => a.stdDev - b.stdDev || b.games - a.games || comparePlayersByTierAndName(a, b),
+    );
+}
+
+export async function getPlayerConsistencyRatings(): Promise<PlayerConsistencyRating[]> {
+  return computeConsistencyRatings(await getGameParticipantRows());
+}
+
+export interface PlayerDominanceIndex extends PlayerIdentity {
+  games: number;
+  dominance: number;
+}
+
+// Average of (player score / total scores that game) per player.
+export function computeDominanceIndex(rows: GameParticipantRow[]): PlayerDominanceIndex[] {
+  const byPlayer = new Map<
+    number,
+    PlayerIdentity & { shareTotal: number; games: number }
+  >();
+
+  groupParticipantsByGameId(rows).forEach((participants) => {
+    const gameTotal = participants.reduce((sum, participant) => sum + participant.score, 0);
+    if (gameTotal <= 0) {
+      return;
+    }
+    participants.forEach((participant) => {
+      const existing = byPlayer.get(participant.playerId) ?? {
+        playerId: participant.playerId,
+        name: participant.name,
+        tier: participant.tier,
+        shareTotal: 0,
+        games: 0,
+      };
+      existing.shareTotal += participant.score / gameTotal;
+      existing.games += 1;
+      byPlayer.set(participant.playerId, existing);
+    });
+  });
+
+  return [...byPlayer.values()]
+    .map((player) => ({
+      playerId: player.playerId,
+      name: player.name,
+      tier: player.tier,
+      games: player.games,
+      dominance: player.games > 0 ? round3(player.shareTotal / player.games) : 0,
+    }))
+    .sort(
+      (a, b) => b.dominance - a.dominance || b.games - a.games || comparePlayersByTierAndName(a, b),
+    );
+}
+
+export async function getPlayerDominanceIndex(): Promise<PlayerDominanceIndex[]> {
+  return computeDominanceIndex(await getGameParticipantRows());
+}
+
+const NAIL_BITER_MARGIN = 2;
+
+export interface PlayerNailBiterRecord extends PlayerIdentity {
+  nailBiterGames: number;
+  nailBiterWins: number;
+  winRate: number;
+}
+
+// Per-player appearances and win rate in games decided by <= 2 points.
+export function computeNailBiterRecords(rows: GameParticipantRow[]): PlayerNailBiterRecord[] {
+  const byPlayer = new Map<
+    number,
+    PlayerIdentity & { nailBiterGames: number; nailBiterWins: number }
+  >();
+
+  groupParticipantsByGameId(rows).forEach((participants) => {
+    const winners = participants.filter((participant) => participant.isWinner);
+    const nonWinners = participants.filter((participant) => !participant.isWinner);
+    if (winners.length === 0 || nonWinners.length === 0) {
+      return;
+    }
+
+    const winnerScore = Math.max(...winners.map((winner) => winner.score));
+    const runnerUpScore = Math.max(...nonWinners.map((participant) => participant.score));
+    if (winnerScore < runnerUpScore || winnerScore - runnerUpScore > NAIL_BITER_MARGIN) {
+      return;
+    }
+
+    participants.forEach((participant) => {
+      const existing = byPlayer.get(participant.playerId) ?? {
+        playerId: participant.playerId,
+        name: participant.name,
+        tier: participant.tier,
+        nailBiterGames: 0,
+        nailBiterWins: 0,
+      };
+      existing.nailBiterGames += 1;
+      if (participant.isWinner) {
+        existing.nailBiterWins += 1;
+      }
+      byPlayer.set(participant.playerId, existing);
+    });
+  });
+
+  return [...byPlayer.values()]
+    .map((player) => ({
+      playerId: player.playerId,
+      name: player.name,
+      tier: player.tier,
+      nailBiterGames: player.nailBiterGames,
+      nailBiterWins: player.nailBiterWins,
+      winRate: player.nailBiterGames > 0 ? player.nailBiterWins / player.nailBiterGames : 0,
+    }))
+    .sort(
+      (a, b) =>
+        b.winRate - a.winRate ||
+        b.nailBiterGames - a.nailBiterGames ||
+        comparePlayersByTierAndName(a, b),
+    );
+}
+
+export async function getPlayerNailBiterRecords(): Promise<PlayerNailBiterRecord[]> {
+  return computeNailBiterRecords(await getGameParticipantRows());
+}
+
+const SMALL_TABLE_SIZES = [3, 4];
+const BIG_TABLE_SIZES = [5, 6];
+
+export interface PlayerClutchFactor extends PlayerIdentity {
+  smallGames: number;
+  smallWins: number;
+  smallRate: number | null;
+  bigGames: number;
+  bigWins: number;
+  bigRate: number | null;
+  delta: number | null;
+}
+
+// Win rate at full tables (5-6P) vs small tables (3-4P), and the delta between them.
+export function computeClutchFactor(buckets: PlayerWinRateByGameSize[]): PlayerClutchFactor[] {
+  const byPlayer = new Map<
+    number,
+    PlayerIdentity & { smallGames: number; smallWins: number; bigGames: number; bigWins: number }
+  >();
+
+  buckets.forEach((bucket) => {
+    const isSmall = SMALL_TABLE_SIZES.includes(bucket.playerCount);
+    const isBig = BIG_TABLE_SIZES.includes(bucket.playerCount);
+    if (!isSmall && !isBig) {
+      return;
+    }
+    const existing = byPlayer.get(bucket.playerId) ?? {
+      playerId: bucket.playerId,
+      name: bucket.name,
+      tier: bucket.tier,
+      smallGames: 0,
+      smallWins: 0,
+      bigGames: 0,
+      bigWins: 0,
+    };
+    if (isSmall) {
+      existing.smallGames += bucket.games;
+      existing.smallWins += bucket.wins;
+    } else {
+      existing.bigGames += bucket.games;
+      existing.bigWins += bucket.wins;
+    }
+    byPlayer.set(bucket.playerId, existing);
+  });
+
+  return [...byPlayer.values()]
+    .map((player) => {
+      const smallRate = player.smallGames > 0 ? player.smallWins / player.smallGames : null;
+      const bigRate = player.bigGames > 0 ? player.bigWins / player.bigGames : null;
+      const delta = smallRate !== null && bigRate !== null ? bigRate - smallRate : null;
+      return {
+        playerId: player.playerId,
+        name: player.name,
+        tier: player.tier,
+        smallGames: player.smallGames,
+        smallWins: player.smallWins,
+        smallRate,
+        bigGames: player.bigGames,
+        bigWins: player.bigWins,
+        bigRate,
+        delta,
+      };
+    })
+    .sort((a, b) => {
+      const bigRateDelta = (b.bigRate ?? -1) - (a.bigRate ?? -1);
+      const deltaDelta = (b.delta ?? Number.NEGATIVE_INFINITY) - (a.delta ?? Number.NEGATIVE_INFINITY);
+      return bigRateDelta || deltaDelta || comparePlayersByTierAndName(a, b);
+    });
+}
+
+export async function getPlayerClutchFactors(): Promise<PlayerClutchFactor[]> {
+  return computeClutchFactor(await getPlayerWinRateByGameSize());
+}
+
+const KINGMAKER_MIN_SHARED_GAMES = 3;
+
+export interface PlayerKingmaker extends PlayerIdentity {
+  beneficiary: PlayerIdentity;
+  sharedLossGames: number;
+  beneficiaryWins: number;
+  baselineRate: number;
+  actualRate: number;
+  edge: number;
+}
+
+// When a player loses, which opponent wins most often above the 1/(N-1) baseline.
+export function computeKingmakers(rows: GameOutcomeRow[]): PlayerKingmaker[] {
+  const participantsByGameId = new Map<number, GameOutcomeRow[]>();
+  rows.forEach((row) => {
+    const existing = participantsByGameId.get(row.gameId) ?? [];
+    existing.push(row);
+    participantsByGameId.set(row.gameId, existing);
+  });
+
+  interface OpponentAccumulator {
+    beneficiary: PlayerIdentity;
+    sharedGames: number;
+    beneficiaryWins: number;
+    expectedWins: number;
+  }
+  const byLoser = new Map<
+    number,
+    { identity: PlayerIdentity; opponents: Map<number, OpponentAccumulator> }
+  >();
+
+  participantsByGameId.forEach((participants) => {
+    const winners = participants.filter((participant) => participant.isWinner);
+    if (winners.length !== 1 || participants.length < 2) {
+      return;
+    }
+    const winner = winners[0];
+    const baseline = 1 / (participants.length - 1);
+
+    participants
+      .filter((participant) => !participant.isWinner)
+      .forEach((loser) => {
+        const loserEntry = byLoser.get(loser.playerId) ?? {
+          identity: { playerId: loser.playerId, name: loser.name, tier: loser.tier },
+          opponents: new Map<number, OpponentAccumulator>(),
+        };
+        participants.forEach((other) => {
+          if (other.playerId === loser.playerId) {
+            return;
+          }
+          const accumulator = loserEntry.opponents.get(other.playerId) ?? {
+            beneficiary: { playerId: other.playerId, name: other.name, tier: other.tier },
+            sharedGames: 0,
+            beneficiaryWins: 0,
+            expectedWins: 0,
+          };
+          accumulator.sharedGames += 1;
+          accumulator.expectedWins += baseline;
+          if (other.playerId === winner.playerId) {
+            accumulator.beneficiaryWins += 1;
+          }
+          loserEntry.opponents.set(other.playerId, accumulator);
+        });
+        byLoser.set(loser.playerId, loserEntry);
+      });
+  });
+
+  const results: PlayerKingmaker[] = [];
+  byLoser.forEach((entry) => {
+    const candidates: PlayerKingmaker[] = [];
+    entry.opponents.forEach((accumulator) => {
+      if (accumulator.sharedGames < KINGMAKER_MIN_SHARED_GAMES) {
+        return;
+      }
+      const actualRate = accumulator.beneficiaryWins / accumulator.sharedGames;
+      const baselineRate = accumulator.expectedWins / accumulator.sharedGames;
+      candidates.push({
+        playerId: entry.identity.playerId,
+        name: entry.identity.name,
+        tier: entry.identity.tier,
+        beneficiary: accumulator.beneficiary,
+        sharedLossGames: accumulator.sharedGames,
+        beneficiaryWins: accumulator.beneficiaryWins,
+        baselineRate: round3(baselineRate),
+        actualRate: round3(actualRate),
+        edge: round3(actualRate - baselineRate),
+      });
+    });
+    if (candidates.length === 0) {
+      return;
+    }
+    candidates.sort(
+      (a, b) =>
+        b.edge - a.edge ||
+        b.sharedLossGames - a.sharedLossGames ||
+        comparePlayersByTierAndName(a.beneficiary, b.beneficiary),
+    );
+    results.push(candidates[0]);
+  });
+
+  return results.sort(
+    (a, b) =>
+      b.edge - a.edge || b.sharedLossGames - a.sharedLossGames || comparePlayersByTierAndName(a, b),
+  );
+}
+
+export async function getPlayerKingmakers(): Promise<PlayerKingmaker[]> {
+  const { outcomeRows } = await getOrderedGameOutcomeData();
+  return computeKingmakers(outcomeRows);
 }
