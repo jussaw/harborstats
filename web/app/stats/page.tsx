@@ -28,9 +28,14 @@ import { getSettings } from '@/lib/settings';
 import {
   getGameActivityTimestamps,
   getPlayerAttendanceEvents,
+  getPlayerClutchFactors,
+  getPlayerConsistencyRatings,
   getPlayerCumulativeScoreStats,
   getPlayerCurrentWinStreaks,
+  getPlayerDominanceIndex,
   getPlayerHeadToHeadRecords,
+  getPlayerKingmakers,
+  getPlayerNailBiterRecords,
   getPerPlayerScoreDistributions,
   getPlayerExpectedVsActualWins,
   getPlayerFinishBreakdowns,
@@ -404,6 +409,11 @@ export default async function StatsPage() {
     winningScoreByGameSize,
     headToHeadRecords,
     rivalryAggregates,
+    consistencyRatings,
+    dominanceIndex,
+    nailBiterRecords,
+    clutchFactors,
+    kingmakers,
   ] = await Promise.all([
     getPlayerWinRates(),
     getSettings(),
@@ -427,6 +437,11 @@ export default async function StatsPage() {
     getWinningScoreByGameSize(),
     getPlayerHeadToHeadRecords(),
     getRivalryAggregates(),
+    getPlayerConsistencyRatings(),
+    getPlayerDominanceIndex(),
+    getPlayerNailBiterRecords(),
+    getPlayerClutchFactors(),
+    getPlayerKingmakers(),
   ]);
 
   const winRateQualified = winRates
@@ -536,6 +551,38 @@ export default async function StatsPage() {
   );
   const bridesmaidRanks = rankWithTies(bridesmaidSorted, (player) => player.seconds);
 
+  const { statCardMinGames } = settings;
+  const statCardBadge =
+    statCardMinGames > 0
+      ? `Min ${statCardMinGames} game${statCardMinGames === 1 ? '' : 's'}`
+      : undefined;
+  const gamesByPlayerId = new Map(winRates.map((player) => [player.playerId, player.games]));
+  const meetsStatCardGate = (playerId: number) =>
+    (gamesByPlayerId.get(playerId) ?? 0) >= statCardMinGames;
+
+  const consistencyQualified = consistencyRatings.filter((player) =>
+    meetsStatCardGate(player.playerId),
+  );
+  const dominanceQualified = dominanceIndex.filter((player) => meetsStatCardGate(player.playerId));
+  const clutchQualified = clutchFactors.filter(
+    (player) =>
+      player.delta !== null && player.smallGames + player.bigGames >= statCardMinGames,
+  );
+  const nailBiterQualified = nailBiterRecords.filter((player) =>
+    meetsStatCardGate(player.playerId),
+  );
+  const kingmakerQualified = kingmakers.filter((player) => meetsStatCardGate(player.playerId));
+  const statCardEmptyMessage =
+    statCardMinGames > 0
+      ? `No players have played ${statCardMinGames}+ game${statCardMinGames === 1 ? '' : 's'} yet.`
+      : 'No games recorded yet.';
+
+  const consistencyRanks = rankWithTies(consistencyQualified, (player) => player.stdDev);
+  const dominanceRanks = rankWithTies(dominanceQualified, (player) => player.dominance);
+  const clutchRanks = rankWithTies(clutchQualified, (player) => player.bigRate ?? -1);
+  const nailBiterRanks = rankWithTies(nailBiterQualified, (player) => player.winRate);
+  const kingmakerRanks = rankWithTies(kingmakerQualified, (player) => player.edge);
+
   const statsCards: StatsCardMeta[] = [
     {
       id: 'total-wins',
@@ -639,6 +686,22 @@ export default async function StatsPage() {
       section: 'scoring',
     },
     {
+      id: 'consistency-rating',
+      title: 'Consistency Rating',
+      description: 'Players ranked by the smallest score standard deviation — steadiest first.',
+      badge: statCardBadge,
+      span: 'single',
+      section: 'scoring',
+    },
+    {
+      id: 'dominance-index',
+      title: 'Dominance Index',
+      description: 'Average share of each game’s total points, showing who commands the board.',
+      badge: statCardBadge,
+      span: 'single',
+      section: 'scoring',
+    },
+    {
       id: 'podium-rate',
       title: 'Podium Rate',
       description: 'How often each player finishes first or second.',
@@ -682,6 +745,22 @@ export default async function StatsPage() {
       section: 'finishes',
     },
     {
+      id: 'nail-biter-record',
+      title: 'Nail-Biter Record',
+      description: 'How players fare in tight games decided by two points or fewer.',
+      badge: statCardBadge,
+      span: 'single',
+      section: 'finishes',
+    },
+    {
+      id: 'clutch-factor',
+      title: 'Clutch Factor',
+      description: 'Win rate at full tables (5–6P) versus small tables (3–4P), and the swing between them.',
+      badge: statCardBadge,
+      span: 'single',
+      section: 'finishes',
+    },
+    {
       id: 'closest-rivalry',
       title: 'Closest Rivalry',
       description: 'The most evenly matched qualifying pair by decided head-to-head rate.',
@@ -710,6 +789,15 @@ export default async function StatsPage() {
         'Directional records against every opponent, including how often each player outscored them.',
       badge: undefined,
       span: 'full',
+      section: 'head-to-head',
+    },
+    {
+      id: 'kingmaker',
+      title: 'Kingmaker',
+      description:
+        'When each player loses, the opponent who wins most above the 1/(N−1) baseline — their unwitting benefactor.',
+      badge: statCardBadge,
+      span: 'single',
       section: 'head-to-head',
     },
     {
@@ -1527,6 +1615,186 @@ export default async function StatsPage() {
       ),
     'longest-gap-between-games': <LongestGapCard playedAtIsos={gameActivityTimestamps} />,
     'busiest-records': <BusiestRecordsCard playedAtIsos={gameActivityTimestamps} />,
+    'consistency-rating':
+      consistencyQualified.length === 0 ? (
+        <EmptyState>{statCardEmptyMessage}</EmptyState>
+      ) : (
+        <StatsLeaderboardTable
+          columns={[
+            { label: '#', align: 'center', widthClass: 'w-10' },
+            { label: 'Player' },
+            { label: 'Std Dev', align: 'right' },
+            { label: 'Avg', align: 'right' },
+            { label: 'Games', align: 'right' },
+          ]}
+        >
+          {consistencyQualified.map((player, index) => (
+            <DataRow key={player.playerId}>
+              <RankCell rank={consistencyRanks[index]} />
+              <td className="px-3 py-2 text-(--cream)">
+                <PlayerName name={player.name} tier={player.tier} />
+              </td>
+              <td
+                className="
+                  px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
+                "
+              >
+                {formatAverage(player.stdDev)}
+              </td>
+              <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
+                {formatAverage(player.averageScore)}
+              </td>
+              <td className="
+                px-3 py-2 text-right text-(--cream)/70 tabular-nums
+              ">
+                {player.games}
+              </td>
+            </DataRow>
+          ))}
+        </StatsLeaderboardTable>
+      ),
+    'dominance-index':
+      dominanceQualified.length === 0 ? (
+        <EmptyState>{statCardEmptyMessage}</EmptyState>
+      ) : (
+        <StatsLeaderboardTable
+          columns={[
+            { label: '#', align: 'center', widthClass: 'w-10' },
+            { label: 'Player' },
+            { label: 'Dominance', align: 'right' },
+            { label: 'Games', align: 'right' },
+          ]}
+        >
+          {dominanceQualified.map((player, index) => (
+            <DataRow key={player.playerId}>
+              <RankCell rank={dominanceRanks[index]} />
+              <td className="px-3 py-2 text-(--cream)">
+                <PlayerName name={player.name} tier={player.tier} />
+              </td>
+              <td
+                className="
+                  px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
+                "
+              >
+                {formatPercent(player.dominance, 1)}
+              </td>
+              <td className="
+                px-3 py-2 text-right text-(--cream)/70 tabular-nums
+              ">
+                {player.games}
+              </td>
+            </DataRow>
+          ))}
+        </StatsLeaderboardTable>
+      ),
+    'nail-biter-record':
+      nailBiterQualified.length === 0 ? (
+        <EmptyState>{statCardEmptyMessage}</EmptyState>
+      ) : (
+        <StatsLeaderboardTable
+          columns={[
+            { label: '#', align: 'center', widthClass: 'w-10' },
+            { label: 'Player' },
+            { label: 'Win Rate', align: 'right' },
+            { label: 'Nail-Biters', align: 'right' },
+            { label: 'Wins', align: 'right' },
+          ]}
+        >
+          {nailBiterQualified.map((player, index) => (
+            <DataRow key={player.playerId}>
+              <RankCell rank={nailBiterRanks[index]} />
+              <td className="px-3 py-2 text-(--cream)">
+                <PlayerName name={player.name} tier={player.tier} />
+              </td>
+              <td
+                className="
+                  px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
+                "
+              >
+                {formatPercent(player.winRate, 1)}
+              </td>
+              <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
+                {player.nailBiterGames}
+              </td>
+              <td className="
+                px-3 py-2 text-right text-(--cream)/70 tabular-nums
+              ">
+                {player.nailBiterWins}
+              </td>
+            </DataRow>
+          ))}
+        </StatsLeaderboardTable>
+      ),
+    'clutch-factor':
+      clutchQualified.length === 0 ? (
+        <EmptyState>{statCardEmptyMessage}</EmptyState>
+      ) : (
+        <StatsLeaderboardTable
+          columns={[
+            { label: '#', align: 'center', widthClass: 'w-10' },
+            { label: 'Player' },
+            { label: 'Full Table', align: 'right' },
+            { label: 'Δ vs Small', align: 'right' },
+            { label: 'Games', align: 'right' },
+          ]}
+        >
+          {clutchQualified.map((player, index) => (
+            <DataRow key={player.playerId}>
+              <RankCell rank={clutchRanks[index]} />
+              <td className="px-3 py-2 text-(--cream)">
+                <PlayerName name={player.name} tier={player.tier} />
+              </td>
+              <td
+                className="
+                  px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
+                "
+              >
+                {formatPercent(player.bigRate ?? 0, 1)}
+              </td>
+              <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
+                {`${formatSignedNumber((player.delta ?? 0) * 100, 1)}%`}
+              </td>
+              <td className="
+                px-3 py-2 text-right text-(--cream)/70 tabular-nums
+              ">
+                {player.smallGames + player.bigGames}
+              </td>
+            </DataRow>
+          ))}
+        </StatsLeaderboardTable>
+      ),
+    kingmaker:
+      kingmakerQualified.length === 0 ? (
+        <EmptyState>{statCardEmptyMessage}</EmptyState>
+      ) : (
+        <StatsLeaderboardTable
+          columns={[
+            { label: '#', align: 'center', widthClass: 'w-10' },
+            { label: 'Player' },
+            { label: 'Benefits' },
+            { label: 'Over Baseline', align: 'right' },
+          ]}
+        >
+          {kingmakerQualified.map((player, index) => (
+            <DataRow key={player.playerId}>
+              <RankCell rank={kingmakerRanks[index]} />
+              <td className="px-3 py-2 text-(--cream)">
+                <PlayerName name={player.name} tier={player.tier} />
+              </td>
+              <td className="px-3 py-2 text-(--cream)">
+                <PlayerName name={player.beneficiary.name} tier={player.beneficiary.tier} />
+              </td>
+              <td
+                className="
+                  px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
+                "
+              >
+                {`${formatSignedNumber(player.edge * 100, 1)}%`}
+              </td>
+            </DataRow>
+          ))}
+        </StatsLeaderboardTable>
+      ),
   };
 
   return (
