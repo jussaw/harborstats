@@ -43,8 +43,9 @@ export async function listPlayersWithUsage(): Promise<PlayerWithUsage[]> {
   return result.map((player) => ({ ...player, tier: parsePlayerTier(player.tier) }))
 }
 
-export async function createPlayer(name: string, tier: PlayerTier): Promise<void> {
-  await db.insert(players).values({ name, tier })
+export async function createPlayer(name: string, tier: PlayerTier): Promise<number> {
+  const [{ id }] = await db.insert(players).values({ name, tier }).returning({ id: players.id })
+  return id
 }
 
 export async function renamePlayer(id: number, name: string): Promise<void> {

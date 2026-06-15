@@ -20,6 +20,8 @@ This repository has multiple areas with different responsibilities. Start at the
 - Run app commands from `web/`, not from the repo root.
 - Keep deployment and infrastructure changes scoped to `devops/` unless the task explicitly spans both app and ops.
 - Prefer small, targeted changes that match existing project structure.
+- Every state-changing action must be recorded in the audit system. When you implement a new
+  action, record it via `recordAudit()` — see "Audit Requirements" in `web/AGENTS.md`.
 
 ## Commit Messages
 

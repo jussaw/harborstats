@@ -10,7 +10,9 @@ let playerCounter = 1
 export async function resetDatabase(): Promise<void> {
   playerCounter = 1
   await db.execute(
-    sql.raw('TRUNCATE TABLE app_settings, game_players, games, players RESTART IDENTITY CASCADE'),
+    sql.raw(
+      'TRUNCATE TABLE audit_logs, app_settings, game_players, games, players RESTART IDENTITY CASCADE',
+    ),
   )
 }
 

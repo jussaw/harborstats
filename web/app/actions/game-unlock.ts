@@ -6,6 +6,7 @@ import { getNewGamePasswordHash } from '@/lib/settings'
 import { verifyPasswordHash } from '@/lib/password-hash'
 import { checkRateLimit, clearRateLimit } from '@/lib/rate-limit'
 import { getClientIp } from '@/lib/request-ip'
+import { recordAudit } from '@/lib/audit'
 
 export interface UnlockState {
   ok: boolean
@@ -34,13 +35,30 @@ export async function unlockGameCreationAction(
     return { ok: false, error: 'incorrect' }
   }
 
+  // Failed attempts below are recorded only past the rate-limit gate, so a
+  // brute-force attacker can't inflate the audit table — throttled attempts
+  // above are not recorded.
   const hash = await getNewGamePasswordHash()
   if (hash === null) {
+    await recordAudit({
+      action: 'game.unlock_failed',
+      actorType: 'anonymous',
+      entityType: 'session',
+      summary: 'Failed game-creation unlock attempt',
+      metadata: { reason: 'not_configured' },
+    })
     return { ok: false, error: 'not-configured' }
   }
 
   const valid = await verifyPasswordHash(password.trim(), hash)
   if (!valid) {
+    await recordAudit({
+      action: 'game.unlock_failed',
+      actorType: 'anonymous',
+      entityType: 'session',
+      summary: 'Failed game-creation unlock attempt',
+      metadata: { reason: 'incorrect_password' },
+    })
     return { ok: false, error: 'incorrect' }
   }
 
@@ -51,6 +69,13 @@ export async function unlockGameCreationAction(
   const sessionValue = await signGameSession()
   const cookieStore = await cookies()
   cookieStore.set(COOKIE_NAME, sessionValue, SESSION_COOKIE_OPTIONS)
+
+  await recordAudit({
+    action: 'game.unlock',
+    actorType: 'game',
+    entityType: 'session',
+    summary: 'Unlocked game creation',
+  })
 
   return { ok: true }
 }

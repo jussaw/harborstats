@@ -66,6 +66,32 @@ export default async function AdminHomePage() {
               Add, rename, or remove →
             </p>
           </Link>
+
+          <Link
+            href="/admin/audit"
+            className={`
+              group p-6 transition-colors
+              hover:border-(--gold)/50
+              sm:col-span-2
+              ${cardSurfaceClasses}
+            `}
+          >
+            <p className="
+              text-[10px] font-medium tracking-[0.2em] text-(--cream)/60
+              uppercase
+            ">
+              Audit History
+            </p>
+            <p className="mt-1 text-xs text-(--cream)/40">
+              Review every recorded action with its actor IP and timestamp
+            </p>
+            <p className="
+              mt-3 text-xs text-(--gold)/60 transition-colors
+              group-hover:text-(--gold)
+            ">
+              View history →
+            </p>
+          </Link>
         </div>
 
         <div

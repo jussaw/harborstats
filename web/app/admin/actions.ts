@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { verifyPassword, signSession, COOKIE_NAME } from '@/lib/admin-auth'
 import { checkRateLimit, clearRateLimit } from '@/lib/rate-limit'
 import { getClientIp } from '@/lib/request-ip'
+import { recordAudit } from '@/lib/audit'
 
 const SESSION_COOKIE_OPTIONS = {
   httpOnly: true,
@@ -33,6 +34,15 @@ export async function loginAction(formData: FormData) {
   }
 
   if (!(await verifyPassword(password))) {
+    // Recorded only past the rate-limit gate, so a brute-force attacker can't
+    // inflate the audit table — throttled attempts above are not recorded.
+    await recordAudit({
+      action: 'admin.login_failed',
+      actorType: 'anonymous',
+      entityType: 'session',
+      summary: 'Failed admin sign-in attempt',
+      metadata: { reason: 'incorrect_password' },
+    })
     redirect(`/admin/login?error=1&next=${encodeURIComponent(safeNext)}`)
   }
 
@@ -43,11 +53,23 @@ export async function loginAction(formData: FormData) {
   const sessionValue = await signSession()
   const cookieStore = await cookies()
   cookieStore.set(COOKIE_NAME, sessionValue, SESSION_COOKIE_OPTIONS)
+  await recordAudit({
+    action: 'admin.login',
+    actorType: 'admin',
+    entityType: 'session',
+    summary: 'Admin signed in',
+  })
   redirect(safeNext)
 }
 
 export async function logoutAction() {
   const cookieStore = await cookies()
   cookieStore.delete(COOKIE_NAME)
+  await recordAudit({
+    action: 'admin.logout',
+    actorType: 'admin',
+    entityType: 'session',
+    summary: 'Admin signed out',
+  })
   redirect('/admin/login')
 }

@@ -6,6 +6,7 @@ import {
   integer,
   boolean,
   inet,
+  jsonb,
   check,
   index,
   uniqueIndex,
@@ -64,3 +65,29 @@ export const appSettings = pgTable('app_settings', {
   newGamePasswordHash: text('new_game_password_hash'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const auditLogs = pgTable(
+  'audit_logs',
+  {
+    id: serial('id').primaryKey(),
+    // '<entity>.<verb>', e.g. 'player.create'. Intentionally unconstrained so
+    // new action types can be added freely as features land (see Audit
+    // Requirements in web/AGENTS.md).
+    action: text('action').notNull(),
+    actorType: text('actor_type').notNull(),
+    // Nullable: null when the client IP can't be resolved (e.g. local dev).
+    actorIp: inet('actor_ip'),
+    entityType: text('entity_type'),
+    // Text so non-numeric or composite ids can be stored uniformly.
+    entityId: text('entity_id'),
+    summary: text('summary').notNull(),
+    // Structured detail (changed fields). Never store secrets here.
+    metadata: jsonb('metadata'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check('audit_logs_actor_type_check', sql`${t.actorType} IN ('admin', 'game', 'anonymous')`),
+    index('idx_audit_logs_created_at').on(t.createdAt),
+    index('idx_audit_logs_action').on(t.action),
+  ],
+);

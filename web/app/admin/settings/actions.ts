@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { requireAdminSession } from '@/lib/admin-auth';
 import { updateRateMinGames, setNewGamePassword, InvalidPasswordError } from '@/lib/settings';
+import { recordAudit } from '@/lib/audit';
 
 export async function saveSettings(formData: FormData) {
   await requireAdminSession();
@@ -20,6 +21,13 @@ export async function saveSettings(formData: FormData) {
   );
 
   await updateRateMinGames({ winRateMinGames, podiumRateMinGames, statCardMinGames });
+  await recordAudit({
+    action: 'settings.update',
+    actorType: 'admin',
+    entityType: 'settings',
+    summary: 'Updated stat thresholds',
+    metadata: { winRateMinGames, podiumRateMinGames, statCardMinGames },
+  });
   revalidatePath('/stats');
   revalidatePath('/admin/settings');
 }
@@ -44,6 +52,14 @@ export async function setNewGamePasswordAction(
     }
     return { ok: false, error: 'Failed to save password.' }
   }
+
+  // Record only that the password changed — never the password or its hash.
+  await recordAudit({
+    action: 'settings.password_change',
+    actorType: 'admin',
+    entityType: 'settings',
+    summary: 'Changed the new-game password',
+  })
 
   revalidatePath('/admin/settings')
   revalidatePath('/')

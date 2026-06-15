@@ -94,7 +94,7 @@ export async function createGame(input: {
   assertValidPlayedAt(input.playedAt)
   const normalizedPlayers = validateAndNormalizeGamePlayers(input.players)
 
-  await db.transaction(async (tx) => {
+  return db.transaction(async (tx) => {
     const [{ id }] = await tx
       .insert(games)
       .values({ playedAt: input.playedAt, notes: input.notes, submittedFromIp: input.submittedFromIp })
@@ -102,6 +102,7 @@ export async function createGame(input: {
     await tx.insert(gamePlayers).values(
       normalizedPlayers.map((p) => ({ gameId: id, playerId: p.playerId, score: p.score, isWinner: p.isWinner })),
     )
+    return id
   })
 }
 

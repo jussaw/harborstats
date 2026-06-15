@@ -49,7 +49,7 @@ warnings from Next.js.
 
 ## Data Model Constraints
 
-Tables: `players`, `games`, `game_players`, `app_settings`.
+Tables: `players`, `games`, `game_players`, `app_settings`, `audit_logs`.
 
 Rules to preserve:
 
@@ -59,6 +59,26 @@ Rules to preserve:
 - `players.name` is unique.
 - Deleting a player referenced by games must fail with `PlayerInUseError`.
 - Deleting a game cascades to its `game_players`.
+
+## Audit Requirements
+
+Every state-changing Server Action MUST record an audit entry via `recordAudit()` (`lib/audit.ts`).
+This covers all create/update/delete of games, players, and settings, plus auth events (admin
+login/logout, game unlock) including **failed** sign-in and unlock attempts — the history is
+browsable at `/admin/audit`. Record failed attempts only past the rate-limit gate so a brute-force
+attacker can't inflate the audit table; do not record throttled (rate-limited) requests.
+
+When you add a new action:
+
+- Call `recordAudit({ action, actorType, entityType, entityId, summary, metadata })` at the action
+  layer (`app/**/actions.ts`), **after the mutation succeeds and before any `redirect()`** (Next's
+  `redirect()` throws, so a call after it never runs).
+- Name actions `<entity>.<verb>` (e.g. `player.create`, `game.delete`). `actorType` is `admin`,
+  `game`, or `anonymous` (DB check `audit_logs_actor_type_check`).
+- The actor IP is resolved inside `recordAudit` from request headers — do not pass it.
+- Never put secrets (passwords, hashes, session tokens) in `summary` or `metadata`.
+- Audit writes are best-effort: a failure is logged and swallowed so it can never break the action.
+  Do not wrap the user's action in the success of the audit write.
 
 ## Commands
 
