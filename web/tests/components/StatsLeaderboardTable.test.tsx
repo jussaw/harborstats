@@ -85,10 +85,31 @@ describe('StatsLeaderboardTable', () => {
       'ascending',
     )
 
-    // The crown follows the new top row after re-sorting.
+    // Ranks stay fixed to the default wins-desc order, so the crown stays on Ann (the
+    // wins leader, now the last row) and Bob keeps rank 3 instead of being renumbered 1.
+    const rows = screen.getAllByRole('row')
+    expect(within(rows[3]).getByText('👑')).toBeInTheDocument()
+    expect(within(rows[3]).getByText('Ann')).toBeInTheDocument()
+    expect(within(rows[1]).getByText('3')).toBeInTheDocument()
+    expect(within(rows[1]).getByText('Bob')).toBeInTheDocument()
+  })
+
+  it('keeps rank numbers tied to the default metric when sorting by another column', async () => {
+    const user = userEvent.setup()
+    renderTable()
+
+    await user.click(screen.getByRole('button', { name: 'Player' }))
+
+    expect(dataRowNames()).toEqual(['Ann', 'Bob', 'Cy'])
+
+    // Rows reorder by player name, but the rank column still reflects wins: Ann=1 (👑),
+    // Cy=2, Bob=3 — it does not follow the active Player sort.
     const rows = screen.getAllByRole('row')
     expect(within(rows[1]).getByText('👑')).toBeInTheDocument()
-    expect(within(rows[1]).getByText('Bob')).toBeInTheDocument()
+    expect(within(rows[2]).getByText('3')).toBeInTheDocument()
+    expect(within(rows[2]).getByText('Bob')).toBeInTheDocument()
+    expect(within(rows[3]).getByText('2')).toBeInTheDocument()
+    expect(within(rows[3]).getByText('Cy')).toBeInTheDocument()
   })
 
   it('sorts by a different column and moves the active sort indicator', async () => {

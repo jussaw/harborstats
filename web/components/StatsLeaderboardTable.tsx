@@ -121,11 +121,24 @@ export function StatsLeaderboardTable({
     )
   }, [rows, sort, columns])
 
-  const ranks = useMemo(() => {
+  // Ranks are fixed to the card's default metric (initialSort), keyed by row identity, so
+  // re-sorting the table reorders the rows without renumbering the rank column.
+  const rankByKey = useMemo(() => {
     if (!rankColumn) return null
-    if (!sort) return sortedRows.map((_, index) => index + 1)
-    return rankWithTies(sortedRows, (row) => row.sortValues?.[sort.key] ?? null)
-  }, [rankColumn, sortedRows, sort])
+    const map = new Map<StatsTableRow['key'], number>()
+    if (!initialSort) {
+      rows.forEach((row, index) => map.set(row.key, index + 1))
+      return map
+    }
+    const { key, direction } = initialSort
+    const type = columns.find((candidate) => candidate.sortKey === key)?.sortType ?? 'number'
+    const baseRows = [...rows].sort((a, b) =>
+      compareValues(a.sortValues?.[key] ?? null, b.sortValues?.[key] ?? null, type, direction),
+    )
+    const ranks = rankWithTies(baseRows, (row) => row.sortValues?.[key] ?? null)
+    baseRows.forEach((row, index) => map.set(row.key, ranks[index]))
+    return map
+  }, [rankColumn, rows, initialSort, columns])
 
   function handleSort(column: StatsTableColumn) {
     const key = column.sortKey
@@ -199,7 +212,9 @@ export function StatsLeaderboardTable({
             ) : (
               sortedRows.map((row, index) => (
                 <tr key={row.key} className={ROW_VARIANT_CLASS[rowVariant]}>
-                  {rankColumn ? <RankCell rank={ranks ? ranks[index] : index + 1} /> : null}
+                  {rankColumn ? (
+                    <RankCell rank={rankByKey?.get(row.key) ?? index + 1} />
+                  ) : null}
                   {row.cells}
                 </tr>
               ))
