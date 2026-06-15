@@ -17,9 +17,8 @@ import { PlayerOfMonthHistoryTable } from '@/components/PlayerOfMonthHistoryTabl
 import { PlayerOfMonthLeaderboard } from '@/components/PlayerOfMonthLeaderboard';
 import { PlayerScoreBoxPlot } from '@/components/PlayerScoreBoxPlot';
 import { ScoreHistogramChart } from '@/components/ScoreHistogramChart';
-import { StatsCard } from '@/components/StatsCard';
 import { StatsLeaderboardTable } from '@/components/StatsLeaderboardTable';
-import { StatsSectionHeader } from '@/components/StatsSectionHeader';
+import { StatsSearch, type StatsSectionView } from '@/components/StatsSearch';
 import { WinningScoreByGameSizeChart } from '@/components/WinningScoreByGameSizeChart';
 import { formatAverage, formatPercent, formatSignedNumber } from '@/lib/format';
 import { PlayerTier } from '@/lib/player-tier';
@@ -1893,6 +1892,16 @@ export default async function StatsPage() {
       ),
   };
 
+  const sections: StatsSectionView[] = STATS_SECTIONS.map((section) => ({
+    id: section.id,
+    title: section.title,
+    subtitle: section.subtitle,
+    cards: cardsBySection[section.id].map((card) => ({
+      ...card,
+      content: cardContents[card.id],
+    })),
+  }));
+
   return (
     <div
       className="
@@ -1903,8 +1912,7 @@ export default async function StatsPage() {
       <div
         id="stats-scroll"
         className="
-          harbor-scrollbar relative flex-1 overflow-y-auto scroll-smooth pt-6
-          sm:pt-8
+          harbor-scrollbar relative flex-1 overflow-y-auto scroll-smooth
         "
       >
         <PageWidth
@@ -1914,26 +1922,7 @@ export default async function StatsPage() {
             sm:px-6 sm:pb-8
           "
         >
-          <div className="space-y-12">
-            {STATS_SECTIONS.map((section) => (
-              <section key={section.id} id={section.id} className="scroll-mt-6">
-                <StatsSectionHeader title={section.title} subtitle={section.subtitle} />
-
-                <div
-                  className="
-                    grid grid-cols-1 gap-5
-                    lg:grid-cols-2
-                  "
-                >
-                  {cardsBySection[section.id].map((card) => (
-                    <StatsCard key={card.id} {...card}>
-                      {cardContents[card.id]}
-                    </StatsCard>
-                  ))}
-                </div>
-              </section>
-            ))}
-          </div>
+          <StatsSearch sections={sections} />
         </PageWidth>
       </div>
     </div>
