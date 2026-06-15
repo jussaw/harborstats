@@ -1,5 +1,7 @@
 # HarborStats
 
+**Live site: [harborstats.jussaw.com](https://harborstats.jussaw.com/)**
+
 HarborStats is a Catan results tracker for a friend group. The tracked repository contains the main web app in `web/`, deployment assets in `devops/`, CI config in `.github/`, and product specs in `docs/`.
 
 This root README is the primary entrypoint for the repo. It covers how the project is laid out, how to run it locally, which commands matter day to day, and where deployment guidance lives.
