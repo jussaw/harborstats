@@ -12,6 +12,7 @@ import {
   LayoutGrid,
   Users,
   Settings,
+  History,
 } from 'lucide-react'
 import { StatsSidebarSections } from './StatsSidebarSections'
 
@@ -188,6 +189,14 @@ export function Sidebar({
                   Icon={Users}
                   label="Players"
                   active={isActive('/admin/players')}
+                  collapsed={collapsed}
+                  onClick={onNavigate}
+                />
+                <NavLink
+                  href="/admin/audit"
+                  Icon={History}
+                  label="Audit"
+                  active={isActive('/admin/audit')}
                   collapsed={collapsed}
                   onClick={onNavigate}
                 />

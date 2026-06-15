@@ -277,6 +277,10 @@ describe('SidebarShell', () => {
       'href',
       '/admin/settings',
     )
+    expect(within(adminNav).getByRole('link', { name: 'Audit' })).toHaveAttribute(
+      'href',
+      '/admin/audit',
+    )
     expect(within(adminNav).getByRole('button', { name: 'Logout' })).toBeInTheDocument()
   })
 
