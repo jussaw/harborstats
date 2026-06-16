@@ -88,7 +88,7 @@ export function StatsSearch({ sections }: Props) {
             key={section.id}
             id={section.id}
             className={`
-              scroll-mt-6
+              scroll-mt-20
               ${cards.length === 0 ? 'hidden' : ''}
             `}
           >
