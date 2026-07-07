@@ -366,3 +366,52 @@ test('updating rate thresholds changes the matching stats views independently', 
   await expect(podiumRateSection).toContainText('Ada');
   await expect(podiumRateSection).not.toContainText('Bea');
 });
+
+test('stats player filter recomputes stats as players are unchecked one by one', async ({
+  page,
+}) => {
+  const ada = await createE2ePlayer({ name: 'Ada' });
+  const bea = await createE2ePlayer({ name: 'Bea' });
+  const cara = await createE2ePlayer({ name: 'Cara' });
+
+  // Solo games keep every player's stats visible under any cohort subset.
+  await createE2eGame({
+    notes: 'Ada solo',
+    players: [{ playerId: ada.id, score: 10, isWinner: true }],
+  });
+  await createE2eGame({
+    notes: 'Bea solo',
+    players: [{ playerId: bea.id, score: 11, isWinner: true }],
+  });
+  await createE2eGame({
+    notes: 'Cara solo',
+    players: [{ playerId: cara.id, score: 12, isWinner: true }],
+  });
+
+  await page.goto('/stats');
+  const totalWinsSection = page.locator('section#total-wins');
+  await expect(totalWinsSection).toContainText('Ada');
+  await expect(totalWinsSection).toContainText('Bea');
+  await expect(totalWinsSection).toContainText('Cara');
+
+  await page.locator('button[aria-expanded]', { hasText: 'Players' }).click();
+
+  await page.getByRole('checkbox', { name: 'Ada' }).uncheck();
+  await expect(page).toHaveURL(new RegExp(`/stats\\?player=${bea.id}-${cara.id}$`));
+  await expect(totalWinsSection).not.toContainText('Ada');
+  await expect(totalWinsSection).toContainText('Bea');
+
+  // Regression guard for the Next.js router-cache collision on repeated search params
+  // (https://github.com/vercel/next.js/issues/92152): the second consecutive uncheck used to
+  // leave every stat card rendering the previous selection.
+  await page.getByRole('checkbox', { name: 'Bea' }).uncheck();
+  await expect(page).toHaveURL(new RegExp(`/stats\\?player=${cara.id}$`));
+  await expect(totalWinsSection).not.toContainText('Bea');
+  await expect(totalWinsSection).toContainText('Cara');
+
+  // Legacy repeated-param links keep working.
+  await page.goto(`/stats?player=${ada.id}&player=${cara.id}`);
+  await expect(totalWinsSection).toContainText('Ada');
+  await expect(totalWinsSection).not.toContainText('Bea');
+  await expect(totalWinsSection).toContainText('Cara');
+});

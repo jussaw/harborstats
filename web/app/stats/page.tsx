@@ -18,11 +18,15 @@ import { PlayerOfMonthLeaderboard } from '@/components/PlayerOfMonthLeaderboard'
 import { PlayerScoreBoxPlot } from '@/components/PlayerScoreBoxPlot';
 import { ScoreHistogramChart } from '@/components/ScoreHistogramChart';
 import { StatsLeaderboardTable } from '@/components/StatsLeaderboardTable';
+import { StatsPlayerFilter } from '@/components/StatsPlayerFilter';
 import { StatsSearch, type StatsSectionView } from '@/components/StatsSearch';
 import { WinningScoreByGameSizeChart } from '@/components/WinningScoreByGameSizeChart';
 import { formatAverage, formatPercent, formatSignedNumber } from '@/lib/format';
 import { PlayerTier } from '@/lib/player-tier';
+import { getPlayers } from '@/lib/players';
 import { getSettings } from '@/lib/settings';
+import { resolveStatsFilter } from '@/lib/stats-filter';
+import { parseStatsSelectedPlayerIds } from '@/lib/stats-page-filters';
 import {
   getGameActivityTimestamps,
   getPlayerAttendanceEvents,
@@ -360,7 +364,16 @@ function SingleGameRecordsContent({ records }: { records: SingleGameRecords }) {
   );
 }
 
-export default async function StatsPage() {
+interface Props {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default async function StatsPage({ searchParams }: Props) {
+  const [params, players] = await Promise.all([searchParams, getPlayers()]);
+  const allPlayerIds = players.map((player) => player.id);
+  const selectedPlayerIds = parseStatsSelectedPlayerIds(params.player, allPlayerIds);
+  const filter = await resolveStatsFilter(selectedPlayerIds, allPlayerIds);
+
   const [
     winRates,
     settings,
@@ -390,33 +403,33 @@ export default async function StatsPage() {
     clutchFactors,
     kingmakers,
   ] = await Promise.all([
-    getPlayerWinRates(),
+    getPlayerWinRates(filter),
     getSettings(),
-    getPlayerScoreStats(),
-    getScoreHistogramBuckets(),
-    getPerPlayerScoreDistributions(),
-    getPlayerCumulativeScoreStats(),
-    getPlayerNormalizedScoreStats(),
-    getPlayerPodiumRates(),
-    getPlayerFinishBreakdowns(),
-    getTierShowdownStats(),
-    getPlayerExpectedVsActualWins(),
-    getGameActivityTimestamps(),
-    getPlayerParticipationRates(),
-    getPlayerAttendanceEvents(),
-    getPlayerCurrentWinStreaks(),
-    getPlayerWinEvents(),
-    getPlayerStreakRecords(),
-    getSingleGameRecords(),
-    getWinningScoreComparison(),
-    getWinningScoreByGameSize(),
-    getPlayerHeadToHeadRecords(),
-    getRivalryAggregates(),
-    getPlayerConsistencyRatings(),
-    getPlayerDominanceIndex(),
-    getPlayerNailBiterRecords(),
-    getPlayerClutchFactors(),
-    getPlayerKingmakers(),
+    getPlayerScoreStats(filter),
+    getScoreHistogramBuckets(filter),
+    getPerPlayerScoreDistributions(filter),
+    getPlayerCumulativeScoreStats(filter),
+    getPlayerNormalizedScoreStats(filter),
+    getPlayerPodiumRates(filter),
+    getPlayerFinishBreakdowns(filter),
+    getTierShowdownStats(filter),
+    getPlayerExpectedVsActualWins(filter),
+    getGameActivityTimestamps(filter),
+    getPlayerParticipationRates(filter),
+    getPlayerAttendanceEvents(filter),
+    getPlayerCurrentWinStreaks(filter),
+    getPlayerWinEvents(filter),
+    getPlayerStreakRecords(filter),
+    getSingleGameRecords(filter),
+    getWinningScoreComparison(filter),
+    getWinningScoreByGameSize(filter),
+    getPlayerHeadToHeadRecords(filter),
+    getRivalryAggregates(filter),
+    getPlayerConsistencyRatings(filter),
+    getPlayerDominanceIndex(filter),
+    getPlayerNailBiterRecords(filter),
+    getPlayerClutchFactors(filter),
+    getPlayerKingmakers(filter),
   ]);
 
   const winRateQualified = winRates
@@ -1922,7 +1935,10 @@ export default async function StatsPage() {
             sm:px-6 sm:pb-8
           "
         >
-          <StatsSearch sections={sections} />
+          <StatsSearch
+            sections={sections}
+            filter={<StatsPlayerFilter players={players} selectedPlayerIds={selectedPlayerIds} />}
+          />
         </PageWidth>
       </div>
     </div>

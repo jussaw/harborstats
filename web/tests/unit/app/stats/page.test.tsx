@@ -66,6 +66,16 @@ vi.mock('@/lib/settings', () => ({
   getSettings: vi.fn(),
 }));
 
+vi.mock('@/lib/players', () => ({
+  getPlayers: vi.fn(() => Promise.resolve([])),
+}));
+
+// The player filter is a client component with its own coverage; stub it out so these
+// server-render tests stay focused on the stat cards.
+vi.mock('@/components/StatsPlayerFilter', () => ({
+  StatsPlayerFilter: () => null,
+}));
+
 function mockDefaultStatsPageData() {
   vi.mocked(getPlayerWinRates).mockResolvedValue([]);
   vi.mocked(getPlayerScoreStats).mockResolvedValue([]);
@@ -583,7 +593,7 @@ describe('StatsPage', () => {
       statCardMinGames: 3,
     });
 
-    const element = await StatsPage();
+    const element = await StatsPage({ searchParams: Promise.resolve({}) });
     const markup = renderToStaticMarkup(element);
 
     expect(markup).not.toContain('All-Time Leaderboards');
@@ -950,7 +960,7 @@ describe('StatsPage', () => {
       },
     ]);
 
-    const element = await StatsPage();
+    const element = await StatsPage({ searchParams: Promise.resolve({}) });
     const markup = renderToStaticMarkup(element);
     const avgScoreIndex = markup.indexOf('id="avg-score"');
     const medianScoreIndex = markup.indexOf('id="median-score"');
@@ -1014,7 +1024,7 @@ describe('StatsPage', () => {
       },
     ]);
 
-    const element = await StatsPage();
+    const element = await StatsPage({ searchParams: Promise.resolve({}) });
     const markup = renderToStaticMarkup(element);
 
     expect(markup.match(/No players have played 3\+ games yet\./g)).toHaveLength(4);
@@ -1057,7 +1067,7 @@ describe('StatsPage', () => {
       statCardMinGames: 5,
     });
 
-    const element = await StatsPage();
+    const element = await StatsPage({ searchParams: Promise.resolve({}) });
     const markup = renderToStaticMarkup(element);
 
     expect(markup).not.toContain('All-Time Leaderboards');
@@ -1183,7 +1193,7 @@ describe('StatsPage', () => {
       statCardMinGames: 2,
     });
 
-    const element = await StatsPage();
+    const element = await StatsPage({ searchParams: Promise.resolve({}) });
     const markup = renderToStaticMarkup(element);
     const podiumRateIndex = markup.indexOf('id="podium-rate"');
     const expectedVsActualWinsIndex = markup.indexOf('id="expected-vs-actual-wins"');

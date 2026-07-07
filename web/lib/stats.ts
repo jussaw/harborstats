@@ -1,7 +1,14 @@
-import { count, desc, eq, sql } from 'drizzle-orm';
+import { and, count, desc, eq, sql } from 'drizzle-orm';
 import { gamePlayers, games, players } from '@/db/schema';
 import { parsePlayerTier, PlayerTier, type PlayerTier as PlayerTierType } from '@/lib/player-tier';
 import { db } from './db';
+import {
+  gameIdCondition,
+  gameIdSqlCondition,
+  playerIdCondition,
+  playerIdSqlCondition,
+  type StatsFilter,
+} from './stats-filter';
 
 function round1(value: number): number {
   return Math.round(value * 10) / 10;
@@ -137,7 +144,9 @@ export interface RivalryAggregate {
   closenessScore: number;
 }
 
-async function getGameSizeAggregateData(): Promise<GameSizeAggregateData> {
+async function getGameSizeAggregateData(
+  filter: StatsFilter = null,
+): Promise<GameSizeAggregateData> {
   const [playerRows, participantRows] = await Promise.all([
     db
       .select({
@@ -146,6 +155,7 @@ async function getGameSizeAggregateData(): Promise<GameSizeAggregateData> {
         tier: players.tier,
       })
       .from(players)
+      .where(playerIdCondition(filter, players.id))
       .orderBy(sql`CASE ${players.tier} WHEN 'premium' THEN 0 ELSE 1 END`, players.name),
     db
       .select({
@@ -154,7 +164,8 @@ async function getGameSizeAggregateData(): Promise<GameSizeAggregateData> {
         score: gamePlayers.score,
         isWinner: gamePlayers.isWinner,
       })
-      .from(gamePlayers),
+      .from(gamePlayers)
+      .where(gameIdCondition(filter, gamePlayers.gameId)),
   ]);
 
   const playersById = new Map<number, PlayerIdentity>(
@@ -293,7 +304,9 @@ async function getGameSizeAggregateData(): Promise<GameSizeAggregateData> {
   };
 }
 
-export async function getPlayerHeadToHeadRecords(): Promise<PlayerHeadToHeadRecord[]> {
+export async function getPlayerHeadToHeadRecords(
+  filter: StatsFilter = null,
+): Promise<PlayerHeadToHeadRecord[]> {
   const [playerRows, participantRows] = await Promise.all([
     db
       .select({
@@ -302,6 +315,7 @@ export async function getPlayerHeadToHeadRecords(): Promise<PlayerHeadToHeadReco
         tier: players.tier,
       })
       .from(players)
+      .where(playerIdCondition(filter, players.id))
       .orderBy(sql`CASE ${players.tier} WHEN 'premium' THEN 0 ELSE 1 END`, players.name),
     db
       .select({
@@ -310,7 +324,8 @@ export async function getPlayerHeadToHeadRecords(): Promise<PlayerHeadToHeadReco
         score: gamePlayers.score,
         isWinner: gamePlayers.isWinner,
       })
-      .from(gamePlayers),
+      .from(gamePlayers)
+      .where(gameIdCondition(filter, gamePlayers.gameId)),
   ]);
 
   const playersById = new Map<number, PlayerIdentity>(
@@ -396,8 +411,10 @@ export async function getPlayerHeadToHeadRecords(): Promise<PlayerHeadToHeadReco
   );
 }
 
-export async function getRivalryAggregates(): Promise<RivalryAggregate[]> {
-  const records = await getPlayerHeadToHeadRecords();
+export async function getRivalryAggregates(
+  filter: StatsFilter = null,
+): Promise<RivalryAggregate[]> {
+  const records = await getPlayerHeadToHeadRecords(filter);
   const aggregatesByKey = new Map<string, RivalryAggregate>();
 
   records.forEach((record) => {
@@ -478,7 +495,7 @@ export interface PlayerWinRate {
   winRate: number; // 0.0–1.0
 }
 
-export async function getPlayerWinRates(): Promise<PlayerWinRate[]> {
+export async function getPlayerWinRates(filter: StatsFilter = null): Promise<PlayerWinRate[]> {
   const rows = await db
     .select({
       playerId: players.id,
@@ -488,7 +505,11 @@ export async function getPlayerWinRates(): Promise<PlayerWinRate[]> {
       wins: sql<number>`cast(count(*) filter (where ${gamePlayers.isWinner} = true) as integer)`,
     })
     .from(players)
-    .leftJoin(gamePlayers, eq(gamePlayers.playerId, players.id))
+    .leftJoin(
+      gamePlayers,
+      and(eq(gamePlayers.playerId, players.id), gameIdCondition(filter, gamePlayers.gameId)),
+    )
+    .where(playerIdCondition(filter, players.id))
     .groupBy(players.id);
 
   return rows
@@ -533,7 +554,7 @@ function getInterpolatedPercentile(values: number[], percentile: number) {
   return lowerValue + (upperValue - lowerValue) * weight;
 }
 
-async function getPlayerScoreRows(): Promise<PlayerScoreRow[]> {
+async function getPlayerScoreRows(filter: StatsFilter = null): Promise<PlayerScoreRow[]> {
   const rows = await db
     .select({
       playerId: players.id,
@@ -543,6 +564,7 @@ async function getPlayerScoreRows(): Promise<PlayerScoreRow[]> {
     })
     .from(gamePlayers)
     .innerJoin(players, eq(players.id, gamePlayers.playerId))
+    .where(gameIdCondition(filter, gamePlayers.gameId))
     .orderBy(
       sql`CASE ${players.tier} WHEN 'premium' THEN 0 ELSE 1 END`,
       players.name,
@@ -566,7 +588,7 @@ export interface PlayerScoreStats {
   medianScore: number;
 }
 
-export async function getPlayerScoreStats(): Promise<PlayerScoreStats[]> {
+export async function getPlayerScoreStats(filter: StatsFilter = null): Promise<PlayerScoreStats[]> {
   const rows = await db
     .select({
       playerId: players.id,
@@ -578,6 +600,7 @@ export async function getPlayerScoreStats(): Promise<PlayerScoreStats[]> {
     })
     .from(players)
     .innerJoin(gamePlayers, eq(gamePlayers.playerId, players.id))
+    .where(gameIdCondition(filter, gamePlayers.gameId))
     .groupBy(players.id);
 
   return rows
@@ -595,8 +618,10 @@ export interface ScoreHistogramBucket {
   count: number;
 }
 
-export async function getScoreHistogramBuckets(): Promise<ScoreHistogramBucket[]> {
-  const rows = await getPlayerScoreRows();
+export async function getScoreHistogramBuckets(
+  filter: StatsFilter = null,
+): Promise<ScoreHistogramBucket[]> {
+  const rows = await getPlayerScoreRows(filter);
   const bucketCounts = new Map<number, number>();
 
   rows.forEach((row) => {
@@ -623,8 +648,10 @@ export interface PlayerScoreDistribution {
   max: number;
 }
 
-export async function getPerPlayerScoreDistributions(): Promise<PlayerScoreDistribution[]> {
-  const rows = await getPlayerScoreRows();
+export async function getPerPlayerScoreDistributions(
+  filter: StatsFilter = null,
+): Promise<PlayerScoreDistribution[]> {
+  const rows = await getPlayerScoreRows(filter);
   const scoresByPlayerId = new Map<number, PlayerIdentity & { scores: number[] }>();
 
   rows.forEach((row) => {
@@ -667,7 +694,9 @@ export interface PlayerCumulativeScoreStats {
   pointsPerGame: number;
 }
 
-export async function getPlayerCumulativeScoreStats(): Promise<PlayerCumulativeScoreStats[]> {
+export async function getPlayerCumulativeScoreStats(
+  filter: StatsFilter = null,
+): Promise<PlayerCumulativeScoreStats[]> {
   const rows = await db
     .select({
       playerId: players.id,
@@ -677,7 +706,11 @@ export async function getPlayerCumulativeScoreStats(): Promise<PlayerCumulativeS
       totalScore: sql<number>`COALESCE(SUM(${gamePlayers.score}), 0)`,
     })
     .from(players)
-    .leftJoin(gamePlayers, eq(gamePlayers.playerId, players.id))
+    .leftJoin(
+      gamePlayers,
+      and(eq(gamePlayers.playerId, players.id), gameIdCondition(filter, gamePlayers.gameId)),
+    )
+    .where(playerIdCondition(filter, players.id))
     .groupBy(players.id);
 
   return rows
@@ -712,7 +745,9 @@ interface WinningScoreSummary {
   nonWinnerRowScores: number[];
 }
 
-async function getWinningScoreSummaries(): Promise<WinningScoreSummary[]> {
+async function getWinningScoreSummaries(
+  filter: StatsFilter = null,
+): Promise<WinningScoreSummary[]> {
   const rows = await db
     .select({
       gameId: gamePlayers.gameId,
@@ -720,6 +755,7 @@ async function getWinningScoreSummaries(): Promise<WinningScoreSummary[]> {
       isWinner: gamePlayers.isWinner,
     })
     .from(gamePlayers)
+    .where(gameIdCondition(filter, gamePlayers.gameId))
     .orderBy(gamePlayers.gameId, desc(gamePlayers.score), desc(gamePlayers.isWinner));
 
   const participantsByGameId = new Map<number, GameScoreParticipantRow[]>();
@@ -763,7 +799,9 @@ export interface PlayerNormalizedScoreStats {
   medianScore: number;
 }
 
-export async function getPlayerNormalizedScoreStats(): Promise<PlayerNormalizedScoreStats[]> {
+export async function getPlayerNormalizedScoreStats(
+  filter: StatsFilter = null,
+): Promise<PlayerNormalizedScoreStats[]> {
   const rows = await db
     .select({
       gameId: gamePlayers.gameId,
@@ -775,6 +813,7 @@ export async function getPlayerNormalizedScoreStats(): Promise<PlayerNormalizedS
     })
     .from(gamePlayers)
     .innerJoin(players, eq(players.id, gamePlayers.playerId))
+    .where(gameIdCondition(filter, gamePlayers.gameId))
     .orderBy(gamePlayers.gameId, players.id);
 
   const participantsByGameId = new Map<number, typeof rows>();
@@ -839,8 +878,10 @@ export interface WinningScoreComparison {
   scoreGap: number;
 }
 
-export async function getWinningScoreComparison(): Promise<WinningScoreComparison> {
-  const summaries = await getWinningScoreSummaries();
+export async function getWinningScoreComparison(
+  filter: StatsFilter = null,
+): Promise<WinningScoreComparison> {
+  const summaries = await getWinningScoreSummaries(filter);
   const winnerScores = summaries.flatMap((summary) => summary.winnerRowScores);
   const nonWinnerScores = summaries.flatMap((summary) => summary.nonWinnerRowScores);
   const avgWinningScore =
@@ -867,8 +908,10 @@ export interface WinningScoreByGameSizeBucket {
   avgWinningScore: number;
 }
 
-export async function getWinningScoreByGameSize(): Promise<WinningScoreByGameSizeBucket[]> {
-  const summaries = await getWinningScoreSummaries();
+export async function getWinningScoreByGameSize(
+  filter: StatsFilter = null,
+): Promise<WinningScoreByGameSizeBucket[]> {
+  const summaries = await getWinningScoreSummaries(filter);
   const buckets = new Map<number, { gameCount: number; winningScoreTotal: number }>();
 
   summaries.forEach((summary) => {
@@ -900,13 +943,14 @@ export interface PlayerPodiumRate {
   podiumRate: number; // 0.0–1.0
 }
 
-export async function getPlayerPodiumRates(): Promise<PlayerPodiumRate[]> {
+export async function getPlayerPodiumRates(filter: StatsFilter = null): Promise<PlayerPodiumRate[]> {
   const result = await db.execute(sql`
     WITH ranked AS (
       SELECT
         gp.player_id,
         RANK() OVER (PARTITION BY gp.game_id ORDER BY gp.score DESC) AS finish_rank
       FROM game_players gp
+      WHERE true${gameIdSqlCondition(filter)}
     )
     SELECT
       p.id          AS "playerId",
@@ -916,6 +960,7 @@ export async function getPlayerPodiumRates(): Promise<PlayerPodiumRate[]> {
       SUM(CASE WHEN r.finish_rank <= 2 THEN 1 ELSE 0 END)::integer AS podiums
     FROM players p
     LEFT JOIN ranked r ON r.player_id = p.id
+    WHERE true${playerIdSqlCondition(filter)}
     GROUP BY p.id, p.name, p.tier
     ORDER BY podiums DESC
   `);
@@ -951,7 +996,9 @@ export interface PlayerFinishBreakdown {
   lastRate: number;
 }
 
-export async function getPlayerFinishBreakdowns(): Promise<PlayerFinishBreakdown[]> {
+export async function getPlayerFinishBreakdowns(
+  filter: StatsFilter = null,
+): Promise<PlayerFinishBreakdown[]> {
   const result = await db.execute(sql`
     WITH ranked AS (
       SELECT
@@ -961,6 +1008,7 @@ export async function getPlayerFinishBreakdowns(): Promise<PlayerFinishBreakdown
         RANK() OVER (PARTITION BY gp.game_id ORDER BY gp.score DESC) AS finish_rank,
         MIN(gp.score) OVER (PARTITION BY gp.game_id)                 AS lowest_score
       FROM game_players gp
+      WHERE true${gameIdSqlCondition(filter)}
     )
     SELECT
       p.id AS "playerId",
@@ -973,6 +1021,7 @@ export async function getPlayerFinishBreakdowns(): Promise<PlayerFinishBreakdown
       SUM(CASE WHEN r.score = r.lowest_score THEN 1 ELSE 0 END)::integer AS lasts
     FROM players p
     LEFT JOIN ranked r ON r.player_id = p.id
+    WHERE true${playerIdSqlCondition(filter)}
     GROUP BY p.id, p.name, p.tier
   `);
 
@@ -1031,7 +1080,9 @@ interface PlayerMarginAccumulator {
   defeatMarginTotal: number;
 }
 
-export async function getPlayerMarginStats(): Promise<PlayerMarginStats[]> {
+export async function getPlayerMarginStats(
+  filter: StatsFilter = null,
+): Promise<PlayerMarginStats[]> {
   const [playerRows, participantRows] = await Promise.all([
     db
       .select({
@@ -1040,6 +1091,7 @@ export async function getPlayerMarginStats(): Promise<PlayerMarginStats[]> {
         tier: players.tier,
       })
       .from(players)
+      .where(playerIdCondition(filter, players.id))
       .orderBy(sql`CASE ${players.tier} WHEN 'premium' THEN 0 ELSE 1 END`, players.name),
     db
       .select({
@@ -1048,7 +1100,8 @@ export async function getPlayerMarginStats(): Promise<PlayerMarginStats[]> {
         score: gamePlayers.score,
         isWinner: gamePlayers.isWinner,
       })
-      .from(gamePlayers),
+      .from(gamePlayers)
+      .where(gameIdCondition(filter, gamePlayers.gameId)),
   ]);
 
   const statsByPlayerId = new Map<number, PlayerMarginAccumulator>(
@@ -1258,7 +1311,7 @@ function toMarginRecord(record: InternalMarginGameRecord): MarginGameRecord {
   };
 }
 
-export async function getSingleGameRecords(): Promise<SingleGameRecords> {
+export async function getSingleGameRecords(filter: StatsFilter = null): Promise<SingleGameRecords> {
   const rows = await db
     .select({
       gameId: games.id,
@@ -1272,6 +1325,7 @@ export async function getSingleGameRecords(): Promise<SingleGameRecords> {
     .from(gamePlayers)
     .innerJoin(games, eq(games.id, gamePlayers.gameId))
     .innerJoin(players, eq(players.id, gamePlayers.playerId))
+    .where(gameIdCondition(filter, games.id))
     .orderBy(desc(games.playedAt), desc(games.id), desc(gamePlayers.score), players.name);
 
   let highestScore: InternalScoreRecord | null = null;
@@ -1369,8 +1423,10 @@ export interface PlayerWinRateByGameSize {
   winRate: number;
 }
 
-export async function getPlayerWinRateByGameSize(): Promise<PlayerWinRateByGameSize[]> {
-  const data = await getGameSizeAggregateData();
+export async function getPlayerWinRateByGameSize(
+  filter: StatsFilter = null,
+): Promise<PlayerWinRateByGameSize[]> {
+  const data = await getGameSizeAggregateData(filter);
   return data.playerWinRateByGameSize;
 }
 
@@ -1382,8 +1438,10 @@ export interface TierShowdownStats {
   winRate: number;
 }
 
-export async function getTierShowdownStats(): Promise<TierShowdownStats[]> {
-  const data = await getGameSizeAggregateData();
+export async function getTierShowdownStats(
+  filter: StatsFilter = null,
+): Promise<TierShowdownStats[]> {
+  const data = await getGameSizeAggregateData(filter);
   return data.tierShowdownStats;
 }
 
@@ -1397,8 +1455,10 @@ export interface PlayerExpectedVsActualWins {
   winDelta: number;
 }
 
-export async function getPlayerExpectedVsActualWins(): Promise<PlayerExpectedVsActualWins[]> {
-  const data = await getGameSizeAggregateData();
+export async function getPlayerExpectedVsActualWins(
+  filter: StatsFilter = null,
+): Promise<PlayerExpectedVsActualWins[]> {
+  const data = await getGameSizeAggregateData(filter);
   return data.playerExpectedVsActualWins;
 }
 
@@ -1407,12 +1467,15 @@ export interface RecentActivitySummary {
   latestPlayedAt: string | null;
 }
 
-export async function getRecentActivitySummary(): Promise<RecentActivitySummary> {
+export async function getRecentActivitySummary(
+  filter: StatsFilter = null,
+): Promise<RecentActivitySummary> {
   const [latestGame] = await db
     .select({
       playedAt: games.playedAt,
     })
     .from(games)
+    .where(gameIdCondition(filter, games.id))
     .orderBy(desc(games.playedAt), desc(games.id))
     .limit(1);
 
@@ -1420,7 +1483,8 @@ export async function getRecentActivitySummary(): Promise<RecentActivitySummary>
     .select({
       totalGames: count(),
     })
-    .from(games);
+    .from(games)
+    .where(gameIdCondition(filter, games.id));
 
   if (!latestGame) {
     return {
@@ -1449,7 +1513,9 @@ interface OrderedGameOutcomeData {
   outcomeRows: GameOutcomeRow[];
 }
 
-async function getOrderedGameOutcomeData(): Promise<OrderedGameOutcomeData> {
+async function getOrderedGameOutcomeData(
+  filter: StatsFilter = null,
+): Promise<OrderedGameOutcomeData> {
   const [playerRows, outcomeRows] = await Promise.all([
     db
       .select({
@@ -1458,6 +1524,7 @@ async function getOrderedGameOutcomeData(): Promise<OrderedGameOutcomeData> {
         tier: players.tier,
       })
       .from(players)
+      .where(playerIdCondition(filter, players.id))
       .orderBy(players.name),
     db
       .select({
@@ -1471,6 +1538,7 @@ async function getOrderedGameOutcomeData(): Promise<OrderedGameOutcomeData> {
       .from(gamePlayers)
       .innerJoin(games, eq(games.id, gamePlayers.gameId))
       .innerJoin(players, eq(players.id, gamePlayers.playerId))
+      .where(gameIdCondition(filter, games.id))
       .orderBy(desc(games.playedAt), desc(games.id), players.name),
   ]);
 
@@ -1496,8 +1564,10 @@ export interface ReigningChampionSummary {
   winners: PlayerIdentity[];
 }
 
-export async function getReigningChampionSummary(): Promise<ReigningChampionSummary | null> {
-  const { outcomeRows } = await getOrderedGameOutcomeData();
+export async function getReigningChampionSummary(
+  filter: StatsFilter = null,
+): Promise<ReigningChampionSummary | null> {
+  const { outcomeRows } = await getOrderedGameOutcomeData(filter);
   const latestGame = outcomeRows[0];
 
   if (!latestGame) {
@@ -1572,8 +1642,10 @@ function compareNullableIsoDesc(left: string | null, right: string | null) {
   return right.localeCompare(left);
 }
 
-export async function getPlayerCurrentWinStreaks(): Promise<PlayerCurrentWinStreak[]> {
-  const { players: allPlayers, outcomeRows } = await getOrderedGameOutcomeData();
+export async function getPlayerCurrentWinStreaks(
+  filter: StatsFilter = null,
+): Promise<PlayerCurrentWinStreak[]> {
+  const { players: allPlayers, outcomeRows } = await getOrderedGameOutcomeData(filter);
   const rowsByPlayerId = new Map<number, GameOutcomeRow[]>();
   const mostRecentAppearanceByPlayerId = new Map<number, string | null>(
     allPlayers.map((player) => [player.playerId, null]),
@@ -1625,8 +1697,10 @@ export async function getPlayerCurrentWinStreaks(): Promise<PlayerCurrentWinStre
     );
 }
 
-export async function getPlayerHotHandIndicators(): Promise<PlayerHotHandIndicator[]> {
-  const { players: allPlayers, outcomeRows } = await getOrderedGameOutcomeData();
+export async function getPlayerHotHandIndicators(
+  filter: StatsFilter = null,
+): Promise<PlayerHotHandIndicator[]> {
+  const { players: allPlayers, outcomeRows } = await getOrderedGameOutcomeData(filter);
   const rowsByPlayerId = new Map<number, GameOutcomeRow[]>();
   const mostRecentAppearanceByPlayerId = new Map<number, string | null>(
     allPlayers.map((player) => [player.playerId, null]),
@@ -1705,20 +1779,25 @@ function sortOutcomeRowsChronologically(left: GameOutcomeRow, right: GameOutcome
   );
 }
 
-async function getOrderedGameRows(): Promise<{ gameId: number; playedAt: Date }[]> {
+async function getOrderedGameRows(
+  filter: StatsFilter = null,
+): Promise<{ gameId: number; playedAt: Date }[]> {
   return db
     .select({
       gameId: games.id,
       playedAt: games.playedAt,
     })
     .from(games)
+    .where(gameIdCondition(filter, games.id))
     .orderBy(games.playedAt, games.id);
 }
 
-export async function getPlayerStreakRecords(): Promise<PlayerStreakRecord[]> {
+export async function getPlayerStreakRecords(
+  filter: StatsFilter = null,
+): Promise<PlayerStreakRecord[]> {
   const [{ players: allPlayers, outcomeRows }, gameRows] = await Promise.all([
-    getOrderedGameOutcomeData(),
-    getOrderedGameRows(),
+    getOrderedGameOutcomeData(filter),
+    getOrderedGameRows(filter),
   ]);
   const outcomeRowsByPlayerId = new Map<number, GameOutcomeRow[]>();
   const playerIdsByGameId = new Map<number, Set<number>>();
@@ -1813,8 +1892,8 @@ export interface PlayerWinEvent extends PlayerIdentity {
   playedAt: string;
 }
 
-export async function getPlayerWinEvents(): Promise<PlayerWinEvent[]> {
-  const { outcomeRows } = await getOrderedGameOutcomeData();
+export async function getPlayerWinEvents(filter: StatsFilter = null): Promise<PlayerWinEvent[]> {
+  const { outcomeRows } = await getOrderedGameOutcomeData(filter);
 
   return outcomeRows
     .filter((row) => row.isWinner)
@@ -1826,19 +1905,20 @@ export async function getPlayerWinEvents(): Promise<PlayerWinEvent[]> {
     }));
 }
 
-async function getOrderedGameDates(): Promise<Date[]> {
+async function getOrderedGameDates(filter: StatsFilter = null): Promise<Date[]> {
   const gameRows = await db
     .select({
       playedAt: games.playedAt,
     })
     .from(games)
+    .where(gameIdCondition(filter, games.id))
     .orderBy(games.playedAt, games.id);
 
   return gameRows.map((game) => game.playedAt);
 }
 
-export async function getGameActivityTimestamps(): Promise<string[]> {
-  const playedAtDates = await getOrderedGameDates();
+export async function getGameActivityTimestamps(filter: StatsFilter = null): Promise<string[]> {
+  const playedAtDates = await getOrderedGameDates(filter);
   return playedAtDates.map((playedAt) => playedAt.toISOString());
 }
 
@@ -1907,8 +1987,10 @@ function buildActivityBuckets(
   });
 }
 
-export async function getGamesOverTimeSeries(): Promise<GamesOverTimeSeries> {
-  const playedAtDates = await getOrderedGameDates();
+export async function getGamesOverTimeSeries(
+  filter: StatsFilter = null,
+): Promise<GamesOverTimeSeries> {
+  const playedAtDates = await getOrderedGameDates(filter);
 
   return {
     weekly: buildActivityBuckets(
@@ -2005,7 +2087,9 @@ function buildPlayerAttendanceBuckets(
   });
 }
 
-export async function getPlayerAttendanceSeries(): Promise<PlayerAttendanceSeries> {
+export async function getPlayerAttendanceSeries(
+  filter: StatsFilter = null,
+): Promise<PlayerAttendanceSeries> {
   const rows = await db
     .select({
       playedAt: games.playedAt,
@@ -2016,6 +2100,7 @@ export async function getPlayerAttendanceSeries(): Promise<PlayerAttendanceSerie
     .from(gamePlayers)
     .innerJoin(games, eq(games.id, gamePlayers.gameId))
     .innerJoin(players, eq(players.id, gamePlayers.playerId))
+    .where(gameIdCondition(filter, games.id))
     .orderBy(games.playedAt, games.id, players.name);
 
   const attendanceRows = rows.map((row) => ({
@@ -2044,7 +2129,9 @@ export async function getPlayerAttendanceSeries(): Promise<PlayerAttendanceSerie
   };
 }
 
-export async function getPlayerAttendanceEvents(): Promise<PlayerAttendanceEvent[]> {
+export async function getPlayerAttendanceEvents(
+  filter: StatsFilter = null,
+): Promise<PlayerAttendanceEvent[]> {
   const rows = await db
     .select({
       playedAt: games.playedAt,
@@ -2055,6 +2142,7 @@ export async function getPlayerAttendanceEvents(): Promise<PlayerAttendanceEvent
     .from(gamePlayers)
     .innerJoin(games, eq(games.id, gamePlayers.gameId))
     .innerJoin(players, eq(players.id, gamePlayers.playerId))
+    .where(gameIdCondition(filter, games.id))
     .orderBy(games.playedAt, games.id, players.name);
 
   return rows.map((row) => ({
@@ -2114,8 +2202,10 @@ function buildCalendarHeatmapDays(
   });
 }
 
-export async function getCalendarHeatmapData(): Promise<CalendarHeatmapData> {
-  const playedAtDates = await getOrderedGameDates();
+export async function getCalendarHeatmapData(
+  filter: StatsFilter = null,
+): Promise<CalendarHeatmapData> {
+  const playedAtDates = await getOrderedGameDates(filter);
 
   if (playedAtDates.length === 0) {
     return {
@@ -2177,7 +2267,9 @@ export interface PlayerParticipationRate {
   participationRate: number;
 }
 
-export async function getPlayerParticipationRates(): Promise<PlayerParticipationRate[]> {
+export async function getPlayerParticipationRates(
+  filter: StatsFilter = null,
+): Promise<PlayerParticipationRate[]> {
   const [rows, [{ totalGames }]] = await Promise.all([
     db
       .select({
@@ -2187,14 +2279,19 @@ export async function getPlayerParticipationRates(): Promise<PlayerParticipation
         gamesPlayed: count(gamePlayers.id),
       })
       .from(players)
-      .leftJoin(gamePlayers, eq(gamePlayers.playerId, players.id))
+      .leftJoin(
+        gamePlayers,
+        and(eq(gamePlayers.playerId, players.id), gameIdCondition(filter, gamePlayers.gameId)),
+      )
+      .where(playerIdCondition(filter, players.id))
       .groupBy(players.id)
       .orderBy(players.name),
     db
       .select({
         totalGames: count(),
       })
-      .from(games),
+      .from(games)
+      .where(gameIdCondition(filter, games.id)),
   ]);
 
   return rows
@@ -2221,7 +2318,9 @@ export interface GameParticipantRow extends PlayerIdentity {
   isWinner: boolean;
 }
 
-async function getGameParticipantRows(): Promise<GameParticipantRow[]> {
+async function getGameParticipantRows(
+  filter: StatsFilter = null,
+): Promise<GameParticipantRow[]> {
   const rows = await db
     .select({
       gameId: gamePlayers.gameId,
@@ -2232,7 +2331,8 @@ async function getGameParticipantRows(): Promise<GameParticipantRow[]> {
       isWinner: gamePlayers.isWinner,
     })
     .from(gamePlayers)
-    .innerJoin(players, eq(players.id, gamePlayers.playerId));
+    .innerJoin(players, eq(players.id, gamePlayers.playerId))
+    .where(gameIdCondition(filter, gamePlayers.gameId));
 
   return rows.map((row) => ({
     gameId: row.gameId,
@@ -2302,8 +2402,10 @@ export function computeConsistencyRatings(
     );
 }
 
-export async function getPlayerConsistencyRatings(): Promise<PlayerConsistencyRating[]> {
-  return computeConsistencyRatings(await getGameParticipantRows());
+export async function getPlayerConsistencyRatings(
+  filter: StatsFilter = null,
+): Promise<PlayerConsistencyRating[]> {
+  return computeConsistencyRatings(await getGameParticipantRows(filter));
 }
 
 export interface PlayerDominanceIndex extends PlayerIdentity {
@@ -2350,8 +2452,10 @@ export function computeDominanceIndex(rows: GameParticipantRow[]): PlayerDominan
     );
 }
 
-export async function getPlayerDominanceIndex(): Promise<PlayerDominanceIndex[]> {
-  return computeDominanceIndex(await getGameParticipantRows());
+export async function getPlayerDominanceIndex(
+  filter: StatsFilter = null,
+): Promise<PlayerDominanceIndex[]> {
+  return computeDominanceIndex(await getGameParticipantRows(filter));
 }
 
 const NAIL_BITER_MARGIN = 2;
@@ -2415,8 +2519,10 @@ export function computeNailBiterRecords(rows: GameParticipantRow[]): PlayerNailB
     );
 }
 
-export async function getPlayerNailBiterRecords(): Promise<PlayerNailBiterRecord[]> {
-  return computeNailBiterRecords(await getGameParticipantRows());
+export async function getPlayerNailBiterRecords(
+  filter: StatsFilter = null,
+): Promise<PlayerNailBiterRecord[]> {
+  return computeNailBiterRecords(await getGameParticipantRows(filter));
 }
 
 const SMALL_TABLE_SIZES = [3, 4];
@@ -2489,8 +2595,10 @@ export function computeClutchFactor(buckets: PlayerWinRateByGameSize[]): PlayerC
     });
 }
 
-export async function getPlayerClutchFactors(): Promise<PlayerClutchFactor[]> {
-  return computeClutchFactor(await getPlayerWinRateByGameSize());
+export async function getPlayerClutchFactors(
+  filter: StatsFilter = null,
+): Promise<PlayerClutchFactor[]> {
+  return computeClutchFactor(await getPlayerWinRateByGameSize(filter));
 }
 
 const KINGMAKER_MIN_SHARED_GAMES = 3;
@@ -2599,7 +2707,9 @@ export function computeKingmakers(rows: GameOutcomeRow[]): PlayerKingmaker[] {
   );
 }
 
-export async function getPlayerKingmakers(): Promise<PlayerKingmaker[]> {
-  const { outcomeRows } = await getOrderedGameOutcomeData();
+export async function getPlayerKingmakers(
+  filter: StatsFilter = null,
+): Promise<PlayerKingmaker[]> {
+  const { outcomeRows } = await getOrderedGameOutcomeData(filter);
   return computeKingmakers(outcomeRows);
 }

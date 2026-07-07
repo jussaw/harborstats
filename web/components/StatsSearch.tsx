@@ -26,9 +26,11 @@ export interface StatsSectionView {
 
 interface Props {
   sections: StatsSectionView[]
+  // Rendered inline to the left of the search input in the sticky header (e.g. the player filter).
+  filter?: ReactNode
 }
 
-export function StatsSearch({ sections }: Props) {
+export function StatsSearch({ sections, filter }: Props) {
   const [query, setQuery] = useState('')
 
   const handleChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
@@ -56,29 +58,37 @@ export function StatsSearch({ sections }: Props) {
           sm:-mx-6 sm:px-6
         "
       >
-        <div className="relative">
-          <Input
-            type="search"
-            value={query}
-            onChange={handleChange}
-            placeholder="Search stats…"
-            aria-label="Search stats"
-            className="w-full"
-          />
-          {query !== '' ? (
-            <button
-              type="button"
-              onClick={handleClear}
-              aria-label="Clear search"
-              className="
-                absolute top-1/2 right-2 -translate-y-1/2 rounded-sm p-1
-                text-(--cream)/50 transition-colors
-                hover:text-(--cream)
-              "
-            >
-              <X className="size-4" />
-            </button>
-          ) : null}
+        <div className="flex items-center gap-3">
+          {/*
+            Wrap the slot so the caller's element renders as a single child, avoiding a
+            spurious "unique key" warning React emits for a prop-passed element placed
+            directly in a children array.
+          */}
+          {filter ? <div className="shrink-0">{filter}</div> : null}
+          <div className="relative flex-1">
+            <Input
+              type="search"
+              value={query}
+              onChange={handleChange}
+              placeholder="Search stats…"
+              aria-label="Search stats"
+              className="w-full"
+            />
+            {query !== '' ? (
+              <button
+                type="button"
+                onClick={handleClear}
+                aria-label="Clear search"
+                className="
+                  absolute top-1/2 right-2 -translate-y-1/2 rounded-sm p-1
+                  text-(--cream)/50 transition-colors
+                  hover:text-(--cream)
+                "
+              >
+                <X className="size-4" />
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
 
