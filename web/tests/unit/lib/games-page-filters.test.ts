@@ -25,6 +25,11 @@ describe('games page filter helpers', () => {
     });
   });
 
+  it('parses hyphen-delimited player values alongside legacy repeated params', () => {
+    expect(parseGamesPageState({ player: '2-5' }).filters.playerIds).toEqual([2, 5]);
+    expect(parseGamesPageState({ player: ['2-abc-0', '5'] }).filters.playerIds).toEqual([2, 5]);
+  });
+
   it('falls back to default paging and empty filters when params are missing', () => {
     const state = parseGamesPageState({});
 
@@ -34,7 +39,7 @@ describe('games page filter helpers', () => {
     expect(hasActiveGamesPageFilters(state.filters)).toBe(false);
   });
 
-  it('serializes active filters into repeated player params and ISO datetimes', () => {
+  it('serializes active filters into a delimited player param and ISO datetimes', () => {
     const params = createGamesSearchParams({
       page: 2,
       pageSize: 50,
@@ -47,7 +52,7 @@ describe('games page filter helpers', () => {
 
     expect(params.get('page')).toBe('2');
     expect(params.get('pageSize')).toBe('50');
-    expect(params.getAll('player')).toEqual(['7', '3']);
+    expect(params.getAll('player')).toEqual(['7-3']);
     expect(params.get('from')).toBe('2026-04-01T10:00:00.000Z');
     expect(params.get('to')).toBe('2026-04-20T15:16:00.000Z');
     expect(

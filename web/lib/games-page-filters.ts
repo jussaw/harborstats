@@ -34,8 +34,11 @@ function parseDateValue(value: SearchParamValue) {
   return Number.isNaN(parsed.valueOf()) ? null : parsed
 }
 
+// Accepts both the hyphen-delimited form (`player=1-3`) and the legacy repeated form
+// (`player=1&player=3`) so old shared links keep working.
 function parsePlayerIds(value: SearchParamValue) {
   const parsedIds = getAllValues(value)
+    .flatMap((entry) => entry.split('-'))
     .map((entry) => parsePositiveInt(entry))
     .filter((entry): entry is number => entry !== null)
 
@@ -79,9 +82,13 @@ export function createGamesSearchParams(input: {
     params.set('pageSize', String(input.pageSize))
   }
 
-  input.filters.playerIds.forEach((playerId) => {
-    params.append('player', String(playerId))
-  })
+  // A single hyphen-delimited param (rather than one `player=<id>` per selection) is deliberate:
+  // the Next.js client router cache collapses repeated search params to their last value when
+  // building cache keys, so URLs that share a final id collide and render stale content
+  // (https://github.com/vercel/next.js/issues/92152).
+  if (input.filters.playerIds.length > 0) {
+    params.set('player', input.filters.playerIds.join('-'))
+  }
 
   if (input.filters.from) {
     params.set('from', input.filters.from.toISOString())

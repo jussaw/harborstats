@@ -27,15 +27,15 @@ describe('GamesPagination', () => {
 
     expect(screen.getByRole('link', { name: '20' })).toHaveAttribute(
       'href',
-      '/games?page=1&pageSize=20&player=2&player=5&from=2026-04-01T10%3A00%3A00.000Z&to=2026-04-20T15%3A16%3A00.000Z',
+      '/games?page=1&pageSize=20&player=2-5&from=2026-04-01T10%3A00%3A00.000Z&to=2026-04-20T15%3A16%3A00.000Z',
     )
     expect(screen.getByRole('link', { name: '50' })).toHaveAttribute(
       'href',
-      '/games?page=1&pageSize=50&player=2&player=5&from=2026-04-01T10%3A00%3A00.000Z&to=2026-04-20T15%3A16%3A00.000Z',
+      '/games?page=1&pageSize=50&player=2-5&from=2026-04-01T10%3A00%3A00.000Z&to=2026-04-20T15%3A16%3A00.000Z',
     )
     expect(screen.getByRole('link', { name: '100' })).toHaveAttribute(
       'href',
-      '/games?page=1&pageSize=100&player=2&player=5&from=2026-04-01T10%3A00%3A00.000Z&to=2026-04-20T15%3A16%3A00.000Z',
+      '/games?page=1&pageSize=100&player=2-5&from=2026-04-01T10%3A00%3A00.000Z&to=2026-04-20T15%3A16%3A00.000Z',
     )
   })
 

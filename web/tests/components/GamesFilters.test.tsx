@@ -68,6 +68,24 @@ describe('GamesFilters', () => {
     expect(replaceMock).toHaveBeenCalledWith('/games?page=1&pageSize=20&player=1');
   });
 
+  it('writes a single delimited player param when multiple players are selected', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <GamesFilters
+        players={players}
+        pageSize={20}
+        filters={{ playerIds: [1], from: null, to: null }}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /filters/i }));
+    await user.click(screen.getByLabelText('Players'));
+    await user.click(screen.getByLabelText('Bea'));
+
+    expect(replaceMock).toHaveBeenCalledWith('/games?page=1&pageSize=20&player=1-2');
+  });
+
   it('clears only player selections and preserves the date range', async () => {
     const user = userEvent.setup();
 

@@ -191,11 +191,11 @@ test('public games page filters by players and date range while preserving pagin
 
   await page.getByLabel('Bea').check();
 
-  await expect(page).toHaveURL(/\/games\?page=1&pageSize=20&player=1&player=2$/);
+  await expect(page).toHaveURL(/\/games\?page=1&pageSize=20&player=1-2$/);
   await expect(page.locator('article')).toHaveCount(20);
 
   await page.getByRole('link', { name: '2', exact: true }).click();
-  await expect(page).toHaveURL(/\/games\?page=2&pageSize=20&player=1&player=2$/);
+  await expect(page).toHaveURL(/\/games\?page=2&pageSize=20&player=1-2$/);
   await expect(page.locator('article')).toHaveCount(2);
 
   await openGamesFilters(page);
@@ -204,7 +204,7 @@ test('public games page filters by players and date range while preserving pagin
 
   await expect(page).toHaveURL(/from=2026-04-10T00%3A00%3A00.000Z/);
   await expect(page).toHaveURL(
-    /\/games\?page=1&pageSize=20&player=1&player=2&from=2026-04-10T00%3A00%3A00.000Z$/,
+    /\/games\?page=1&pageSize=20&player=1-2&from=2026-04-10T00%3A00%3A00.000Z$/,
   );
   await expect(page.locator('article')).toHaveCount(13);
 
