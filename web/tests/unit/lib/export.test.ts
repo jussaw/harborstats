@@ -52,4 +52,40 @@ describe('gamesToCsv', () => {
 
     expect(csv).toContain(',"Smith, Jr.",9,true');
   });
+
+  it('neutralizes formula injection in notes by prefixing a single quote', () => {
+    const csv = gamesToCsv([
+      buildGame({
+        notes: '=HYPERLINK("http://evil.example","click")',
+        players: [{ playerName: 'Alice', score: 10, isWinner: true }],
+      }),
+    ]);
+
+    // Leads with '=', so the cell is prefixed with ' and then RFC-4180 quoted
+    // because it contains commas and quotes.
+    expect(csv).toContain('"\'=HYPERLINK(""http://evil.example"",""click"")"');
+  });
+
+  it('neutralizes formula-triggering player names (=, +, -, @)', () => {
+    ['=', '+', '-', '@'].forEach((trigger) => {
+      const csv = gamesToCsv([
+        buildGame({
+          players: [{ playerName: `${trigger}cmd`, score: 7, isWinner: true }],
+        }),
+      ]);
+
+      expect(csv).toContain(`,'${trigger}cmd,7,true`);
+    });
+  });
+
+  it('leaves ordinary values untouched', () => {
+    const csv = gamesToCsv([
+      buildGame({
+        notes: 'good clean game',
+        players: [{ playerName: 'Alice', score: 10, isWinner: true }],
+      }),
+    ]);
+
+    expect(csv).toContain(',good clean game,Alice,10,true');
+  });
 });
