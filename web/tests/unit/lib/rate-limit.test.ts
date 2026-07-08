@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { checkRateLimit, clearRateLimit, resetRateLimit } from '@/lib/rate-limit';
+import {
+  checkRateLimit,
+  clearRateLimit,
+  rateLimitBucketCount,
+  RATE_LIMIT_MAX_BUCKETS,
+  resetRateLimit,
+} from '@/lib/rate-limit';
 
 const WINDOW_MS = 15 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
@@ -96,5 +102,33 @@ describe('rate-limit', () => {
 
     // Sweep triggers mid-window: the live key's exhausted budget must survive.
     expect(checkRateLimit('live', start + 1).allowed).toBe(false);
+  });
+
+  it('caps the map at the ceiling under a flood of unhelpfully-unique keys', () => {
+    const now = 1_000_000;
+    // All within one window, so nothing is sweepable — the ceiling must engage.
+    const flood = RATE_LIMIT_MAX_BUCKETS * 2;
+    for (let i = 0; i < flood; i += 1) {
+      checkRateLimit(`spoofed-${i}`, now);
+    }
+
+    expect(rateLimitBucketCount()).toBeLessThanOrEqual(RATE_LIMIT_MAX_BUCKETS);
+  });
+
+  it('evicts the soonest-to-expire windows first when at the ceiling', () => {
+    // Fill exactly to the ceiling with windows that expire soonest.
+    const early = 1_000_000;
+    for (let i = 0; i < RATE_LIMIT_MAX_BUCKETS; i += 1) {
+      checkRateLimit(`early-${i}`, early);
+    }
+
+    // A newer key (later resetAt) arrives once the map is full; it forces the
+    // eviction of an earlier, soonest-to-expire window rather than itself.
+    const later = early + 60_000;
+    checkRateLimit('newcomer', later);
+
+    expect(rateLimitBucketCount()).toBeLessThanOrEqual(RATE_LIMIT_MAX_BUCKETS);
+    // The newcomer keeps its live budget (was not the one evicted).
+    expect(checkRateLimit('newcomer', later + 1).retryAfterMs).toBeUndefined();
   });
 });
