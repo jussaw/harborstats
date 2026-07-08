@@ -238,3 +238,23 @@ Because the compose file builds from `../web`, deploys should be run from a chec
 - `pgadmin` is disabled by default, requires explicit credentials, and only publishes on localhost
 - Database data persists in the Docker `pgdata` named volume
 - Local development uses `web/docker-compose.yml`, not the deployment compose file in this directory
+
+### Restrict origin access to the CDN/proxy (security)
+
+The app derives the client IP from request headers (`cf-connecting-ip`, then
+`x-forwarded-for` / `x-real-ip`; see `web/lib/request-ip.ts`) and uses it for
+the admin-login / game-unlock **rate limiter** and for the **audit log** actor
+IP. Those headers are only trustworthy when they are set by the fronting
+CDN/proxy (Cloudflare).
+
+Because the compose stack publishes the app directly on host port `23413`, any
+client that can reach the origin **without going through Cloudflare** can spoof
+`cf-connecting-ip` to a rotating value and thereby bypass the per-IP rate limit
+(enabling password brute force) and poison audit-log IPs. Mitigate by ensuring
+the origin is only reachable via the CDN, for example:
+
+- Firewall port `23413` so only Cloudflare IP ranges can connect
+  (<https://www.cloudflare.com/ips/>), or bind it to localhost
+  (`127.0.0.1:23413:3000`) and front it with a local reverse proxy, and
+- Consider Cloudflare Tunnel / Authenticated Origin Pulls so the origin never
+  accepts direct public traffic.
