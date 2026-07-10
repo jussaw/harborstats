@@ -5,6 +5,7 @@ import { X } from 'lucide-react'
 import { matchesWildcard } from '@/lib/wildcard'
 import type { StatsSectionId } from '@/lib/stats-sections'
 import { Input } from './ui/Field'
+import { PageWidth } from './PageWidth'
 import { StatsCard } from './StatsCard'
 import { StatsSectionHeader } from './StatsSectionHeader'
 
@@ -50,12 +51,12 @@ export function StatsSearch({ sections, filter }: Props) {
   const hasResults = visibleSections.some(({ cards }) => cards.length > 0)
 
   return (
-    <div className="space-y-8">
+    <div>
       <div
         className="
-          sticky top-0 z-10 -mx-4 border-b border-(--border-gold-subtle)
+          sticky top-0 z-10 border-b border-(--border-gold-subtle)
           bg-(--navy-900) px-4 py-3
-          sm:-mx-6 sm:px-6
+          sm:px-6
         "
       >
         <div className="flex items-center gap-3">
@@ -92,39 +93,48 @@ export function StatsSearch({ sections, filter }: Props) {
         </div>
       </div>
 
-      <div className="space-y-12">
-        {visibleSections.map(({ section, cards }) => (
-          <section
-            key={section.id}
-            id={section.id}
-            className={`
-              scroll-mt-20
-              ${cards.length === 0 ? 'hidden' : ''}
-            `}
-          >
-            <StatsSectionHeader title={section.title} subtitle={section.subtitle} />
-
-            <div
-              className="
-                grid grid-cols-1 gap-5
-                lg:grid-cols-2
-              "
+      <PageWidth
+        as="div"
+        width="7xl"
+        className="
+          space-y-8 px-4 pt-8 pb-6
+          sm:px-6 sm:pb-8
+        "
+      >
+        <div className="space-y-12">
+          {visibleSections.map(({ section, cards }) => (
+            <section
+              key={section.id}
+              id={section.id}
+              className={`
+                scroll-mt-20
+                ${cards.length === 0 ? 'hidden' : ''}
+              `}
             >
-              {cards.map((card) => (
-                <StatsCard key={card.id} {...card}>
-                  {card.content}
-                </StatsCard>
-              ))}
-            </div>
-          </section>
-        ))}
-      </div>
+              <StatsSectionHeader title={section.title} subtitle={section.subtitle} />
 
-      {hasResults ? null : (
-        <p className="py-12 text-center text-sm text-(--cream)/50">
-          No stats match “{query.trim()}”.
-        </p>
-      )}
+              <div
+                className="
+                  grid grid-cols-1 gap-5
+                  lg:grid-cols-2
+                "
+              >
+                {cards.map((card) => (
+                  <StatsCard key={card.id} {...card}>
+                    {card.content}
+                  </StatsCard>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+
+        {hasResults ? null : (
+          <p className="py-12 text-center text-sm text-(--cream)/50">
+            No stats match “{query.trim()}”.
+          </p>
+        )}
+      </PageWidth>
     </div>
   )
 }

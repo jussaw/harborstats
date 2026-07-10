@@ -11,7 +11,6 @@ import { GamesOverTimeChart } from '@/components/GamesOverTimeChart';
 import { HeadToHeadMatrix } from '@/components/HeadToHeadMatrix';
 import { RivalryCard } from '@/components/RivalryCard';
 import { LongestGapCard } from '@/components/LongestGapCard';
-import { PageWidth } from '@/components/PageWidth';
 import { PlayerAttendanceChart } from '@/components/PlayerAttendanceChart';
 import { PlayerOfMonthHistoryTable } from '@/components/PlayerOfMonthHistoryTable';
 import { PlayerOfMonthLeaderboard } from '@/components/PlayerOfMonthLeaderboard';
@@ -1928,18 +1927,12 @@ export default async function StatsPage({ searchParams }: Props) {
           harbor-scrollbar relative flex-1 overflow-y-auto scroll-smooth
         "
       >
-        <PageWidth
-          width="7xl"
-          className="
-            px-4 pb-6
-            sm:px-6 sm:pb-8
-          "
-        >
+        <main>
           <StatsSearch
             sections={sections}
             filter={<StatsPlayerFilter players={players} selectedPlayerIds={selectedPlayerIds} />}
           />
-        </PageWidth>
+        </main>
       </div>
     </div>
   );

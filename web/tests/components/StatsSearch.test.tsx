@@ -97,6 +97,15 @@ describe('StatsSearch', () => {
     expect(screen.queryByText('Average Score')).not.toBeInTheDocument()
   })
 
+  it('keeps the search bar outside the width-constrained content column', () => {
+    render(<StatsSearch sections={sections} />)
+
+    const searchbox = screen.getByRole('searchbox', { name: 'Search stats' })
+
+    expect(searchbox.closest('[data-page-width]')).toBeNull()
+    expect(screen.getByText('Average Score').closest('[data-page-width]')).not.toBeNull()
+  })
+
   it('restores all cards when the query is cleared', async () => {
     const user = userEvent.setup()
     render(<StatsSearch sections={sections} />)
