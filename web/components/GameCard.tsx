@@ -13,7 +13,6 @@ interface GameCardProps {
 
 export function GameCard({ game }: GameCardProps) {
   const sortedPlayers = [...game.players].sort((a, b) => b.score - a.score)
-  const winners = sortedPlayers.filter((player) => player.isWinner)
 
   return (
     <article
@@ -22,41 +21,32 @@ export function GameCard({ game }: GameCardProps) {
         p-4 backdrop-blur-sm
       "
     >
-      <div className="mb-3 flex items-start justify-between gap-2">
-        <FormattedDate iso={game.playedAt.toISOString()} className="
-          text-xs text-(--cream)/60
-        " />
-        {winners.length > 0 && (
-          <p className="
-            inline-flex items-center gap-1 text-xs font-semibold text-(--gold)
-          ">
-            <span aria-hidden="true" className="leading-none">
-              ♛
-            </span>
-            <span>{winners.map((winner) => winner.playerName).join(', ')}</span>
-          </p>
-        )}
-      </div>
+      <FormattedDate
+        iso={game.playedAt.toISOString()}
+        className="mb-3 block text-xs text-(--cream)/60"
+      />
 
-      <ul className="flex flex-wrap gap-2">
+      <ul className="space-y-1.5">
         {sortedPlayers.map((player) => (
           <li
             key={player.playerName}
             className={`
-              inline-flex items-center gap-1.5 rounded-full border px-3 py-1
-              text-xs
+              flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm
               ${
                 player.isWinner
-                  ? `
-                    border-(--border-gold) bg-(--gold)/15 font-semibold
-                    text-(--gold)
-                  `
-                  : 'border-(--cream)/15 bg-(--cream)/5 text-(--cream)/75'
+                  ? 'bg-(--gold)/10 font-semibold text-(--gold)'
+                  : 'text-(--cream)/75'
               }
             `}
           >
-            <span>{player.playerName}</span>
-            <span className="tabular-nums">{player.score}</span>
+            <span aria-hidden="true" className="w-4 text-center leading-none">
+              {player.isWinner ? '♛' : ''}
+            </span>
+            <span>
+              {player.playerName}
+              {player.isWinner && <span className="sr-only"> (winner)</span>}
+            </span>
+            <span className="ml-auto tabular-nums">{player.score}</span>
           </li>
         ))}
       </ul>

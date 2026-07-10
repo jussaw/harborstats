@@ -14,16 +14,22 @@ const game = {
 }
 
 describe('GameCard', () => {
-  it('renders an article with winner callout, players, scores, and notes', () => {
+  it('renders an article with players, scores, and notes', () => {
     const { container } = render(<GameCard game={game} />)
 
     expect(container.querySelector('article')).not.toBeNull()
-    const winnerCallout = screen.getByText('♛').closest('p')
-    expect(winnerCallout).toHaveTextContent('Magnus')
-    expect(winnerCallout).toHaveClass('items-center')
     expect(screen.getByText('Elena')).toBeInTheDocument()
     expect(screen.getByText('11')).toBeInTheDocument()
     expect(screen.getByText('Three-way port battle')).toBeInTheDocument()
+  })
+
+  it('marks only the winner row with the crown', () => {
+    render(<GameCard game={game} />)
+
+    const winnerRow = screen.getByText('♛').closest('li')
+    expect(winnerRow).toHaveTextContent('Magnus')
+    expect(winnerRow).toHaveTextContent('11')
+    expect(screen.getAllByText(/♛/)).toHaveLength(1)
   })
 
   it('sorts players by score descending', () => {
@@ -36,7 +42,7 @@ describe('GameCard', () => {
     expect(items[2]).toHaveTextContent('Tom')
   })
 
-  it('omits the winner callout when no winner is recorded', () => {
+  it('omits the crown when no winner is recorded', () => {
     render(
       <GameCard
         game={{
