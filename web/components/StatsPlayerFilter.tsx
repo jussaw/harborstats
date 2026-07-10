@@ -56,6 +56,7 @@ export function StatsPlayerFilter({ players, selectedPlayerIds }: Props) {
   }, [isOpen])
 
   const allPlayerIds = players.map((player) => player.id)
+  const sortedPlayers = [...players].sort((a, b) => a.name.localeCompare(b.name))
   const activeSelection =
     draftSelection && !sameIdSet(draftSelection, selectedPlayerIds)
       ? draftSelection
@@ -161,7 +162,7 @@ export function StatsPlayerFilter({ players, selectedPlayerIds }: Props) {
               sm:grid-cols-2
             "
           >
-            {players.map((player) => {
+            {sortedPlayers.map((player) => {
               const isChecked = activeSelection.includes(player.id)
 
               return (

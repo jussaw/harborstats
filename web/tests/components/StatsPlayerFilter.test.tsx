@@ -38,6 +38,21 @@ describe('StatsPlayerFilter', () => {
     });
   });
 
+  it('lists players alphabetically regardless of input order', async () => {
+    const user = userEvent.setup();
+    const unordered = [players[2], players[0], players[1]];
+    render(<StatsPlayerFilter players={unordered} selectedPlayerIds={allSelected} />);
+
+    await user.click(screen.getByRole('button', { name: /players/i }));
+
+    const checkboxes = screen.getAllByRole('checkbox');
+    expect(checkboxes.map((box) => box.getAttribute('aria-label'))).toEqual([
+      'Ada',
+      'Bea',
+      'Cara',
+    ]);
+  });
+
   it('shows a count on the trigger only when a subset is selected', () => {
     const { rerender } = render(
       <StatsPlayerFilter players={players} selectedPlayerIds={allSelected} />,
