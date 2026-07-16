@@ -548,7 +548,7 @@ export default async function StatsPage({ searchParams }: Props) {
       title: 'Rating History',
       description: 'Replayable multiplayer Elo after every rated game.',
       badge: undefined,
-      span: 'full',
+      span: 'single',
       section: 'ratings',
     },
     {
@@ -967,7 +967,7 @@ export default async function StatsPage({ searchParams }: Props) {
           }))}
         />
       ),
-    'rating-history': <RatingHistoryChart players={ratedPlayers} />,
+    'rating-history': <RatingHistoryChart players={ratedPlayers} rosterPlayerIds={allPlayerIds} />,
     'total-wins':
       winRates.length === 0 ? (
         <EmptyState>No wins recorded yet.</EmptyState>
@@ -1671,7 +1671,11 @@ export default async function StatsPage({ searchParams }: Props) {
       <CumulativeGamesAreaChart playedAtIsos={gameActivityTimestamps} defaultView="month" />
     ),
     'player-attendance-over-time': (
-      <PlayerAttendanceChart events={playerAttendanceEvents} defaultView="week" />
+      <PlayerAttendanceChart
+        events={playerAttendanceEvents}
+        defaultView="week"
+        rosterPlayerIds={allPlayerIds}
+      />
     ),
     'participation-rate': participationRates.some((player) => player.totalGames > 0) ? (
       <StatsLeaderboardTable

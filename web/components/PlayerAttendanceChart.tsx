@@ -7,24 +7,16 @@ import {
   type PlayerAttendanceBucket,
   type PlayerAttendanceEvent,
 } from '@/lib/activity-local-time'
+import { getChartDialogPosition } from '@/lib/chart-dialog-position'
+import { buildPlayerColorMap } from '@/lib/player-colors'
 import { localTimeLoadingMessage, useResolvedTimeZone } from '@/lib/use-resolved-time-zone'
 
 interface Props {
   events: PlayerAttendanceEvent[]
   defaultView: ActivityView
+  rosterPlayerIds: number[]
   timeZone?: string
 }
-
-const PLAYER_COLORS = [
-  '#f3c969',
-  '#68c3c0',
-  '#f28c6f',
-  '#85a7ff',
-  '#a98ed6',
-  '#7ed486',
-  '#f0a6ca',
-  '#d8d06f',
-]
 
 function formatAppearanceCount(count: number) {
   return `${count} appearance${count === 1 ? '' : 's'}`
@@ -79,10 +71,6 @@ function buildAttendanceLayout(data: PlayerAttendanceBucket[]) {
   }
 }
 
-function getColorForPlayer(playerId: number) {
-  return PLAYER_COLORS[playerId % PLAYER_COLORS.length]
-}
-
 function getAttendanceDialogPosition({
   bucketX,
   bucketAppearances,
@@ -100,30 +88,17 @@ function getAttendanceDialogPosition({
   plotBottom: number
   maxAppearances: number
 }) {
-  const dialogWidth = 240
-  const dialogGap = 18
-  const dialogPadding = 16
-  const rightSpace = width - bucketX - dialogPadding
-  const leftSpace = bucketX - dialogPadding
-  const side = rightSpace >= dialogWidth + dialogGap || rightSpace >= leftSpace ? 'right' : 'left'
   const bucketHeight = (bucketAppearances / maxAppearances) * (plotBottom - plotTop)
   const unclampedAnchorY = plotBottom - bucketHeight + 10
   const minAnchorY = plotTop + 18
   const maxAnchorY = plotTop + (plotBottom - plotTop) * 0.62
   const anchorY = Math.min(maxAnchorY, Math.max(minAnchorY, unclampedAnchorY))
 
-  return {
-    side,
-    left: `${(bucketX / width) * 100}%`,
-    top: `${(anchorY / height) * 100}%`,
-    transform:
-      side === 'right'
-        ? 'translate(18px, -18%)'
-        : 'translate(calc(-100% - 18px), -18%)',
-  }
+  return getChartDialogPosition({ anchorX: bucketX, anchorY, width, height })
 }
 
-export function PlayerAttendanceChart({ events, defaultView, timeZone }: Props) {
+export function PlayerAttendanceChart({ events, defaultView, rosterPlayerIds, timeZone }: Props) {
+  const colorByPlayerId = useMemo(() => buildPlayerColorMap(rosterPlayerIds), [rosterPlayerIds])
   const [view, setView] = useState<ActivityView>(defaultView)
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
   const resolvedTimeZone = useResolvedTimeZone(timeZone)
@@ -207,7 +182,9 @@ export function PlayerAttendanceChart({ events, defaultView, timeZone }: Props) 
             >
               <span
                 className="size-2.5 rounded-full"
-                style={{ backgroundColor: getColorForPlayer(player.playerId) }}
+                style={{
+                  backgroundColor: colorByPlayerId.get(player.playerId) ?? 'var(--player-color-1)',
+                }}
               />
               <span>{player.name}</span>
             </span>
@@ -335,7 +312,7 @@ export function PlayerAttendanceChart({ events, defaultView, timeZone }: Props) 
                       width={barWidth}
                       height={segmentHeight}
                       rx="8"
-                      fill={getColorForPlayer(segment.playerId)}
+                      fill={colorByPlayerId.get(segment.playerId) ?? 'var(--player-color-1)'}
                       opacity="0.9"
                     />
                   )

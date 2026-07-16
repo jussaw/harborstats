@@ -470,6 +470,7 @@ function PlayerDetail({
   playerGames,
   headToHeadRecords,
   ratingPlayer,
+  rosterPlayerIds,
 }: {
   player: Player;
   scoreStats: PlayerScoreStats[];
@@ -487,6 +488,7 @@ function PlayerDetail({
   playerGames: RecentGame[];
   headToHeadRecords: PlayerHeadToHeadRecord[];
   ratingPlayer: PlayerRating | null;
+  rosterPlayerIds: number[];
 }) {
   const scoreStat = scoreStats.find((candidate) => candidate.playerId === player.id) ?? null;
   const scoreDistribution =
@@ -535,7 +537,10 @@ function PlayerDetail({
         </h2>
         <p className="mt-2 text-sm text-(--cream)/55">Multiplayer Elo after each eligible game.</p>
         <div className="mt-5">
-          <RatingHistoryChart players={ratingPlayer ? [ratingPlayer] : []} />
+          <RatingHistoryChart
+            players={ratingPlayer ? [ratingPlayer] : []}
+            rosterPlayerIds={rosterPlayerIds}
+          />
         </div>
       </section>
       <div
@@ -750,6 +755,8 @@ export function PlayersSection({
   headToHeadRecords,
   ratingPlayer,
 }: Props) {
+  const rosterPlayerIds = players.map((rosterPlayer) => rosterPlayer.id);
+
   if (players.length === 0) {
     return (
       <PageWidth width="3xl" className="px-4 py-12">
@@ -810,6 +817,7 @@ export function PlayersSection({
                 playerGames={playerGames}
                 headToHeadRecords={headToHeadRecords}
                 ratingPlayer={ratingPlayer}
+                rosterPlayerIds={rosterPlayerIds}
               />
             ) : null}
           </div>
@@ -847,6 +855,7 @@ export function PlayersSection({
               playerGames={playerGames}
               headToHeadRecords={headToHeadRecords}
               ratingPlayer={ratingPlayer}
+              rosterPlayerIds={rosterPlayerIds}
             />
           ) : (
             <PlayersDetailEmptyState />
