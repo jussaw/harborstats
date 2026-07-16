@@ -6,6 +6,7 @@ import { BestWinRecordsLeaderboard } from '@/components/BestWinRecordsLeaderboar
 import { BusiestRecordsCard } from '@/components/BusiestRecordsCard';
 import { CalendarHeatmap } from '@/components/CalendarHeatmap';
 import { CumulativeGamesAreaChart } from '@/components/CumulativeGamesAreaChart';
+import { RatingHistoryChart } from '@/components/RatingHistoryChart';
 import { FormattedDate } from '@/components/FormattedDate';
 import { GamesOverTimeChart } from '@/components/GamesOverTimeChart';
 import { HeadToHeadMatrix } from '@/components/HeadToHeadMatrix';
@@ -24,6 +25,7 @@ import { formatAverage, formatPercent, formatSignedNumber } from '@/lib/format';
 import { PlayerTier } from '@/lib/player-tier';
 import { getPlayers } from '@/lib/players';
 import { getSettings } from '@/lib/settings';
+import { getRatingReplay } from '@/lib/ratings';
 import { resolveStatsFilter } from '@/lib/stats-filter';
 import { parseStatsSelectedPlayerIds } from '@/lib/stats-page-filters';
 import {
@@ -75,13 +77,7 @@ interface StatsCardMeta {
 function PlayerName({ name, tier }: { name: string; tier: PlayerTier }) {
   return (
     <div className="min-w-0">
-      <span
-        className={
-          tier === PlayerTier.Premium
-            ? `font-semibold text-(--gold)`
-            : ''
-        }
-      >
+      <span className={tier === PlayerTier.Premium ? `font-semibold text-(--gold)` : ''}>
         {name}
       </span>
     </div>
@@ -94,13 +90,7 @@ function MarginWinnerNames({ winners }: { winners: PlayerIdentity[] }) {
       {winners.map((winner, index) => (
         <Fragment key={winner.playerId}>
           {index > 0 ? ', ' : null}
-          <span
-            className={
-              winner.tier === PlayerTier.Premium
-                ? `font-semibold text-(--gold)`
-                : ''
-            }
-          >
+          <span className={winner.tier === PlayerTier.Premium ? `font-semibold text-(--gold)` : ''}>
             {winner.name}
           </span>
         </Fragment>
@@ -137,12 +127,16 @@ function ScoreComparisonMetric({
   rowLabel: string;
 }) {
   return (
-    <div className="
+    <div
+      className="
       rounded-xl border border-(--border-gold-subtle) bg-(--surface-subtle) p-3
-    ">
-      <p className="
+    "
+    >
+      <p
+        className="
         text-[10px] font-medium tracking-[0.18em] text-(--cream)/45 uppercase
-      ">
+      "
+      >
         {label}
       </p>
       <p className="mt-2 font-semibold text-(--gold) tabular-nums">{formatAverage(value)}</p>
@@ -254,15 +248,19 @@ function SingleGameRecordRow({
   playedAt: string;
 }) {
   return (
-    <div className="
+    <div
+      className="
       rounded-xl border border-(--border-gold-subtle) bg-(--surface-subtle) p-3
-    ">
+    "
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="
+          <p
+            className="
             text-[10px] font-medium tracking-[0.18em] text-(--cream)/45
             uppercase
-          ">
+          "
+          >
             {label}
           </p>
           <div className="mt-1 text-sm text-(--cream)">{detail}</div>
@@ -275,10 +273,7 @@ function SingleGameRecordRow({
           {value}
         </p>
       </div>
-      <FormattedDate
-        iso={playedAt}
-        className="mt-2 block text-xs text-(--cream)/50"
-      />
+      <FormattedDate iso={playedAt} className="mt-2 block text-xs text-(--cream)/50" />
     </div>
   );
 }
@@ -401,6 +396,7 @@ export default async function StatsPage({ searchParams }: Props) {
     nailBiterRecords,
     clutchFactors,
     kingmakers,
+    ratingReplay,
   ] = await Promise.all([
     getPlayerWinRates(filter),
     getSettings(),
@@ -429,11 +425,13 @@ export default async function StatsPage({ searchParams }: Props) {
     getPlayerNailBiterRecords(filter),
     getPlayerClutchFactors(filter),
     getPlayerKingmakers(filter),
+    getRatingReplay(filter),
   ]);
 
   const winRateQualified = winRates
     .filter((player) => player.games >= settings.winRateMinGames)
     .sort((a, b) => b.winRate - a.winRate || b.wins - a.wins);
+  const ratedPlayers = ratingReplay.players.filter((player) => player.gamesPlayed > 0);
   const podiumRateQualified = podiumRates
     .filter((player) => player.games >= settings.podiumRateMinGames)
     .sort((a, b) => b.podiumRate - a.podiumRate || b.podiums - a.podiums);
@@ -525,8 +523,7 @@ export default async function StatsPage({ searchParams }: Props) {
   );
   const dominanceQualified = dominanceIndex.filter((player) => meetsStatCardGate(player.playerId));
   const clutchQualified = clutchFactors.filter(
-    (player) =>
-      player.delta !== null && player.smallGames + player.bigGames >= statCardMinGames,
+    (player) => player.delta !== null && player.smallGames + player.bigGames >= statCardMinGames,
   );
   const nailBiterQualified = nailBiterRecords.filter((player) =>
     meetsStatCardGate(player.playerId),
@@ -538,6 +535,22 @@ export default async function StatsPage({ searchParams }: Props) {
       : 'No games recorded yet.';
 
   const statsCards: StatsCardMeta[] = [
+    {
+      id: 'power-ranking',
+      title: 'Power Ranking',
+      description: 'Multiplayer Elo starts at 1500 with K 24 pairwise comparisons.',
+      badge: undefined,
+      span: 'single',
+      section: 'ratings',
+    },
+    {
+      id: 'rating-history',
+      title: 'Rating History',
+      description: 'Replayable multiplayer Elo after every rated game.',
+      badge: undefined,
+      span: 'full',
+      section: 'ratings',
+    },
     {
       id: 'total-wins',
       title: 'Total Wins',
@@ -709,7 +722,8 @@ export default async function StatsPage({ searchParams }: Props) {
     {
       id: 'clutch-factor',
       title: 'Clutch Factor',
-      description: 'Win rate at full tables (5–6P) versus small tables (3–4P), and the swing between them.',
+      description:
+        'Win rate at full tables (5–6P) versus small tables (3–4P), and the swing between them.',
       badge: statCardBadge,
       span: 'single',
       section: 'finishes',
@@ -900,6 +914,60 @@ export default async function StatsPage({ searchParams }: Props) {
   ) as Record<StatsSectionId, StatsCardMeta[]>;
 
   const cardContents: Record<string, ReactNode> = {
+    'power-ranking':
+      ratedPlayers.length === 0 ? (
+        <EmptyState>No rated multiplayer games yet.</EmptyState>
+      ) : (
+        <StatsLeaderboardTable
+          columns={[
+            { label: '#', align: 'center', widthClass: 'w-10', rank: true },
+            { label: 'Player', sortKey: 'player', sortType: 'string' },
+            { label: 'Elo', align: 'right', sortKey: 'rating' },
+            { label: 'Last', align: 'right', sortKey: 'change' },
+            { label: 'Games', align: 'right', sortKey: 'games' },
+          ]}
+          initialSort={{ key: 'rating', direction: 'desc' }}
+          rows={ratedPlayers.map((player) => ({
+            key: player.playerId,
+            sortValues: {
+              player: player.name,
+              rating: player.displayRating,
+              change: player.lastGameChange,
+              games: player.gamesPlayed,
+            },
+            cells: (
+              <>
+                <td className="px-3 py-2 text-(--cream)">
+                  <PlayerName name={player.name} tier={player.tier} />
+                  {player.provisional ? (
+                    <span
+                      className="
+              ml-2 text-xs text-(--cream)/55
+            "
+                    >
+                      Provisional
+                    </span>
+                  ) : null}
+                </td>
+                <td
+                  className="
+              px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
+            "
+                >
+                  {player.displayRating}
+                </td>
+                <td className="px-3 py-2 text-right text-(--cream)/70 tabular-nums">
+                  {formatSignedNumber(player.lastGameChange)}
+                </td>
+                <td className="px-3 py-2 text-right text-(--cream)/70 tabular-nums">
+                  {player.gamesPlayed}
+                </td>
+              </>
+            ),
+          }))}
+        />
+      ),
+    'rating-history': <RatingHistoryChart players={ratedPlayers} />,
     'total-wins':
       winRates.length === 0 ? (
         <EmptyState>No wins recorded yet.</EmptyState>
@@ -921,9 +989,11 @@ export default async function StatsPage({ searchParams }: Props) {
                   <PlayerName name={player.name} tier={player.tier} />
                 </td>
                 <td className="px-3 py-2 text-right text-(--cream) tabular-nums">{player.wins}</td>
-                <td className="
+                <td
+                  className="
                   px-3 py-2 text-right text-(--cream)/70 tabular-nums
-                ">
+                "
+                >
                   {formatPercent(player.winRate, 1)}
                 </td>
               </>
@@ -969,9 +1039,11 @@ export default async function StatsPage({ searchParams }: Props) {
                   {formatPercent(player.winRate, 1)}
                 </td>
                 <td className="px-3 py-2 text-right text-(--cream) tabular-nums">{player.wins}</td>
-                <td className="
+                <td
+                  className="
                   px-3 py-2 text-right text-(--cream)/70 tabular-nums
-                ">
+                "
+                >
                   {player.games}
                 </td>
               </>
@@ -1050,9 +1122,13 @@ export default async function StatsPage({ searchParams }: Props) {
               >
                 {player.totalScore}
               </td>
-              <td className="
+              <td
+                className="
                 px-3 py-2 text-right text-(--cream)/70 tabular-nums
-              ">{player.games}</td>
+              "
+              >
+                {player.games}
+              </td>
             </>
           ),
         }))}
@@ -1100,9 +1176,11 @@ export default async function StatsPage({ searchParams }: Props) {
                   >
                     {formatAverage(player.avgScore)}
                   </td>
-                  <td className="
+                  <td
+                    className="
                     px-3 py-2 text-right text-(--cream) tabular-nums
-                  ">
+                  "
+                  >
                     {cumulativeScoreStat?.totalScore ?? 0}
                   </td>
                   <td
@@ -1135,7 +1213,11 @@ export default async function StatsPage({ searchParams }: Props) {
           initialSort={{ key: 'medianScore', direction: 'desc' }}
           rows={medianSorted.map((player) => ({
             key: player.playerId,
-            sortValues: { player: player.name, medianScore: player.medianScore, games: player.games },
+            sortValues: {
+              player: player.name,
+              medianScore: player.medianScore,
+              games: player.games,
+            },
             cells: (
               <>
                 <td className="px-3 py-2 text-(--cream)">
@@ -1149,9 +1231,11 @@ export default async function StatsPage({ searchParams }: Props) {
                 >
                   {formatAverage(player.medianScore)}
                 </td>
-                <td className="
+                <td
+                  className="
                   px-3 py-2 text-right text-(--cream)/70 tabular-nums
-                ">
+                "
+                >
                   {player.games}
                 </td>
               </>
@@ -1187,10 +1271,14 @@ export default async function StatsPage({ searchParams }: Props) {
               bg-(--surface-subtle) p-3
             "
           >
-            <p className="
+            <p
+              className="
               text-[10px] font-medium tracking-[0.18em] text-(--cream)/45
               uppercase
-            ">Gap</p>
+            "
+            >
+              Gap
+            </p>
             <p className="mt-2 font-semibold text-(--gold) tabular-nums">
               {formatSignedNumber(winningScoreComparison.scoreGap)}
             </p>
@@ -1228,9 +1316,11 @@ export default async function StatsPage({ searchParams }: Props) {
                 >
                   {formatPercent(player.avgScore, 1)}
                 </td>
-                <td className="
+                <td
+                  className="
                   px-3 py-2 text-right text-(--cream)/70 tabular-nums
-                ">
+                "
+                >
                   {player.games}
                 </td>
               </>
@@ -1255,7 +1345,11 @@ export default async function StatsPage({ searchParams }: Props) {
           initialSort={{ key: 'medianScore', direction: 'desc' }}
           rows={normalizedMedianSorted.map((player) => ({
             key: player.playerId,
-            sortValues: { player: player.name, medianScore: player.medianScore, games: player.games },
+            sortValues: {
+              player: player.name,
+              medianScore: player.medianScore,
+              games: player.games,
+            },
             cells: (
               <>
                 <td className="px-3 py-2 text-(--cream)">
@@ -1269,9 +1363,11 @@ export default async function StatsPage({ searchParams }: Props) {
                 >
                   {formatPercent(player.medianScore, 1)}
                 </td>
-                <td className="
+                <td
+                  className="
                   px-3 py-2 text-right text-(--cream)/70 tabular-nums
-                ">
+                "
+                >
                   {player.games}
                 </td>
               </>
@@ -1321,10 +1417,14 @@ export default async function StatsPage({ searchParams }: Props) {
                 >
                   {formatPercent(player.podiumRate, 1)}
                 </td>
-                <td className="px-3 py-2 text-right text-(--cream) tabular-nums">{player.podiums}</td>
-                <td className="
+                <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
+                  {player.podiums}
+                </td>
+                <td
+                  className="
                   px-3 py-2 text-right text-(--cream)/70 tabular-nums
-                ">
+                "
+                >
                   {player.games}
                 </td>
               </>
@@ -1369,9 +1469,11 @@ export default async function StatsPage({ searchParams }: Props) {
                 <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
                   {formatPercent(player.secondRate, 1)}
                 </td>
-                <td className="
+                <td
+                  className="
                   px-3 py-2 text-right text-(--cream)/70 tabular-nums
-                ">
+                "
+                >
                   {player.games}
                 </td>
               </>
@@ -1411,9 +1513,11 @@ export default async function StatsPage({ searchParams }: Props) {
                 {formatSignedNumber(player.winDelta)}
               </td>
               <td className="px-3 py-2 text-right text-(--cream) tabular-nums">{player.wins}</td>
-              <td className="
+              <td
+                className="
                 px-3 py-2 text-right text-(--cream)/70 tabular-nums
-              ">
+              "
+              >
                 {formatAverage(player.expectedWins)}
               </td>
             </>
@@ -1470,9 +1574,11 @@ export default async function StatsPage({ searchParams }: Props) {
                 <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
                   {formatPercent(player.lastRate, 1)}
                 </td>
-                <td className="
+                <td
+                  className="
                   px-3 py-2 text-right text-(--cream)/70 tabular-nums
-                ">
+                "
+                >
                   {player.games}
                 </td>
               </>
@@ -1504,11 +1610,7 @@ export default async function StatsPage({ searchParams }: Props) {
             <>
               <td className="px-3 py-2 text-(--cream)">
                 <span
-                  className={
-                    row.tier === PlayerTier.Premium
-                      ? `font-semibold text-(--gold)`
-                      : ''
-                  }
+                  className={row.tier === PlayerTier.Premium ? `font-semibold text-(--gold)` : ''}
                 >
                   {formatTierLabel(row.tier)}
                 </span>
@@ -1521,10 +1623,16 @@ export default async function StatsPage({ searchParams }: Props) {
                 {formatPercent(row.winRate, 1)}
               </td>
               <td className="px-3 py-2 text-right text-(--cream) tabular-nums">{row.wins}</td>
-              <td className="px-3 py-2 text-right text-(--cream) tabular-nums">{row.appearances}</td>
-              <td className="
+              <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
+                {row.appearances}
+              </td>
+              <td
+                className="
                 px-3 py-2 text-right text-(--cream)/70 tabular-nums
-              ">{row.players}</td>
+              "
+              >
+                {row.players}
+              </td>
             </>
           ),
         }))}
@@ -1593,9 +1701,11 @@ export default async function StatsPage({ searchParams }: Props) {
               >
                 {formatPercent(player.participationRate, 1)}
               </td>
-              <td className="
+              <td
+                className="
                 px-3 py-2 text-right text-(--cream)/70 tabular-nums
-              ">
+              "
+              >
                 {player.gamesPlayed}
               </td>
             </>
@@ -1720,9 +1830,11 @@ export default async function StatsPage({ searchParams }: Props) {
                 <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
                   {formatAverage(player.averageScore)}
                 </td>
-                <td className="
+                <td
+                  className="
                   px-3 py-2 text-right text-(--cream)/70 tabular-nums
-                ">
+                "
+                >
                   {player.games}
                 </td>
               </>
@@ -1758,9 +1870,11 @@ export default async function StatsPage({ searchParams }: Props) {
                 >
                   {formatPercent(player.dominance, 1)}
                 </td>
-                <td className="
+                <td
+                  className="
                   px-3 py-2 text-right text-(--cream)/70 tabular-nums
-                ">
+                "
+                >
                   {player.games}
                 </td>
               </>
@@ -1805,9 +1919,11 @@ export default async function StatsPage({ searchParams }: Props) {
                 <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
                   {player.nailBiterGames}
                 </td>
-                <td className="
+                <td
+                  className="
                   px-3 py-2 text-right text-(--cream)/70 tabular-nums
-                ">
+                "
+                >
                   {player.nailBiterWins}
                 </td>
               </>
@@ -1852,9 +1968,11 @@ export default async function StatsPage({ searchParams }: Props) {
                 <td className="px-3 py-2 text-right text-(--cream) tabular-nums">
                   {`${formatSignedNumber((player.delta ?? 0) * 100, 1)}%`}
                 </td>
-                <td className="
+                <td
+                  className="
                   px-3 py-2 text-right text-(--cream)/70 tabular-nums
-                ">
+                "
+                >
                   {player.smallGames + player.bigGames}
                 </td>
               </>

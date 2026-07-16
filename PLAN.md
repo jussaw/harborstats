@@ -57,20 +57,18 @@ subsection anchors); new `web/tests/unit/stats-*.test.ts`.
 
 ## Phase 2 — Multiplayer Elo Skill Rating
 
-- [ ] Build pure engine `web/lib/rating.ts`:
-  - [ ] Base `1500`, scale `400`, `K = 24` (optionally `K = 40` while provisional).
-  - [ ] Process games in `played_at` then `id` order; finish order = sort by `(isWinner desc,
-        score desc)`.
-  - [ ] Expand each game to all unordered pairs; `S = 1 / 0 / 0.5` (ahead / behind / equal score &
+- [x] Build pure engine `web/lib/rating.ts`:
+  - [x] Base `1500`, scale `400`, fixed `K = 24` (including provisional players).
+  - [x] Process games in `played_at` then `id` order; explicit winner takes precedence and non-winners compare by score.
+  - [x] Expand each game to all unordered pairs; `S = 1 / 0 / 0.5` (ahead / behind / equal score &
         not the explicit winner); `E_i = 1/(1+10^((R_j−R_i)/400))`; accumulate
         `Δ_i += (K/(N−1))·(S_i−E_i)` and apply **after** the game (simultaneous update).
-  - [ ] Flag players as **provisional** under 5 games.
-  - [ ] Output per player: current rating, peak, last-game change, games count, provisional flag,
-        and a `[{date, rating}]` history series.
-- [ ] Add a server loader that pulls all games chronologically and runs the replay.
-- [ ] **Power Ranking** leaderboard card (Elo sort, `rankWithTies`, ▲▼ change, provisional mark).
-- [ ] Create new **Ratings** section in `web/lib/stats-sections.ts` (id `ratings`) + sidebar anchor.
-- [ ] **Rating-over-time** chart — new `web/components/RatingHistoryChart.tsx` (multi-line SVG).
+  - [x] Flag players as **provisional** under 5 rated multiplayer games.
+  - [x] Output current rating, peak, last-game change, games count, provisional flag, and replayable history.
+- [x] Add a server loader that pulls all eligible games chronologically and runs the replay.
+- [x] **Power Ranking** leaderboard card (Elo sort, `rankWithTies`, signed change, provisional mark).
+- [x] Create new **Ratings** section in `web/lib/stats-sections.ts` (id `ratings`) + sidebar anchor.
+- [x] **Rating-over-time** chart — new `web/components/RatingHistoryChart.tsx` (multi-line SVG).
 - [ ] **Quality of Wins** card — avg opponent rating (at time of game) among games won.
 - [ ] Show current rating on player profile (`web/components/PlayersSection.tsx`).
 - [ ] Unit tests `web/tests/unit/rating.test.ts` with a hand-verified progression (incl. a

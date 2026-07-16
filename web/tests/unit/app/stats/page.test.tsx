@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import StatsPage from '@/app/stats/page';
 import { PlayerTier } from '@/lib/player-tier';
 import { getSettings } from '@/lib/settings';
+import { getRatingReplay } from '@/lib/ratings';
 import {
   getGameActivityTimestamps,
   getPlayerAttendanceEvents,
@@ -66,6 +67,10 @@ vi.mock('@/lib/settings', () => ({
   getSettings: vi.fn(),
 }));
 
+vi.mock('@/lib/ratings', () => ({
+  getRatingReplay: vi.fn(),
+}));
+
 vi.mock('@/lib/players', () => ({
   getPlayers: vi.fn(() => Promise.resolve([])),
 }));
@@ -77,6 +82,7 @@ vi.mock('@/components/StatsPlayerFilter', () => ({
 }));
 
 function mockDefaultStatsPageData() {
+  vi.mocked(getRatingReplay).mockResolvedValue({ players: [], ratedGameCount: 0 });
   vi.mocked(getPlayerWinRates).mockResolvedValue([]);
   vi.mocked(getPlayerScoreStats).mockResolvedValue([]);
   vi.mocked(getPlayerCumulativeScoreStats).mockResolvedValue([]);
@@ -537,16 +543,44 @@ describe('StatsPage', () => {
       },
     ]);
     vi.mocked(getPlayerConsistencyRatings).mockResolvedValue([
-      { playerId: 1, name: 'Ada', tier: PlayerTier.Premium, games: 5, averageScore: 9.4, stdDev: 1.2 },
-      { playerId: 2, name: 'Bea', tier: PlayerTier.Standard, games: 4, averageScore: 8.7, stdDev: 2.5 },
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+        games: 5,
+        averageScore: 9.4,
+        stdDev: 1.2,
+      },
+      {
+        playerId: 2,
+        name: 'Bea',
+        tier: PlayerTier.Standard,
+        games: 4,
+        averageScore: 8.7,
+        stdDev: 2.5,
+      },
     ]);
     vi.mocked(getPlayerDominanceIndex).mockResolvedValue([
       { playerId: 1, name: 'Ada', tier: PlayerTier.Premium, games: 5, dominance: 0.31 },
       { playerId: 2, name: 'Bea', tier: PlayerTier.Standard, games: 4, dominance: 0.24 },
     ]);
     vi.mocked(getPlayerNailBiterRecords).mockResolvedValue([
-      { playerId: 1, name: 'Ada', tier: PlayerTier.Premium, nailBiterGames: 4, nailBiterWins: 3, winRate: 0.75 },
-      { playerId: 2, name: 'Bea', tier: PlayerTier.Standard, nailBiterGames: 3, nailBiterWins: 1, winRate: 1 / 3 },
+      {
+        playerId: 1,
+        name: 'Ada',
+        tier: PlayerTier.Premium,
+        nailBiterGames: 4,
+        nailBiterWins: 3,
+        winRate: 0.75,
+      },
+      {
+        playerId: 2,
+        name: 'Bea',
+        tier: PlayerTier.Standard,
+        nailBiterGames: 3,
+        nailBiterWins: 1,
+        winRate: 1 / 3,
+      },
     ]);
     vi.mocked(getPlayerClutchFactors).mockResolvedValue([
       {
