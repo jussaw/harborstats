@@ -44,6 +44,7 @@ export function PlayerRow({ value, onChange, players, selectedPlayerIds }: Playe
             ...value,
             playerId,
             score: playerId === null ? null : (value.score ?? 0),
+            isWinner: playerId === null ? false : value.isWinner,
           })
         }
       />
