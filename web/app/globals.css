@@ -16,6 +16,28 @@
   --gold: var(--gold-500);
   --cream: #f4ecd4;
 
+  /* categorical player palette — append-only chart series identity.
+     Validated (dataviz validate_palette.js) against the composited card
+     surface #0c2635 in dark mode: CVD, chroma, contrast, and normal-vision
+     separation all pass. Adjacency order is part of that validation; do not
+     reorder without re-running the validator. */
+  --player-color-1: #f3c969;
+  --player-color-2: #52c8c3;
+  --player-color-3: #f28c6f;
+  --player-color-4: #85a7ff;
+  --player-color-5: #7ed486;
+  --player-color-6: #b287e8;
+  --player-color-7: #d8d06f;
+  --player-color-8: #ee78d8;
+  --player-color-9: #a3d977;
+  --player-color-10: #5fb2ee;
+  --player-color-11: #e8a05f;
+  --player-color-12: #a98cf5;
+  --player-color-13: #6fd9a8;
+  --player-color-14: #e57373;
+  --player-color-15: #7a86e8;
+  --player-color-16: #f593c3;
+
   /* semantic tokens */
   --surface: rgb(14 42 58 / 0.55);
   --surface-subtle: rgb(14 42 58 / 0.35);
