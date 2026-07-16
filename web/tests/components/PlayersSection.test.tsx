@@ -48,6 +48,7 @@ function renderPlayersSection(headToHeadRecords: PlayerHeadToHeadRecord[]) {
       playerStreakRecords={[]}
       playerGames={[]}
       headToHeadRecords={headToHeadRecords}
+      ratingPlayer={null}
     />,
   );
 }
@@ -91,17 +92,20 @@ describe('PlayersSection head-to-head cards', () => {
     expect(nemesisCard).not.toBeNull();
     expect(favoriteOpponentCard).not.toBeNull();
 
-    expect(within(mostPlayedWithCard as HTMLElement).getByRole('link', { name: 'Bea' })).toHaveAttribute(
-      'href',
-      '/players/2',
-    );
-    expect(within(mostPlayedWithCard as HTMLElement).getByText('5 shared games')).toBeInTheDocument();
+    expect(
+      within(mostPlayedWithCard as HTMLElement).getByRole('link', { name: 'Bea' }),
+    ).toHaveAttribute('href', '/players/2');
+    expect(
+      within(mostPlayedWithCard as HTMLElement).getByText('5 shared games'),
+    ).toBeInTheDocument();
 
     expect(within(nemesisCard as HTMLElement).getByRole('link', { name: 'Cara' })).toHaveAttribute(
       'href',
       '/players/3',
     );
-    expect(within(nemesisCard as HTMLElement).getByText('2 losses across 4 shared games')).toBeInTheDocument();
+    expect(
+      within(nemesisCard as HTMLElement).getByText('2 losses across 4 shared games'),
+    ).toBeInTheDocument();
 
     expect(
       within(favoriteOpponentCard as HTMLElement).getByRole('link', { name: 'Bea' }),
@@ -168,10 +172,11 @@ describe('PlayersSection head-to-head cards', () => {
     const mostPlayedWithCard = document.getElementById('player-most-played-with');
 
     expect(mostPlayedWithCard).not.toBeNull();
-    expect(within(mostPlayedWithCard as HTMLElement).getByRole('link', { name: 'Bea' })).toHaveAttribute(
-      'href',
-      '/players/2',
-    );
-    expect(within(mostPlayedWithCard as HTMLElement).getByText('2 shared games')).toBeInTheDocument();
+    expect(
+      within(mostPlayedWithCard as HTMLElement).getByRole('link', { name: 'Bea' }),
+    ).toHaveAttribute('href', '/players/2');
+    expect(
+      within(mostPlayedWithCard as HTMLElement).getByText('2 shared games'),
+    ).toBeInTheDocument();
   });
 });

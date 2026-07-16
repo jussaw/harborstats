@@ -1,16 +1,18 @@
-import { PlayerTier } from '@/lib/player-tier'
-import type { RecentGame } from '@/lib/games'
-import type { Player } from '@/lib/players'
-import { PlayerGamesModal } from './PlayerGamesModal'
-import { Badge } from './ui/Badge'
-import { cardSurfaceClasses } from './ui/Card'
+import { PlayerTier } from '@/lib/player-tier';
+import type { PlayerRating } from '@/lib/rating';
+import type { RecentGame } from '@/lib/games';
+import type { Player } from '@/lib/players';
+import { PlayerGamesModal } from './PlayerGamesModal';
+import { Badge } from './ui/Badge';
+import { cardSurfaceClasses } from './ui/Card';
 
 interface Props {
-  player: Player
-  games: RecentGame[]
+  player: Player;
+  games: RecentGame[];
+  ratingPlayer: PlayerRating | null;
 }
 
-export function PlayerProfileCard({ player, games }: Props) {
+export function PlayerProfileCard({ player, games, ratingPlayer }: Props) {
   return (
     <div
       className={`
@@ -25,11 +27,17 @@ export function PlayerProfileCard({ player, games }: Props) {
         "
       >
         <div>
-          <h1 className="font-cinzel text-2xl tracking-wide text-(--cream)">
-            {player.name}
-          </h1>
-          {player.tier === PlayerTier.Premium && (
-            <Badge className="mt-2">Premium</Badge>
+          <h1 className="font-cinzel text-2xl tracking-wide text-(--cream)">{player.name}</h1>
+          {player.tier === PlayerTier.Premium && <Badge className="mt-2">Premium</Badge>}
+          {ratingPlayer?.history.length ? (
+            <p className="mt-3 text-sm text-(--cream)/65">
+              Multiplayer Elo{' '}
+              <span className="font-medium text-(--gold) tabular-nums">
+                {ratingPlayer.displayRating} Elo
+              </span>
+            </p>
+          ) : (
+            <p className="mt-3 text-sm text-(--cream)/50">No rated multiplayer games yet.</p>
           )}
         </div>
         <div className="sm:self-center">
@@ -37,5 +45,5 @@ export function PlayerProfileCard({ player, games }: Props) {
         </div>
       </div>
     </div>
-  )
+  );
 }
