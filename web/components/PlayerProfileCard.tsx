@@ -31,7 +31,6 @@ export function PlayerProfileCard({ player, games, ratingPlayer }: Props) {
           {player.tier === PlayerTier.Premium && <Badge className="mt-2">Premium</Badge>}
           {ratingPlayer?.history.length ? (
             <p className="mt-3 text-sm text-(--cream)/65">
-              Multiplayer Elo{' '}
               <span className="font-medium text-(--gold) tabular-nums">
                 {ratingPlayer.displayRating} Elo
               </span>
