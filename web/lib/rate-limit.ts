@@ -31,12 +31,21 @@ interface WindowState {
 
 const buckets = new Map<string, WindowState>()
 
+// Soonest `resetAt` across all tracked windows. Sweeping is pointless until this
+// moment arrives (nothing is expired yet), so gating the O(n) sweep on it keeps a
+// flood of same-timestamp keys from re-scanning the whole map on every insert.
+let earliestResetAt = Infinity
+
 function sweepExpired(now: number): void {
+  let nextEarliest = Infinity
   buckets.forEach((state, key) => {
     if (now >= state.resetAt) {
       buckets.delete(key)
+    } else if (state.resetAt < nextEarliest) {
+      nextEarliest = state.resetAt
     }
   })
+  earliestResetAt = nextEarliest
 }
 
 // Evicts the soonest-to-expire windows in one batch, down to EVICT_LOW_WATER, so
@@ -62,7 +71,7 @@ export interface RateLimitResult {
  * attempts are blocked until the window resets. `now` is injectable for tests.
  */
 export function checkRateLimit(key: string, now: number = Date.now()): RateLimitResult {
-  if (buckets.size >= SWEEP_THRESHOLD) {
+  if (buckets.size >= SWEEP_THRESHOLD && now >= earliestResetAt) {
     sweepExpired(now)
   }
 
@@ -74,7 +83,11 @@ export function checkRateLimit(key: string, now: number = Date.now()): RateLimit
     if (!existing && buckets.size >= RATE_LIMIT_MAX_BUCKETS) {
       evictToMakeRoom()
     }
-    buckets.set(key, { count: 1, resetAt: now + WINDOW_MS })
+    const resetAt = now + WINDOW_MS
+    buckets.set(key, { count: 1, resetAt })
+    if (resetAt < earliestResetAt) {
+      earliestResetAt = resetAt
+    }
     return { allowed: true }
   }
 
@@ -99,6 +112,7 @@ export function clearRateLimit(key: string): void {
 /** Test-only: clears all rate-limit state. */
 export function resetRateLimit(): void {
   buckets.clear()
+  earliestResetAt = Infinity
 }
 
 /** Test-only: current number of tracked keys, for asserting the memory ceiling. */

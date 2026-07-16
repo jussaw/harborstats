@@ -115,6 +115,22 @@ describe('rate-limit', () => {
     expect(rateLimitBucketCount()).toBeLessThanOrEqual(RATE_LIMIT_MAX_BUCKETS);
   });
 
+  it(
+    'handles a flood of unique keys at one timestamp in linear time',
+    () => {
+      const now = 1_000_000;
+      const start = performance.now();
+      for (let i = 0; i < 20_000; i += 1) {
+        checkRateLimit(`spoofed-${i}`, now);
+      }
+      const elapsed = performance.now() - start;
+
+      expect(elapsed).toBeLessThan(2000);
+      expect(rateLimitBucketCount()).toBeLessThanOrEqual(RATE_LIMIT_MAX_BUCKETS);
+    },
+    60_000,
+  );
+
   it('evicts the soonest-to-expire windows first when at the ceiling', () => {
     // Fill exactly to the ceiling with windows that expire soonest.
     const early = 1_000_000;
