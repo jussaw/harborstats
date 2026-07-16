@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { GameForm, type GameFormInitial } from '@/components/GameForm'
 import { PlayerTier } from '@/lib/player-tier'
+import { parseGameFormData } from '@/lib/games'
 
 const players = [
   { id: 1, name: 'Alice', tier: PlayerTier.Premium },
@@ -233,5 +234,43 @@ describe('GameForm', () => {
 
     expect(formData.get('is_winner_0')).toBe('0')
     expect(formData.get('is_winner_1')).toBe('1')
+  })
+
+  it('does not preserve winner state when a cleared winner row is reselected', async () => {
+    const user = userEvent.setup()
+    const action = vi.fn().mockResolvedValue(undefined)
+
+    renderGameForm(
+      {
+        played_at: '2026-04-20T18:15:00.000Z',
+        notes: '',
+        rows: [
+          { playerId: 1, score: 8, isWinner: true },
+          { playerId: 2, score: 12, isWinner: false },
+        ],
+      },
+      action,
+    )
+
+    await user.click(screen.getAllByRole('combobox', { name: 'Player' })[0])
+    await user.click(screen.getByRole('button', { name: 'Clear player' }))
+    await user.click(screen.getAllByRole('combobox', { name: 'Player' })[0])
+    await user.click(screen.getByRole('option', { name: 'Alice' }))
+    submitGameForm()
+
+    await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
+    const formData = action.mock.calls[0]?.[0]
+
+    expect(formData).toBeInstanceOf(FormData)
+    if (!(formData instanceof FormData)) {
+      throw new Error('Expected GameForm to submit a FormData instance')
+    }
+
+    expect(formData.get('player_id_0')).toBe('1')
+    expect(formData.get('is_winner_0')).toBe('0')
+    expect(parseGameFormData(formData).players).toEqual([
+      { playerId: 1, score: 0, isWinner: false },
+      { playerId: 2, score: 12, isWinner: true },
+    ])
   })
 })
