@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { PlayersSection } from '@/components/PlayersSection';
 import { listGamesForPlayer } from '@/lib/games';
 import { getPlayerById, getPlayers } from '@/lib/players';
+import { getRatingReplay } from '@/lib/ratings';
 import {
   getPlayerCumulativeScoreStats,
   getPlayerCurrentWinStreaks,
@@ -59,6 +60,7 @@ export default async function PlayerProfilePage({ params }: Props) {
     playerStreakRecords,
     playerGames,
     headToHeadRecords,
+    ratingReplay,
   ] = await Promise.all([
     getPlayers(),
     getPlayerScoreStats(),
@@ -75,9 +77,12 @@ export default async function PlayerProfilePage({ params }: Props) {
     getPlayerStreakRecords(),
     listGamesForPlayer(numericId),
     getPlayerHeadToHeadRecords(),
+    getRatingReplay(),
   ]);
   const player = players.find((candidate) => candidate.id === numericId) ?? null;
   if (!player) notFound();
+  const ratingPlayer =
+    ratingReplay.players.find((candidate) => candidate.playerId === player.id) ?? null;
 
   return (
     <PlayersSection
@@ -98,6 +103,7 @@ export default async function PlayerProfilePage({ params }: Props) {
       playerStreakRecords={playerStreakRecords}
       playerGames={playerGames}
       headToHeadRecords={headToHeadRecords}
+      ratingPlayer={ratingPlayer}
     />
   );
 }

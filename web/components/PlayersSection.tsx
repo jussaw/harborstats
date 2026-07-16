@@ -9,6 +9,7 @@ import { formatAverage, formatPercent, formatSignedNumber } from '@/lib/format';
 import type { RecentGame } from '@/lib/games';
 import { PlayerTier } from '@/lib/player-tier';
 import type { Player } from '@/lib/players';
+import type { PlayerRating } from '@/lib/rating';
 import type {
   PlayerCumulativeScoreStats,
   PlayerCurrentWinStreak,
@@ -25,6 +26,7 @@ import type {
   PlayerWinRateByGameSize,
 } from '@/lib/stats';
 import { PlayerProfileCard } from './PlayerProfileCard';
+import { RatingHistoryChart } from './RatingHistoryChart';
 import { PlayerBestWinRecordCard } from './PlayerBestWinRecordCard';
 import { cardSurfaceClasses } from './ui/Card';
 
@@ -46,6 +48,7 @@ interface Props {
   playerStreakRecords: PlayerStreakRecord[];
   playerGames: RecentGame[];
   headToHeadRecords: PlayerHeadToHeadRecord[];
+  ratingPlayer: PlayerRating | null;
 }
 
 interface PlayersListProps {
@@ -70,9 +73,7 @@ function PlayersList({ players, selectedPlayerId }: PlayersListProps) {
         >
           Players
         </p>
-        <h1 className="font-cinzel mt-2 text-xl tracking-wide text-(--cream)">
-          Select a player
-        </h1>
+        <h1 className="font-cinzel mt-2 text-xl tracking-wide text-(--cream)">Select a player</h1>
       </div>
 
       <div className="space-y-2">
@@ -343,7 +344,9 @@ function getNemesisRecord(records: PlayerHeadToHeadRecord[]): PlayerHeadToHeadRe
   return record ?? null;
 }
 
-function getFavoriteOpponentRecord(records: PlayerHeadToHeadRecord[]): PlayerHeadToHeadRecord | null {
+function getFavoriteOpponentRecord(
+  records: PlayerHeadToHeadRecord[],
+): PlayerHeadToHeadRecord | null {
   const [record] = [...records]
     .filter((candidate) => candidate.winsAgainstOpponent > 0)
     .sort(
@@ -466,6 +469,8 @@ function PlayerDetail({
   playerStreakRecords,
   playerGames,
   headToHeadRecords,
+  ratingPlayer,
+  rosterPlayerIds,
 }: {
   player: Player;
   scoreStats: PlayerScoreStats[];
@@ -482,6 +487,8 @@ function PlayerDetail({
   playerStreakRecords: PlayerStreakRecord[];
   playerGames: RecentGame[];
   headToHeadRecords: PlayerHeadToHeadRecord[];
+  ratingPlayer: PlayerRating | null;
+  rosterPlayerIds: number[];
 }) {
   const scoreStat = scoreStats.find((candidate) => candidate.playerId === player.id) ?? null;
   const scoreDistribution =
@@ -515,7 +522,27 @@ function PlayerDetail({
 
   return (
     <div className="space-y-5">
-      <PlayerProfileCard player={player} games={playerGames} />
+      <PlayerProfileCard player={player} games={playerGames} ratingPlayer={ratingPlayer} />
+      <section
+        aria-labelledby="player-rating-history"
+        className={`
+          p-6
+          ${cardSurfaceClasses}
+        `}
+      >
+        <h2 id="player-rating-history" className="
+          font-cinzel text-xl tracking-wide text-(--cream)
+        ">
+          Rating History
+        </h2>
+        <p className="mt-2 text-sm text-(--cream)/55">Multiplayer Elo after each eligible game.</p>
+        <div className="mt-5">
+          <RatingHistoryChart
+            players={ratingPlayer ? [ratingPlayer] : []}
+            rosterPlayerIds={rosterPlayerIds}
+          />
+        </div>
+      </section>
       <div
         className="
           grid grid-cols-1 gap-5
@@ -726,7 +753,10 @@ export function PlayersSection({
   playerStreakRecords,
   playerGames,
   headToHeadRecords,
+  ratingPlayer,
 }: Props) {
+  const rosterPlayerIds = players.map((rosterPlayer) => rosterPlayer.id);
+
   if (players.length === 0) {
     return (
       <PageWidth width="3xl" className="px-4 py-12">
@@ -736,9 +766,7 @@ export function PlayersSection({
             ${cardSurfaceClasses}
           `}
         >
-          <h1 className="font-cinzel text-2xl tracking-wide text-(--cream)">
-            Players
-          </h1>
+          <h1 className="font-cinzel text-2xl tracking-wide text-(--cream)">Players</h1>
           <p className="mt-4 text-sm text-(--cream)/70">No players yet.</p>
           <p className="mt-2 text-sm text-(--cream)/50">Add your first player in admin.</p>
         </div>
@@ -788,6 +816,8 @@ export function PlayersSection({
                 playerStreakRecords={playerStreakRecords}
                 playerGames={playerGames}
                 headToHeadRecords={headToHeadRecords}
+                ratingPlayer={ratingPlayer}
+                rosterPlayerIds={rosterPlayerIds}
               />
             ) : null}
           </div>
@@ -824,6 +854,8 @@ export function PlayersSection({
               playerStreakRecords={playerStreakRecords}
               playerGames={playerGames}
               headToHeadRecords={headToHeadRecords}
+              ratingPlayer={ratingPlayer}
+              rosterPlayerIds={rosterPlayerIds}
             />
           ) : (
             <PlayersDetailEmptyState />

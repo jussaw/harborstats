@@ -5,6 +5,7 @@ import PlayerProfilePage, { generateMetadata } from '@/app/players/[id]/page';
 import { listGamesForPlayer } from '@/lib/games';
 import { getPlayerById, getPlayers } from '@/lib/players';
 import { PlayerTier } from '@/lib/player-tier';
+import { getRatingReplay } from '@/lib/ratings';
 import {
   getPlayerCumulativeScoreStats,
   getPlayerCurrentWinStreaks,
@@ -40,6 +41,10 @@ vi.mock('@/lib/games', () => ({
   listGamesForPlayer: vi.fn(),
 }));
 
+vi.mock('@/lib/ratings', () => ({
+  getRatingReplay: vi.fn(),
+}));
+
 vi.mock('@/lib/stats', () => ({
   getPlayerCumulativeScoreStats: vi.fn(),
   getPlayerCurrentWinStreaks: vi.fn(),
@@ -59,6 +64,7 @@ vi.mock('@/lib/stats', () => ({
 describe('PlayerProfilePage', () => {
   beforeEach(() => {
     vi.mocked(listGamesForPlayer).mockResolvedValue([]);
+    vi.mocked(getRatingReplay).mockResolvedValue({ players: [], ratedGameCount: 0 });
     vi.mocked(getPerPlayerScoreDistributions).mockResolvedValue([]);
     vi.mocked(getPlayerHeadToHeadRecords).mockResolvedValue([]);
   });
@@ -374,6 +380,32 @@ describe('PlayerProfilePage', () => {
         ],
       },
     ]);
+    vi.mocked(getRatingReplay).mockResolvedValue({
+      players: [
+        {
+          playerId: 2,
+          name: 'Bea',
+          tier: PlayerTier.Standard,
+          rating: 1486.6,
+          displayRating: 1487,
+          peakRating: 1500,
+          lastGameChange: -12,
+          gamesPlayed: 3,
+          provisional: true,
+          history: [
+            {
+              gameId: 12,
+              sequence: 0,
+              playedAt: '2026-04-21T18:00:00.000Z',
+              rating: 1486.6,
+              change: -12,
+              participated: true,
+            },
+          ],
+        },
+      ],
+      ratedGameCount: 1,
+    });
 
     const element = await PlayerProfilePage({ params: Promise.resolve({ id: '2' }) });
     const markup = renderToStaticMarkup(element);
@@ -382,6 +414,9 @@ describe('PlayerProfilePage', () => {
     expect(markup).toContain('Bea');
     expect(markup).toContain('href="/players"');
     expect(markup).toContain('View Games (2)');
+    expect(getRatingReplay).toHaveBeenCalledOnce();
+    expect(markup).toContain('1487 Elo');
+    expect(markup).toContain('Rating History');
     expect(markup).not.toContain('PREMIUM');
     expect(markup).not.toContain('lucide-user');
     expect(markup).not.toContain('size-16 shrink-0');

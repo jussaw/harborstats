@@ -1,5 +1,6 @@
 export type StatsSectionId =
   | 'headline'
+  | 'ratings'
   | 'scoring'
   | 'finishes'
   | 'head-to-head'
@@ -14,6 +15,7 @@ export interface StatsSection {
 
 export const STATS_SECTIONS: StatsSection[] = [
   { id: 'headline', title: 'Headline', subtitle: 'Top-line standings.' },
+  { id: 'ratings', title: 'Ratings', subtitle: 'Multiplayer Elo and rating history.' },
   { id: 'scoring', title: 'Scoring', subtitle: 'How players score.' },
   { id: 'finishes', title: 'Finishes & Tiers', subtitle: 'Where players land.' },
   { id: 'head-to-head', title: 'Head-to-Head', subtitle: 'Rivalries and matchups.' },

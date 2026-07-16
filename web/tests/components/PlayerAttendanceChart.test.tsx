@@ -42,6 +42,7 @@ describe('PlayerAttendanceChart', () => {
             tier: PlayerTier.Standard,
           },
         ]}
+        rosterPlayerIds={[1, 2]}
         timeZone="America/New_York"
         defaultView="week"
       />,
@@ -104,6 +105,7 @@ describe('PlayerAttendanceChart', () => {
     render(
       <PlayerAttendanceChart
         events={[]}
+        rosterPlayerIds={[]}
         timeZone="America/New_York"
         defaultView="week"
       />,

@@ -1,6 +1,7 @@
 import { PlayersSection } from '@/components/PlayersSection';
 import { listGamesForPlayer } from '@/lib/games';
 import { getPlayers } from '@/lib/players';
+import { getRatingReplay } from '@/lib/ratings';
 import {
   getPlayerCumulativeScoreStats,
   getPlayerCurrentWinStreaks,
@@ -35,6 +36,7 @@ export default async function PlayersPage() {
     playerWinEvents,
     playerStreakRecords,
     headToHeadRecords,
+    ratingReplay,
   ] = await Promise.all([
     getPlayers(),
     getPlayerScoreStats(),
@@ -50,9 +52,12 @@ export default async function PlayersPage() {
     getPlayerWinEvents(),
     getPlayerStreakRecords(),
     getPlayerHeadToHeadRecords(),
+    getRatingReplay(),
   ]);
   const selectedPlayer = players[0] ?? null;
   const playerGames = selectedPlayer ? await listGamesForPlayer(selectedPlayer.id) : [];
+  const ratingPlayer =
+    ratingReplay.players.find((candidate) => candidate.playerId === selectedPlayer?.id) ?? null;
 
   return (
     <PlayersSection
@@ -73,6 +78,7 @@ export default async function PlayersPage() {
       playerStreakRecords={playerStreakRecords}
       playerGames={playerGames}
       headToHeadRecords={headToHeadRecords}
+      ratingPlayer={ratingPlayer}
     />
   );
 }
