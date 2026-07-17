@@ -30,6 +30,74 @@ function submitGameForm() {
 }
 
 describe('GameForm', () => {
+  it('renders no alert before any submission', () => {
+    renderGameForm({
+      played_at: '2026-04-20T18:15:00.000Z',
+      notes: '',
+      rows: [{ playerId: 1, score: 12, isWinner: true }],
+    })
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('exposes a client validation error as an alert', async () => {
+    renderGameForm({
+      played_at: '2026-04-20T18:15:00.000Z',
+      notes: '',
+      rows: [{ playerId: 1, score: null, isWinner: false }],
+    })
+
+    submitGameForm()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Row 1: name and score must both be filled or both empty.',
+    )
+  })
+
+  it('exposes a server error as an alert', async () => {
+    const action = vi.fn().mockResolvedValue({ ok: false, error: 'Game creation is locked.' })
+
+    renderGameForm(
+      {
+        played_at: '2026-04-20T18:15:00.000Z',
+        notes: '',
+        rows: [{ playerId: 1, score: 12, isWinner: true }],
+      },
+      action,
+    )
+
+    submitGameForm()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Game creation is locked.')
+  })
+
+  it('clears the alert after a successful resubmit', async () => {
+    const action = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, error: 'Game creation is locked.' })
+      .mockResolvedValueOnce(undefined)
+    const onSuccess = vi.fn()
+
+    renderGameForm(
+      {
+        played_at: '2026-04-20T18:15:00.000Z',
+        notes: '',
+        rows: [{ playerId: 1, score: 12, isWinner: true }],
+      },
+      action,
+      onSuccess,
+    )
+
+    submitGameForm()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Game creation is locked.')
+
+    submitGameForm()
+
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+  })
+
   it('shows an error when a row is missing either a player or a score', async () => {
     renderGameForm({
       played_at: '2026-04-20T18:15:00.000Z',
