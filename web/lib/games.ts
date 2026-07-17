@@ -228,6 +228,19 @@ function getGamesPageWhere(filters: GamesPageFilters) {
 }
 
 export async function listRecentGames(limit = DEFAULT_RECENT_GAMES_LIMIT): Promise<RecentGame[]> {
+  // Pick the games first so the limit applies to games, not joined player rows;
+  // otherwise a game with many participants would be truncated or dropped.
+  const recentGames = await db
+    .select({ id: games.id })
+    .from(games)
+    .orderBy(desc(games.playedAt), desc(games.id))
+    .limit(limit)
+
+  const gameIds = recentGames.map((game) => game.id)
+  if (gameIds.length === 0) {
+    return []
+  }
+
   const rows = await db
     .select({
       id: games.id,
@@ -240,9 +253,9 @@ export async function listRecentGames(limit = DEFAULT_RECENT_GAMES_LIMIT): Promi
     .from(games)
     .innerJoin(gamePlayers, eq(gamePlayers.gameId, games.id))
     .innerJoin(players, eq(players.id, gamePlayers.playerId))
+    .where(inArray(games.id, gameIds))
     .orderBy(desc(games.playedAt), desc(games.id), asc(players.name))
-    .limit(limit * 10)
-  return groupGameRows(rows).slice(0, limit)
+  return groupGameRows(rows)
 }
 
 export async function listGamesForPlayer(playerId: number): Promise<RecentGame[]> {
