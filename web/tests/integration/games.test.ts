@@ -426,6 +426,81 @@ describe('games lib', () => {
     );
   });
 
+  it('returns every participant of an 11-player game when limiting to one game', async () => {
+    const participants = await Promise.all(
+      Array.from({ length: 11 }, (_unused, index) =>
+        createTestPlayer({ name: `Player ${String(index + 1).padStart(2, '0')}` }),
+      ),
+    );
+
+    const game = await createTestGame({
+      playedAt: new Date('2026-05-01T10:00:00.000Z'),
+      notes: 'Full table',
+      players: participants.map((player, index) => ({
+        playerId: player.id,
+        score: index + 1,
+        isWinner: index === participants.length - 1,
+      })),
+    });
+
+    const recentGames = await listRecentGames(1);
+
+    expect(recentGames).toHaveLength(1);
+    expect(recentGames[0]?.id).toBe(game.id);
+    expect(recentGames[0]?.players).toEqual(
+      participants.map((player, index) => ({
+        playerName: player.name,
+        score: index + 1,
+        isWinner: index === participants.length - 1,
+      })),
+    );
+  });
+
+  it('returns complete participants for both games when a newest full table exceeds the joined-row limit', async () => {
+    const bigTable = await Promise.all(
+      Array.from({ length: 20 }, (_unused, index) =>
+        createTestPlayer({ name: `Big ${String(index + 1).padStart(2, '0')}` }),
+      ),
+    );
+    const ada = await createTestPlayer({ name: 'Ada' });
+    const bea = await createTestPlayer({ name: 'Bea' });
+
+    const olderGame = await createTestGame({
+      playedAt: new Date('2026-05-01T10:00:00.000Z'),
+      notes: 'Older two-player game',
+      players: [
+        { playerId: ada.id, score: 9, isWinner: true },
+        { playerId: bea.id, score: 7, isWinner: false },
+      ],
+    });
+
+    const newerGame = await createTestGame({
+      playedAt: new Date('2026-05-02T10:00:00.000Z'),
+      notes: 'Newest full table',
+      players: bigTable.map((player, index) => ({
+        playerId: player.id,
+        score: index === bigTable.length - 1 ? 21 : index,
+        isWinner: index === bigTable.length - 1,
+      })),
+    });
+
+    const recentGames = await listRecentGames(2);
+
+    expect(recentGames).toHaveLength(2);
+    expect(recentGames.map((game) => game.id)).toEqual([newerGame.id, olderGame.id]);
+    expect(recentGames[0]?.players).toEqual(
+      bigTable.map((player, index) => ({
+        playerName: player.name,
+        score: index === bigTable.length - 1 ? 21 : index,
+        isWinner: index === bigTable.length - 1,
+      })),
+    );
+    expect(recentGames[1]?.players).toEqual([
+      { playerName: 'Ada', score: 9, isWinner: true },
+      { playerName: 'Bea', score: 7, isWinner: false },
+    ]);
+  });
+
   it('lists the full game history for one player ordered newest-first', async () => {
     const ada = await createTestPlayer({ name: 'Ada' });
     const bea = await createTestPlayer({ name: 'Bea' });
