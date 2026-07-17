@@ -55,9 +55,9 @@ export function GameForm({
 
   const [rows, setRows] = useState<FormRow[]>(() => {
     if (initial) {
-      const filledRows = initial.rows
-        .slice(0, NUM_ROWS)
-        .map((row, index) => createFormRow(index, row))
+      // NUM_ROWS is the minimum number of rows to show, not a cap: an existing
+      // game may already have more participants and must never be truncated.
+      const filledRows = initial.rows.map((row, index) => createFormRow(index, row))
       const emptyRows = Array.from(
         { length: Math.max(0, NUM_ROWS - filledRows.length) },
         (_, index) => createFormRow(filledRows.length + index),
