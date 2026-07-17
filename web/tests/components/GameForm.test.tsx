@@ -202,6 +202,55 @@ describe('GameForm', () => {
     actionGate.resolve()
   })
 
+  it('renders every initial row and submits a ninth participant when editing a 9-player game', async () => {
+    const actionGate = deferred()
+    const action = vi.fn().mockReturnValue(actionGate.promise)
+    const ninePlayers = Array.from({ length: 9 }, (_unused, index) => ({
+      id: index + 1,
+      name: `Player ${index + 1}`,
+      tier: index % 2 === 0 ? PlayerTier.Premium : PlayerTier.Standard,
+    }))
+    const rows = ninePlayers.map((player, index) => ({
+      playerId: player.id,
+      score: index + 1,
+      isWinner: index === 8,
+    }))
+
+    render(
+      <GameForm
+        action={action}
+        players={ninePlayers}
+        initial={{ played_at: '2026-04-20T18:15:00.000Z', notes: '', rows }}
+        onSuccess={vi.fn()}
+      />,
+    )
+
+    // All nine participant rows must render (each row exposes one Score select).
+    expect(screen.getAllByLabelText('Score')).toHaveLength(9)
+
+    submitGameForm()
+
+    await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
+    const formData = action.mock.calls[0]?.[0]
+    if (!(formData instanceof FormData)) {
+      throw new Error('Expected GameForm to submit a FormData instance')
+    }
+
+    // The first eight participants (<=8 coverage) still serialize as before.
+    for (let index = 0; index < 8; index += 1) {
+      expect(formData.get(`player_id_${index}`)).toBe(String(index + 1))
+      expect(formData.get(`score_${index}`)).toBe(String(index + 1))
+      expect(formData.get(`is_winner_${index}`)).toBe('0')
+    }
+
+    // The ninth participant must not be dropped on edit.
+    expect(formData.get('player_id_8')).toBe('9')
+    expect(formData.get('score_8')).toBe('9')
+    expect(formData.get('is_winner_8')).toBe('1')
+
+    actionGate.resolve()
+  })
+
   it('keeps only one explicit winner selected at a time', async () => {
     const user = userEvent.setup()
     const action = vi.fn().mockResolvedValue(undefined)
