@@ -144,9 +144,32 @@ export interface RivalryAggregate {
   closenessScore: number;
 }
 
-async function getGameSizeAggregateData(
+export interface StatsPlayerRow {
+  playerId: number;
+  name: string;
+  tier: string;
+}
+
+export interface StatsParticipantRow {
+  gameId: number;
+  playerId: number;
+  score: number;
+  isWinner: boolean;
+}
+
+export interface PlayerAndParticipantRows {
+  playerRows: StatsPlayerRow[];
+  participantRows: StatsParticipantRow[];
+}
+
+/**
+ * Shared source fetch for the game-size aggregate and head-to-head cards. Both derive from the same
+ * two queries — the tier/name-ordered player roster and the raw participant rows — so a single
+ * request can fetch this once and feed every dependent compute.
+ */
+export async function fetchPlayerAndParticipantRows(
   filter: StatsFilter = null,
-): Promise<GameSizeAggregateData> {
+): Promise<PlayerAndParticipantRows> {
   const [playerRows, participantRows] = await Promise.all([
     db
       .select({
@@ -168,6 +191,13 @@ async function getGameSizeAggregateData(
       .where(gameIdCondition(filter, gamePlayers.gameId)),
   ]);
 
+  return { playerRows, participantRows };
+}
+
+export function computeGameSizeAggregateData(
+  playerRows: StatsPlayerRow[],
+  participantRows: StatsParticipantRow[],
+): GameSizeAggregateData {
   const playersById = new Map<number, PlayerIdentity>(
     playerRows.map((player) => [
       player.playerId,
@@ -304,30 +334,17 @@ async function getGameSizeAggregateData(
   };
 }
 
-export async function getPlayerHeadToHeadRecords(
+async function getGameSizeAggregateData(
   filter: StatsFilter = null,
-): Promise<PlayerHeadToHeadRecord[]> {
-  const [playerRows, participantRows] = await Promise.all([
-    db
-      .select({
-        playerId: players.id,
-        name: players.name,
-        tier: players.tier,
-      })
-      .from(players)
-      .where(playerIdCondition(filter, players.id))
-      .orderBy(sql`CASE ${players.tier} WHEN 'premium' THEN 0 ELSE 1 END`, players.name),
-    db
-      .select({
-        gameId: gamePlayers.gameId,
-        playerId: gamePlayers.playerId,
-        score: gamePlayers.score,
-        isWinner: gamePlayers.isWinner,
-      })
-      .from(gamePlayers)
-      .where(gameIdCondition(filter, gamePlayers.gameId)),
-  ]);
+): Promise<GameSizeAggregateData> {
+  const { playerRows, participantRows } = await fetchPlayerAndParticipantRows(filter);
+  return computeGameSizeAggregateData(playerRows, participantRows);
+}
 
+export function computeHeadToHeadRecords(
+  playerRows: StatsPlayerRow[],
+  participantRows: StatsParticipantRow[],
+): PlayerHeadToHeadRecord[] {
   const playersById = new Map<number, PlayerIdentity>(
     playerRows.map((player) => [
       player.playerId,
@@ -411,10 +428,16 @@ export async function getPlayerHeadToHeadRecords(
   );
 }
 
-export async function getRivalryAggregates(
+export async function getPlayerHeadToHeadRecords(
   filter: StatsFilter = null,
-): Promise<RivalryAggregate[]> {
-  const records = await getPlayerHeadToHeadRecords(filter);
+): Promise<PlayerHeadToHeadRecord[]> {
+  const { playerRows, participantRows } = await fetchPlayerAndParticipantRows(filter);
+  return computeHeadToHeadRecords(playerRows, participantRows);
+}
+
+export function computeRivalryAggregates(
+  records: PlayerHeadToHeadRecord[],
+): RivalryAggregate[] {
   const aggregatesByKey = new Map<string, RivalryAggregate>();
 
   records.forEach((record) => {
@@ -486,6 +509,12 @@ export async function getRivalryAggregates(
     );
 }
 
+export async function getRivalryAggregates(
+  filter: StatsFilter = null,
+): Promise<RivalryAggregate[]> {
+  return computeRivalryAggregates(await getPlayerHeadToHeadRecords(filter));
+}
+
 export interface PlayerWinRate {
   playerId: number;
   name: string;
@@ -554,7 +583,7 @@ function getInterpolatedPercentile(values: number[], percentile: number) {
   return lowerValue + (upperValue - lowerValue) * weight;
 }
 
-async function getPlayerScoreRows(filter: StatsFilter = null): Promise<PlayerScoreRow[]> {
+export async function getPlayerScoreRows(filter: StatsFilter = null): Promise<PlayerScoreRow[]> {
   const rows = await db
     .select({
       playerId: players.id,
@@ -618,10 +647,7 @@ export interface ScoreHistogramBucket {
   count: number;
 }
 
-export async function getScoreHistogramBuckets(
-  filter: StatsFilter = null,
-): Promise<ScoreHistogramBucket[]> {
-  const rows = await getPlayerScoreRows(filter);
+export function computeScoreHistogramBuckets(rows: PlayerScoreRow[]): ScoreHistogramBucket[] {
   const bucketCounts = new Map<number, number>();
 
   rows.forEach((row) => {
@@ -636,6 +662,12 @@ export async function getScoreHistogramBuckets(
     .sort((a, b) => a.score - b.score);
 }
 
+export async function getScoreHistogramBuckets(
+  filter: StatsFilter = null,
+): Promise<ScoreHistogramBucket[]> {
+  return computeScoreHistogramBuckets(await getPlayerScoreRows(filter));
+}
+
 export interface PlayerScoreDistribution {
   playerId: number;
   name: string;
@@ -648,10 +680,9 @@ export interface PlayerScoreDistribution {
   max: number;
 }
 
-export async function getPerPlayerScoreDistributions(
-  filter: StatsFilter = null,
-): Promise<PlayerScoreDistribution[]> {
-  const rows = await getPlayerScoreRows(filter);
+export function computePerPlayerScoreDistributions(
+  rows: PlayerScoreRow[],
+): PlayerScoreDistribution[] {
   const scoresByPlayerId = new Map<number, PlayerIdentity & { scores: number[] }>();
 
   rows.forEach((row) => {
@@ -683,6 +714,12 @@ export async function getPerPlayerScoreDistributions(
       };
     })
     .sort(comparePlayersByTierAndName);
+}
+
+export async function getPerPlayerScoreDistributions(
+  filter: StatsFilter = null,
+): Promise<PlayerScoreDistribution[]> {
+  return computePerPlayerScoreDistributions(await getPlayerScoreRows(filter));
 }
 
 export interface PlayerCumulativeScoreStats {
@@ -737,7 +774,7 @@ interface GameScoreParticipantRow {
   isWinner: boolean;
 }
 
-interface WinningScoreSummary {
+export interface WinningScoreSummary {
   gameId: number;
   playerCount: number;
   winningScore: number;
@@ -745,7 +782,7 @@ interface WinningScoreSummary {
   nonWinnerRowScores: number[];
 }
 
-async function getWinningScoreSummaries(
+export async function getWinningScoreSummaries(
   filter: StatsFilter = null,
 ): Promise<WinningScoreSummary[]> {
   const rows = await db
@@ -878,10 +915,9 @@ export interface WinningScoreComparison {
   scoreGap: number;
 }
 
-export async function getWinningScoreComparison(
-  filter: StatsFilter = null,
-): Promise<WinningScoreComparison> {
-  const summaries = await getWinningScoreSummaries(filter);
+export function computeWinningScoreComparison(
+  summaries: WinningScoreSummary[],
+): WinningScoreComparison {
   const winnerScores = summaries.flatMap((summary) => summary.winnerRowScores);
   const nonWinnerScores = summaries.flatMap((summary) => summary.nonWinnerRowScores);
   const avgWinningScore =
@@ -902,16 +938,21 @@ export async function getWinningScoreComparison(
   };
 }
 
+export async function getWinningScoreComparison(
+  filter: StatsFilter = null,
+): Promise<WinningScoreComparison> {
+  return computeWinningScoreComparison(await getWinningScoreSummaries(filter));
+}
+
 export interface WinningScoreByGameSizeBucket {
   playerCount: number;
   gameCount: number;
   avgWinningScore: number;
 }
 
-export async function getWinningScoreByGameSize(
-  filter: StatsFilter = null,
-): Promise<WinningScoreByGameSizeBucket[]> {
-  const summaries = await getWinningScoreSummaries(filter);
+export function computeWinningScoreByGameSize(
+  summaries: WinningScoreSummary[],
+): WinningScoreByGameSizeBucket[] {
   const buckets = new Map<number, { gameCount: number; winningScoreTotal: number }>();
 
   summaries.forEach((summary) => {
@@ -932,6 +973,12 @@ export async function getWinningScoreByGameSize(
       avgWinningScore: round1(bucket.winningScoreTotal / bucket.gameCount),
     }))
     .sort((a, b) => a.playerCount - b.playerCount);
+}
+
+export async function getWinningScoreByGameSize(
+  filter: StatsFilter = null,
+): Promise<WinningScoreByGameSizeBucket[]> {
+  return computeWinningScoreByGameSize(await getWinningScoreSummaries(filter));
 }
 
 export interface PlayerPodiumRate {
@@ -1508,12 +1555,12 @@ export interface GameOutcomeRow {
   isWinner: boolean;
 }
 
-interface OrderedGameOutcomeData {
+export interface OrderedGameOutcomeData {
   players: PlayerIdentity[];
   outcomeRows: GameOutcomeRow[];
 }
 
-async function getOrderedGameOutcomeData(
+export async function getOrderedGameOutcomeData(
   filter: StatsFilter = null,
 ): Promise<OrderedGameOutcomeData> {
   const [playerRows, outcomeRows] = await Promise.all([
@@ -1642,10 +1689,10 @@ function compareNullableIsoDesc(left: string | null, right: string | null) {
   return right.localeCompare(left);
 }
 
-export async function getPlayerCurrentWinStreaks(
-  filter: StatsFilter = null,
-): Promise<PlayerCurrentWinStreak[]> {
-  const { players: allPlayers, outcomeRows } = await getOrderedGameOutcomeData(filter);
+export function computeCurrentWinStreaks(
+  allPlayers: PlayerIdentity[],
+  outcomeRows: GameOutcomeRow[],
+): PlayerCurrentWinStreak[] {
   const rowsByPlayerId = new Map<number, GameOutcomeRow[]>();
   const mostRecentAppearanceByPlayerId = new Map<number, string | null>(
     allPlayers.map((player) => [player.playerId, null]),
@@ -1695,6 +1742,13 @@ export async function getPlayerCurrentWinStreaks(
         compareNullableIsoDesc(a.mostRecentWin, b.mostRecentWin) ||
         a.name.localeCompare(b.name),
     );
+}
+
+export async function getPlayerCurrentWinStreaks(
+  filter: StatsFilter = null,
+): Promise<PlayerCurrentWinStreak[]> {
+  const { players: allPlayers, outcomeRows } = await getOrderedGameOutcomeData(filter);
+  return computeCurrentWinStreaks(allPlayers, outcomeRows);
 }
 
 export async function getPlayerHotHandIndicators(
@@ -1779,9 +1833,14 @@ function sortOutcomeRowsChronologically(left: GameOutcomeRow, right: GameOutcome
   );
 }
 
-async function getOrderedGameRows(
+export interface OrderedGameRow {
+  gameId: number;
+  playedAt: Date;
+}
+
+export async function getOrderedGameRows(
   filter: StatsFilter = null,
-): Promise<{ gameId: number; playedAt: Date }[]> {
+): Promise<OrderedGameRow[]> {
   return db
     .select({
       gameId: games.id,
@@ -1792,13 +1851,11 @@ async function getOrderedGameRows(
     .orderBy(games.playedAt, games.id);
 }
 
-export async function getPlayerStreakRecords(
-  filter: StatsFilter = null,
-): Promise<PlayerStreakRecord[]> {
-  const [{ players: allPlayers, outcomeRows }, gameRows] = await Promise.all([
-    getOrderedGameOutcomeData(filter),
-    getOrderedGameRows(filter),
-  ]);
+export function computeStreakRecords(
+  allPlayers: PlayerIdentity[],
+  outcomeRows: GameOutcomeRow[],
+  gameRows: OrderedGameRow[],
+): PlayerStreakRecord[] {
   const outcomeRowsByPlayerId = new Map<number, GameOutcomeRow[]>();
   const playerIdsByGameId = new Map<number, Set<number>>();
 
@@ -1888,13 +1945,21 @@ export async function getPlayerStreakRecords(
   });
 }
 
+export async function getPlayerStreakRecords(
+  filter: StatsFilter = null,
+): Promise<PlayerStreakRecord[]> {
+  const [{ players: allPlayers, outcomeRows }, gameRows] = await Promise.all([
+    getOrderedGameOutcomeData(filter),
+    getOrderedGameRows(filter),
+  ]);
+  return computeStreakRecords(allPlayers, outcomeRows, gameRows);
+}
+
 export interface PlayerWinEvent extends PlayerIdentity {
   playedAt: string;
 }
 
-export async function getPlayerWinEvents(filter: StatsFilter = null): Promise<PlayerWinEvent[]> {
-  const { outcomeRows } = await getOrderedGameOutcomeData(filter);
-
+export function computeWinEvents(outcomeRows: GameOutcomeRow[]): PlayerWinEvent[] {
   return outcomeRows
     .filter((row) => row.isWinner)
     .map((row) => ({
@@ -1903,6 +1968,11 @@ export async function getPlayerWinEvents(filter: StatsFilter = null): Promise<Pl
       name: row.name,
       tier: row.tier,
     }));
+}
+
+export async function getPlayerWinEvents(filter: StatsFilter = null): Promise<PlayerWinEvent[]> {
+  const { outcomeRows } = await getOrderedGameOutcomeData(filter);
+  return computeWinEvents(outcomeRows);
 }
 
 async function getOrderedGameDates(filter: StatsFilter = null): Promise<Date[]> {
@@ -2318,7 +2388,7 @@ export interface GameParticipantRow extends PlayerIdentity {
   isWinner: boolean;
 }
 
-async function getGameParticipantRows(
+export async function getGameParticipantRows(
   filter: StatsFilter = null,
 ): Promise<GameParticipantRow[]> {
   const rows = await db

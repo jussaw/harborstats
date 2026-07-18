@@ -29,36 +29,11 @@ import { getRatingReplay } from '@/lib/ratings';
 import { resolveStatsFilter } from '@/lib/stats-filter';
 import { parseStatsSelectedPlayerIds } from '@/lib/stats-page-filters';
 import {
-  getGameActivityTimestamps,
-  getPlayerAttendanceEvents,
-  getPlayerClutchFactors,
-  getPlayerConsistencyRatings,
-  getPlayerCumulativeScoreStats,
-  getPlayerCurrentWinStreaks,
-  getPlayerDominanceIndex,
-  getPlayerHeadToHeadRecords,
-  getPlayerKingmakers,
-  getPlayerNailBiterRecords,
-  getPerPlayerScoreDistributions,
-  getPlayerExpectedVsActualWins,
-  getPlayerFinishBreakdowns,
-  getPlayerNormalizedScoreStats,
-  getPlayerParticipationRates,
-  getPlayerPodiumRates,
-  getPlayerScoreStats,
-  getRivalryAggregates,
-  getScoreHistogramBuckets,
-  getPlayerStreakRecords,
-  getPlayerWinEvents,
-  getSingleGameRecords,
-  getTierShowdownStats,
-  getWinningScoreByGameSize,
-  getWinningScoreComparison,
-  getPlayerWinRates,
   type PlayerIdentity,
   type RivalryAggregate,
   type SingleGameRecords,
 } from '@/lib/stats';
+import { getStatsPageData } from '@/lib/stats-page-data';
 import { STATS_SECTIONS, type StatsSectionId } from '@/lib/stats-sections';
 
 export const dynamic = 'force-dynamic';
@@ -368,9 +343,14 @@ export default async function StatsPage({ searchParams }: Props) {
   const selectedPlayerIds = parseStatsSelectedPlayerIds(params.player, allPlayerIds);
   const filter = await resolveStatsFilter(selectedPlayerIds, allPlayerIds);
 
-  const [
+  const [statsPageData, settings, ratingReplay] = await Promise.all([
+    getStatsPageData(filter),
+    getSettings(),
+    getRatingReplay(filter),
+  ]);
+
+  const {
     winRates,
-    settings,
     scoreStats,
     scoreHistogramBuckets,
     perPlayerScoreDistributions,
@@ -396,37 +376,7 @@ export default async function StatsPage({ searchParams }: Props) {
     nailBiterRecords,
     clutchFactors,
     kingmakers,
-    ratingReplay,
-  ] = await Promise.all([
-    getPlayerWinRates(filter),
-    getSettings(),
-    getPlayerScoreStats(filter),
-    getScoreHistogramBuckets(filter),
-    getPerPlayerScoreDistributions(filter),
-    getPlayerCumulativeScoreStats(filter),
-    getPlayerNormalizedScoreStats(filter),
-    getPlayerPodiumRates(filter),
-    getPlayerFinishBreakdowns(filter),
-    getTierShowdownStats(filter),
-    getPlayerExpectedVsActualWins(filter),
-    getGameActivityTimestamps(filter),
-    getPlayerParticipationRates(filter),
-    getPlayerAttendanceEvents(filter),
-    getPlayerCurrentWinStreaks(filter),
-    getPlayerWinEvents(filter),
-    getPlayerStreakRecords(filter),
-    getSingleGameRecords(filter),
-    getWinningScoreComparison(filter),
-    getWinningScoreByGameSize(filter),
-    getPlayerHeadToHeadRecords(filter),
-    getRivalryAggregates(filter),
-    getPlayerConsistencyRatings(filter),
-    getPlayerDominanceIndex(filter),
-    getPlayerNailBiterRecords(filter),
-    getPlayerClutchFactors(filter),
-    getPlayerKingmakers(filter),
-    getRatingReplay(filter),
-  ]);
+  } = statsPageData;
 
   const winRateQualified = winRates
     .filter((player) => player.games >= settings.winRateMinGames)
