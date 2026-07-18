@@ -5,62 +5,15 @@ import StatsPage from '@/app/stats/page';
 import { PlayerTier } from '@/lib/player-tier';
 import { getSettings } from '@/lib/settings';
 import { getRatingReplay } from '@/lib/ratings';
-import {
-  getGameActivityTimestamps,
-  getPlayerAttendanceEvents,
-  getPlayerClutchFactors,
-  getPlayerConsistencyRatings,
-  getPlayerCumulativeScoreStats,
-  getPlayerCurrentWinStreaks,
-  getPlayerDominanceIndex,
-  getPlayerHeadToHeadRecords,
-  getPlayerKingmakers,
-  getPlayerNailBiterRecords,
-  getPerPlayerScoreDistributions,
-  getPlayerExpectedVsActualWins,
-  getPlayerFinishBreakdowns,
-  getPlayerNormalizedScoreStats,
-  getPlayerParticipationRates,
-  getPlayerPodiumRates,
-  getPlayerScoreStats,
-  getRivalryAggregates,
-  getScoreHistogramBuckets,
-  getPlayerStreakRecords,
-  getPlayerWinEvents,
-  getSingleGameRecords,
-  getTierShowdownStats,
-  getPlayerWinRates,
-  getWinningScoreByGameSize,
-  getWinningScoreComparison,
-} from '@/lib/stats';
+import { getStatsPageData, type StatsPageData } from '@/lib/stats-page-data';
 
-vi.mock('@/lib/stats', () => ({
-  getGameActivityTimestamps: vi.fn(),
-  getPlayerAttendanceEvents: vi.fn(),
-  getPlayerClutchFactors: vi.fn(),
-  getPlayerConsistencyRatings: vi.fn(),
-  getPlayerCumulativeScoreStats: vi.fn(),
-  getPlayerCurrentWinStreaks: vi.fn(),
-  getPlayerDominanceIndex: vi.fn(),
-  getPlayerHeadToHeadRecords: vi.fn(),
-  getPlayerKingmakers: vi.fn(),
-  getPlayerNailBiterRecords: vi.fn(),
-  getPlayerExpectedVsActualWins: vi.fn(),
-  getPlayerWinRates: vi.fn(),
-  getPlayerWinEvents: vi.fn(),
-  getRivalryAggregates: vi.fn(),
-  getSingleGameRecords: vi.fn(),
-  getPlayerNormalizedScoreStats: vi.fn(),
-  getPlayerScoreStats: vi.fn(),
-  getPlayerStreakRecords: vi.fn(),
-  getPlayerParticipationRates: vi.fn(),
-  getPlayerPodiumRates: vi.fn(),
-  getPlayerFinishBreakdowns: vi.fn(),
-  getPerPlayerScoreDistributions: vi.fn(),
-  getScoreHistogramBuckets: vi.fn(),
-  getTierShowdownStats: vi.fn(),
-  getWinningScoreByGameSize: vi.fn(),
-  getWinningScoreComparison: vi.fn(),
+// `StatsPage` now loads every game/participant-sourced card through a single request-local bundle,
+// `getStatsPageData` (`@/lib/stats-page-data`), instead of awaiting each public getter in `@/lib/stats`.
+// Mock that bundle module wholesale so these server-render tests drive the stat cards directly with
+// fixture bundles; the real orchestration (source getters + compute helpers) is covered by the
+// DB-backed `tests/integration/stats-page-data.test.ts`, so this unit test never loads `@/lib/stats`.
+vi.mock('@/lib/stats-page-data', () => ({
+  getStatsPageData: vi.fn(),
 }));
 
 vi.mock('@/lib/settings', () => ({
@@ -81,45 +34,58 @@ vi.mock('@/components/StatsPlayerFilter', () => ({
   StatsPlayerFilter: () => null,
 }));
 
+function emptyStatsPageData(): StatsPageData {
+  return {
+    winRates: [],
+    scoreStats: [],
+    scoreHistogramBuckets: [],
+    perPlayerScoreDistributions: [],
+    cumulativeScoreStats: [],
+    normalizedScoreStats: [],
+    podiumRates: [],
+    finishBreakdowns: [],
+    tierShowdown: [],
+    expectedVsActualWins: [],
+    gameActivityTimestamps: [],
+    participationRates: [],
+    playerAttendanceEvents: [],
+    currentWinStreaks: [],
+    playerWinEvents: [],
+    playerStreakRecords: [],
+    singleGameRecords: {
+      highestScore: null,
+      lowestWinningScore: null,
+      biggestBlowout: null,
+      closestGame: null,
+    },
+    winningScoreComparison: {
+      winnerRows: 0,
+      nonWinnerRows: 0,
+      avgWinningScore: 0,
+      avgLosingScore: 0,
+      scoreGap: 0,
+    },
+    winningScoreByGameSize: [],
+    headToHeadRecords: [],
+    rivalryAggregates: [],
+    consistencyRatings: [],
+    dominanceIndex: [],
+    nailBiterRecords: [],
+    clutchFactors: [],
+    kingmakers: [],
+  };
+}
+
+let statsPageData: StatsPageData;
+
+function setStatsPageData(overrides: Partial<StatsPageData>) {
+  statsPageData = { ...statsPageData, ...overrides };
+}
+
 function mockDefaultStatsPageData() {
+  statsPageData = emptyStatsPageData();
+  vi.mocked(getStatsPageData).mockImplementation(async () => statsPageData);
   vi.mocked(getRatingReplay).mockResolvedValue({ players: [], ratedGameCount: 0 });
-  vi.mocked(getPlayerWinRates).mockResolvedValue([]);
-  vi.mocked(getPlayerScoreStats).mockResolvedValue([]);
-  vi.mocked(getPlayerCumulativeScoreStats).mockResolvedValue([]);
-  vi.mocked(getPlayerNormalizedScoreStats).mockResolvedValue([]);
-  vi.mocked(getWinningScoreComparison).mockResolvedValue({
-    winnerRows: 0,
-    nonWinnerRows: 0,
-    avgWinningScore: 0,
-    avgLosingScore: 0,
-    scoreGap: 0,
-  });
-  vi.mocked(getWinningScoreByGameSize).mockResolvedValue([]);
-  vi.mocked(getPlayerPodiumRates).mockResolvedValue([]);
-  vi.mocked(getPlayerFinishBreakdowns).mockResolvedValue([]);
-  vi.mocked(getTierShowdownStats).mockResolvedValue([]);
-  vi.mocked(getPlayerExpectedVsActualWins).mockResolvedValue([]);
-  vi.mocked(getGameActivityTimestamps).mockResolvedValue([]);
-  vi.mocked(getPlayerParticipationRates).mockResolvedValue([]);
-  vi.mocked(getPlayerAttendanceEvents).mockResolvedValue([]);
-  vi.mocked(getPlayerCurrentWinStreaks).mockResolvedValue([]);
-  vi.mocked(getPlayerWinEvents).mockResolvedValue([]);
-  vi.mocked(getPlayerStreakRecords).mockResolvedValue([]);
-  vi.mocked(getSingleGameRecords).mockResolvedValue({
-    highestScore: null,
-    lowestWinningScore: null,
-    biggestBlowout: null,
-    closestGame: null,
-  });
-  vi.mocked(getPlayerHeadToHeadRecords).mockResolvedValue([]);
-  vi.mocked(getPerPlayerScoreDistributions).mockResolvedValue([]);
-  vi.mocked(getRivalryAggregates).mockResolvedValue([]);
-  vi.mocked(getScoreHistogramBuckets).mockResolvedValue([]);
-  vi.mocked(getPlayerConsistencyRatings).mockResolvedValue([]);
-  vi.mocked(getPlayerDominanceIndex).mockResolvedValue([]);
-  vi.mocked(getPlayerNailBiterRecords).mockResolvedValue([]);
-  vi.mocked(getPlayerClutchFactors).mockResolvedValue([]);
-  vi.mocked(getPlayerKingmakers).mockResolvedValue([]);
   vi.mocked(getSettings).mockResolvedValue({
     winRateMinGames: 2,
     podiumRateMinGames: 4,
@@ -147,480 +113,482 @@ describe('StatsPage', () => {
   });
 
   it('renders grouped stat sections and the planned card order', async () => {
-    vi.mocked(getPlayerWinRates).mockResolvedValue([
-      {
-        playerId: 1,
-        name: 'Ada',
-        tier: PlayerTier.Premium,
-        games: 5,
-        wins: 3,
-        winRate: 0.6,
+    setStatsPageData({
+      winRates: [
+        {
+          playerId: 1,
+          name: 'Ada',
+          tier: PlayerTier.Premium,
+          games: 5,
+          wins: 3,
+          winRate: 0.6,
+        },
+        {
+          playerId: 2,
+          name: 'Bea',
+          tier: PlayerTier.Premium,
+          games: 4,
+          wins: 2,
+          winRate: 0.5,
+        },
+      ],
+      scoreStats: [
+        {
+          playerId: 1,
+          name: 'Ada',
+          tier: PlayerTier.Premium,
+          games: 5,
+          avgScore: 9.4,
+          medianScore: 9,
+        },
+        {
+          playerId: 2,
+          name: 'Bea',
+          tier: PlayerTier.Standard,
+          games: 4,
+          avgScore: 8.7,
+          medianScore: 8.5,
+        },
+      ],
+      cumulativeScoreStats: [
+        {
+          playerId: 1,
+          name: 'Ada',
+          tier: PlayerTier.Premium,
+          games: 5,
+          totalScore: 47,
+          pointsPerGame: 9.4,
+        },
+        {
+          playerId: 2,
+          name: 'Bea',
+          tier: PlayerTier.Standard,
+          games: 4,
+          totalScore: 35,
+          pointsPerGame: 8.8,
+        },
+      ],
+      normalizedScoreStats: [
+        {
+          playerId: 1,
+          name: 'Ada',
+          tier: PlayerTier.Premium,
+          games: 5,
+          avgScore: 0.94,
+          medianScore: 0.9,
+        },
+        {
+          playerId: 2,
+          name: 'Bea',
+          tier: PlayerTier.Standard,
+          games: 4,
+          avgScore: 0.87,
+          medianScore: 0.85,
+        },
+      ],
+      winningScoreComparison: {
+        winnerRows: 6,
+        nonWinnerRows: 5,
+        avgWinningScore: 8.3,
+        avgLosingScore: 5,
+        scoreGap: 3.3,
       },
-      {
-        playerId: 2,
-        name: 'Bea',
-        tier: PlayerTier.Premium,
-        games: 4,
-        wins: 2,
-        winRate: 0.5,
+      winningScoreByGameSize: [
+        { playerCount: 3, gameCount: 2, avgWinningScore: 9 },
+        { playerCount: 4, gameCount: 1, avgWinningScore: 12 },
+        { playerCount: 5, gameCount: 3, avgWinningScore: 10.7 },
+      ],
+      scoreHistogramBuckets: [
+        { score: 5, count: 1 },
+        { score: 6, count: 3 },
+        { score: 7, count: 2 },
+      ],
+      perPlayerScoreDistributions: [
+        {
+          playerId: 1,
+          name: 'Ada',
+          tier: PlayerTier.Premium,
+          count: 6,
+          min: 5,
+          q1: 7,
+          median: 8,
+          q3: 9,
+          max: 11,
+        },
+        {
+          playerId: 2,
+          name: 'Bea',
+          tier: PlayerTier.Standard,
+          count: 5,
+          min: 4,
+          q1: 6,
+          median: 7,
+          q3: 8,
+          max: 10,
+        },
+      ],
+      podiumRates: [
+        {
+          playerId: 1,
+          name: 'Ada',
+          tier: PlayerTier.Premium,
+          games: 5,
+          podiums: 4,
+          podiumRate: 0.8,
+        },
+        {
+          playerId: 2,
+          name: 'Bea',
+          tier: PlayerTier.Standard,
+          games: 4,
+          podiums: 2,
+          podiumRate: 0.5,
+        },
+      ],
+      finishBreakdowns: [
+        {
+          playerId: 1,
+          name: 'Ada',
+          tier: PlayerTier.Premium,
+          games: 5,
+          firsts: 3,
+          seconds: 1,
+          thirds: 0,
+          lasts: 0,
+          firstRate: 0.6,
+          secondRate: 0.2,
+          thirdRate: 0,
+          lastRate: 0,
+        },
+        {
+          playerId: 2,
+          name: 'Bea',
+          tier: PlayerTier.Standard,
+          games: 4,
+          firsts: 1,
+          seconds: 2,
+          thirds: 1,
+          lasts: 1,
+          firstRate: 0.25,
+          secondRate: 0.5,
+          thirdRate: 0.25,
+          lastRate: 0.25,
+        },
+      ],
+      tierShowdown: [
+        {
+          tier: PlayerTier.Premium,
+          players: 2,
+          appearances: 9,
+          wins: 4,
+          winRate: 4 / 9,
+        },
+        {
+          tier: PlayerTier.Standard,
+          players: 3,
+          appearances: 14,
+          wins: 3,
+          winRate: 3 / 14,
+        },
+      ],
+      expectedVsActualWins: [
+        {
+          playerId: 1,
+          name: 'Ada',
+          tier: PlayerTier.Premium,
+          games: 5,
+          wins: 3,
+          expectedWins: 1.8,
+          winDelta: 1.2,
+        },
+        {
+          playerId: 2,
+          name: 'Bea',
+          tier: PlayerTier.Standard,
+          games: 4,
+          wins: 1,
+          expectedWins: 1.5,
+          winDelta: -0.5,
+        },
+      ],
+      gameActivityTimestamps: [
+        '2026-04-20T18:00:00.000Z',
+        '2026-04-21T03:00:00.000Z',
+        '2026-04-21T21:00:00.000Z',
+      ],
+      participationRates: [
+        {
+          playerId: 1,
+          name: 'Ada',
+          tier: PlayerTier.Premium,
+          gamesPlayed: 8,
+          totalGames: 9,
+          participationRate: 8 / 9,
+        },
+        {
+          playerId: 2,
+          name: 'Bea',
+          tier: PlayerTier.Standard,
+          gamesPlayed: 6,
+          totalGames: 9,
+          participationRate: 2 / 3,
+        },
+      ],
+      playerAttendanceEvents: [
+        {
+          playedAt: '2026-04-20T18:00:00.000Z',
+          playerId: 1,
+          name: 'Ada',
+          tier: PlayerTier.Premium,
+        },
+        {
+          playedAt: '2026-04-20T18:00:00.000Z',
+          playerId: 2,
+          name: 'Bea',
+          tier: PlayerTier.Standard,
+        },
+      ],
+      currentWinStreaks: [
+        {
+          playerId: 1,
+          name: 'Ada',
+          tier: PlayerTier.Premium,
+          streak: 2,
+          mostRecentAppearance: '2026-04-21T03:00:00.000Z',
+          mostRecentWin: '2026-04-21T03:00:00.000Z',
+        },
+        {
+          playerId: 2,
+          name: 'Bea',
+          tier: PlayerTier.Standard,
+          streak: 2,
+          mostRecentAppearance: '2026-04-20T18:00:00.000Z',
+          mostRecentWin: '2026-04-20T18:00:00.000Z',
+        },
+      ],
+      playerWinEvents: [
+        {
+          playedAt: '2026-04-20T18:00:00.000Z',
+          playerId: 1,
+          name: 'Ada',
+          tier: PlayerTier.Premium,
+        },
+        {
+          playedAt: '2026-04-21T03:00:00.000Z',
+          playerId: 1,
+          name: 'Ada',
+          tier: PlayerTier.Premium,
+        },
+        {
+          playedAt: '2026-04-20T18:00:00.000Z',
+          playerId: 2,
+          name: 'Bea',
+          tier: PlayerTier.Standard,
+        },
+      ],
+      playerStreakRecords: [
+        {
+          playerId: 1,
+          name: 'Ada',
+          tier: PlayerTier.Premium,
+          longestWinStreak: 3,
+          longestWinStreakStartedAt: '2026-04-20T18:00:00.000Z',
+          longestWinStreakEndedAt: '2026-04-22T18:00:00.000Z',
+          currentLossStreak: 0,
+          currentLossStreakStartedAt: null,
+          currentLossStreakEndedAt: null,
+          longestLossStreak: 1,
+          longestLossStreakStartedAt: '2026-04-23T18:00:00.000Z',
+          longestLossStreakEndedAt: '2026-04-23T18:00:00.000Z',
+          attendanceStreak: 5,
+          attendanceStreakStartedAt: '2026-04-18T18:00:00.000Z',
+          attendanceStreakEndedAt: '2026-04-22T18:00:00.000Z',
+        },
+        {
+          playerId: 2,
+          name: 'Bea',
+          tier: PlayerTier.Standard,
+          longestWinStreak: 2,
+          longestWinStreakStartedAt: '2026-04-18T18:00:00.000Z',
+          longestWinStreakEndedAt: '2026-04-19T18:00:00.000Z',
+          currentLossStreak: 1,
+          currentLossStreakStartedAt: '2026-04-21T18:00:00.000Z',
+          currentLossStreakEndedAt: '2026-04-21T18:00:00.000Z',
+          longestLossStreak: 1,
+          longestLossStreakStartedAt: '2026-04-21T18:00:00.000Z',
+          longestLossStreakEndedAt: '2026-04-21T18:00:00.000Z',
+          attendanceStreak: 4,
+          attendanceStreakStartedAt: '2026-04-18T18:00:00.000Z',
+          attendanceStreakEndedAt: '2026-04-21T18:00:00.000Z',
+        },
+      ],
+      singleGameRecords: {
+        highestScore: {
+          gameId: 3,
+          playedAt: '2026-04-22T18:00:00.000Z',
+          playerId: 3,
+          name: 'Cara',
+          tier: PlayerTier.Standard,
+          score: 20,
+        },
+        lowestWinningScore: {
+          gameId: 4,
+          playedAt: '2026-04-23T18:00:00.000Z',
+          playerId: 4,
+          name: 'Eve',
+          tier: PlayerTier.Premium,
+          score: 7,
+        },
+        biggestBlowout: {
+          gameId: 5,
+          playedAt: '2026-04-24T18:00:00.000Z',
+          winners: [
+            { playerId: 1, name: 'Ada', tier: PlayerTier.Premium },
+            { playerId: 2, name: 'Bea', tier: PlayerTier.Standard },
+          ],
+          winnerScore: 15,
+          runnerUpScore: 4,
+          margin: 11,
+          participantCount: 3,
+        },
+        closestGame: {
+          gameId: 4,
+          playedAt: '2026-04-23T18:00:00.000Z',
+          winners: [{ playerId: 4, name: 'Eve', tier: PlayerTier.Premium }],
+          winnerScore: 7,
+          runnerUpScore: 7,
+          margin: 0,
+          participantCount: 3,
+        },
       },
-    ]);
-    vi.mocked(getPlayerScoreStats).mockResolvedValue([
-      {
-        playerId: 1,
-        name: 'Ada',
-        tier: PlayerTier.Premium,
-        games: 5,
-        avgScore: 9.4,
-        medianScore: 9,
-      },
-      {
-        playerId: 2,
-        name: 'Bea',
-        tier: PlayerTier.Standard,
-        games: 4,
-        avgScore: 8.7,
-        medianScore: 8.5,
-      },
-    ]);
-    vi.mocked(getPlayerCumulativeScoreStats).mockResolvedValue([
-      {
-        playerId: 1,
-        name: 'Ada',
-        tier: PlayerTier.Premium,
-        games: 5,
-        totalScore: 47,
-        pointsPerGame: 9.4,
-      },
-      {
-        playerId: 2,
-        name: 'Bea',
-        tier: PlayerTier.Standard,
-        games: 4,
-        totalScore: 35,
-        pointsPerGame: 8.8,
-      },
-    ]);
-    vi.mocked(getPlayerNormalizedScoreStats).mockResolvedValue([
-      {
-        playerId: 1,
-        name: 'Ada',
-        tier: PlayerTier.Premium,
-        games: 5,
-        avgScore: 0.94,
-        medianScore: 0.9,
-      },
-      {
-        playerId: 2,
-        name: 'Bea',
-        tier: PlayerTier.Standard,
-        games: 4,
-        avgScore: 0.87,
-        medianScore: 0.85,
-      },
-    ]);
-    vi.mocked(getWinningScoreComparison).mockResolvedValue({
-      winnerRows: 6,
-      nonWinnerRows: 5,
-      avgWinningScore: 8.3,
-      avgLosingScore: 5,
-      scoreGap: 3.3,
+      headToHeadRecords: [
+        {
+          playerId: 1,
+          playerName: 'Ada',
+          playerTier: PlayerTier.Premium,
+          opponentId: 2,
+          opponentName: 'Bea',
+          opponentTier: PlayerTier.Premium,
+          gamesTogether: 4,
+          winsAgainstOpponent: 2,
+          lossesToOpponent: 1,
+          timesOutscoredOpponent: 3,
+          timesOutscoredByOpponent: 1,
+        },
+        {
+          playerId: 2,
+          playerName: 'Bea',
+          playerTier: PlayerTier.Premium,
+          opponentId: 1,
+          opponentName: 'Ada',
+          opponentTier: PlayerTier.Premium,
+          gamesTogether: 4,
+          winsAgainstOpponent: 1,
+          lossesToOpponent: 2,
+          timesOutscoredOpponent: 1,
+          timesOutscoredByOpponent: 3,
+        },
+      ],
+      rivalryAggregates: [
+        {
+          playerA: { playerId: 1, name: 'Ada', tier: PlayerTier.Premium },
+          playerB: { playerId: 2, name: 'Bea', tier: PlayerTier.Standard },
+          gamesTogether: 4,
+          playerAWins: 2,
+          playerBWins: 1,
+          decidedGames: 3,
+          closenessScore: 0.167,
+        },
+        {
+          playerA: { playerId: 1, name: 'Ada', tier: PlayerTier.Premium },
+          playerB: { playerId: 3, name: 'Cara', tier: PlayerTier.Standard },
+          gamesTogether: 5,
+          playerAWins: 5,
+          playerBWins: 0,
+          decidedGames: 5,
+          closenessScore: 0.5,
+        },
+      ],
+      consistencyRatings: [
+        {
+          playerId: 1,
+          name: 'Ada',
+          tier: PlayerTier.Premium,
+          games: 5,
+          averageScore: 9.4,
+          stdDev: 1.2,
+        },
+        {
+          playerId: 2,
+          name: 'Bea',
+          tier: PlayerTier.Standard,
+          games: 4,
+          averageScore: 8.7,
+          stdDev: 2.5,
+        },
+      ],
+      dominanceIndex: [
+        { playerId: 1, name: 'Ada', tier: PlayerTier.Premium, games: 5, dominance: 0.31 },
+        { playerId: 2, name: 'Bea', tier: PlayerTier.Standard, games: 4, dominance: 0.24 },
+      ],
+      nailBiterRecords: [
+        {
+          playerId: 1,
+          name: 'Ada',
+          tier: PlayerTier.Premium,
+          nailBiterGames: 4,
+          nailBiterWins: 3,
+          winRate: 0.75,
+        },
+        {
+          playerId: 2,
+          name: 'Bea',
+          tier: PlayerTier.Standard,
+          nailBiterGames: 3,
+          nailBiterWins: 1,
+          winRate: 1 / 3,
+        },
+      ],
+      clutchFactors: [
+        {
+          playerId: 1,
+          name: 'Ada',
+          tier: PlayerTier.Premium,
+          smallGames: 3,
+          smallWins: 1,
+          smallRate: 1 / 3,
+          bigGames: 4,
+          bigWins: 3,
+          bigRate: 0.75,
+          delta: 0.75 - 1 / 3,
+        },
+        {
+          playerId: 2,
+          name: 'Bea',
+          tier: PlayerTier.Standard,
+          smallGames: 4,
+          smallWins: 3,
+          smallRate: 0.75,
+          bigGames: 3,
+          bigWins: 1,
+          bigRate: 1 / 3,
+          delta: 1 / 3 - 0.75,
+        },
+      ],
+      kingmakers: [
+        {
+          playerId: 2,
+          name: 'Bea',
+          tier: PlayerTier.Standard,
+          beneficiary: { playerId: 1, name: 'Ada', tier: PlayerTier.Premium },
+          sharedLossGames: 4,
+          beneficiaryWins: 3,
+          baselineRate: 0.5,
+          actualRate: 0.75,
+          edge: 0.25,
+        },
+      ],
     });
-    vi.mocked(getWinningScoreByGameSize).mockResolvedValue([
-      { playerCount: 3, gameCount: 2, avgWinningScore: 9 },
-      { playerCount: 4, gameCount: 1, avgWinningScore: 12 },
-      { playerCount: 5, gameCount: 3, avgWinningScore: 10.7 },
-    ]);
-    vi.mocked(getScoreHistogramBuckets).mockResolvedValue([
-      { score: 5, count: 1 },
-      { score: 6, count: 3 },
-      { score: 7, count: 2 },
-    ]);
-    vi.mocked(getPerPlayerScoreDistributions).mockResolvedValue([
-      {
-        playerId: 1,
-        name: 'Ada',
-        tier: PlayerTier.Premium,
-        count: 6,
-        min: 5,
-        q1: 7,
-        median: 8,
-        q3: 9,
-        max: 11,
-      },
-      {
-        playerId: 2,
-        name: 'Bea',
-        tier: PlayerTier.Standard,
-        count: 5,
-        min: 4,
-        q1: 6,
-        median: 7,
-        q3: 8,
-        max: 10,
-      },
-    ]);
-    vi.mocked(getPlayerPodiumRates).mockResolvedValue([
-      {
-        playerId: 1,
-        name: 'Ada',
-        tier: PlayerTier.Premium,
-        games: 5,
-        podiums: 4,
-        podiumRate: 0.8,
-      },
-      {
-        playerId: 2,
-        name: 'Bea',
-        tier: PlayerTier.Standard,
-        games: 4,
-        podiums: 2,
-        podiumRate: 0.5,
-      },
-    ]);
-    vi.mocked(getPlayerFinishBreakdowns).mockResolvedValue([
-      {
-        playerId: 1,
-        name: 'Ada',
-        tier: PlayerTier.Premium,
-        games: 5,
-        firsts: 3,
-        seconds: 1,
-        thirds: 0,
-        lasts: 0,
-        firstRate: 0.6,
-        secondRate: 0.2,
-        thirdRate: 0,
-        lastRate: 0,
-      },
-      {
-        playerId: 2,
-        name: 'Bea',
-        tier: PlayerTier.Standard,
-        games: 4,
-        firsts: 1,
-        seconds: 2,
-        thirds: 1,
-        lasts: 1,
-        firstRate: 0.25,
-        secondRate: 0.5,
-        thirdRate: 0.25,
-        lastRate: 0.25,
-      },
-    ]);
-    vi.mocked(getTierShowdownStats).mockResolvedValue([
-      {
-        tier: PlayerTier.Premium,
-        players: 2,
-        appearances: 9,
-        wins: 4,
-        winRate: 4 / 9,
-      },
-      {
-        tier: PlayerTier.Standard,
-        players: 3,
-        appearances: 14,
-        wins: 3,
-        winRate: 3 / 14,
-      },
-    ]);
-    vi.mocked(getPlayerExpectedVsActualWins).mockResolvedValue([
-      {
-        playerId: 1,
-        name: 'Ada',
-        tier: PlayerTier.Premium,
-        games: 5,
-        wins: 3,
-        expectedWins: 1.8,
-        winDelta: 1.2,
-      },
-      {
-        playerId: 2,
-        name: 'Bea',
-        tier: PlayerTier.Standard,
-        games: 4,
-        wins: 1,
-        expectedWins: 1.5,
-        winDelta: -0.5,
-      },
-    ]);
-    vi.mocked(getGameActivityTimestamps).mockResolvedValue([
-      '2026-04-20T18:00:00.000Z',
-      '2026-04-21T03:00:00.000Z',
-      '2026-04-21T21:00:00.000Z',
-    ]);
-    vi.mocked(getPlayerParticipationRates).mockResolvedValue([
-      {
-        playerId: 1,
-        name: 'Ada',
-        tier: PlayerTier.Premium,
-        gamesPlayed: 8,
-        totalGames: 9,
-        participationRate: 8 / 9,
-      },
-      {
-        playerId: 2,
-        name: 'Bea',
-        tier: PlayerTier.Standard,
-        gamesPlayed: 6,
-        totalGames: 9,
-        participationRate: 2 / 3,
-      },
-    ]);
-    vi.mocked(getPlayerAttendanceEvents).mockResolvedValue([
-      {
-        playedAt: '2026-04-20T18:00:00.000Z',
-        playerId: 1,
-        name: 'Ada',
-        tier: PlayerTier.Premium,
-      },
-      {
-        playedAt: '2026-04-20T18:00:00.000Z',
-        playerId: 2,
-        name: 'Bea',
-        tier: PlayerTier.Standard,
-      },
-    ]);
-    vi.mocked(getPlayerCurrentWinStreaks).mockResolvedValue([
-      {
-        playerId: 1,
-        name: 'Ada',
-        tier: PlayerTier.Premium,
-        streak: 2,
-        mostRecentAppearance: '2026-04-21T03:00:00.000Z',
-        mostRecentWin: '2026-04-21T03:00:00.000Z',
-      },
-      {
-        playerId: 2,
-        name: 'Bea',
-        tier: PlayerTier.Standard,
-        streak: 2,
-        mostRecentAppearance: '2026-04-20T18:00:00.000Z',
-        mostRecentWin: '2026-04-20T18:00:00.000Z',
-      },
-    ]);
-    vi.mocked(getPlayerWinEvents).mockResolvedValue([
-      {
-        playedAt: '2026-04-20T18:00:00.000Z',
-        playerId: 1,
-        name: 'Ada',
-        tier: PlayerTier.Premium,
-      },
-      {
-        playedAt: '2026-04-21T03:00:00.000Z',
-        playerId: 1,
-        name: 'Ada',
-        tier: PlayerTier.Premium,
-      },
-      {
-        playedAt: '2026-04-20T18:00:00.000Z',
-        playerId: 2,
-        name: 'Bea',
-        tier: PlayerTier.Standard,
-      },
-    ]);
-    vi.mocked(getPlayerStreakRecords).mockResolvedValue([
-      {
-        playerId: 1,
-        name: 'Ada',
-        tier: PlayerTier.Premium,
-        longestWinStreak: 3,
-        longestWinStreakStartedAt: '2026-04-20T18:00:00.000Z',
-        longestWinStreakEndedAt: '2026-04-22T18:00:00.000Z',
-        currentLossStreak: 0,
-        currentLossStreakStartedAt: null,
-        currentLossStreakEndedAt: null,
-        longestLossStreak: 1,
-        longestLossStreakStartedAt: '2026-04-23T18:00:00.000Z',
-        longestLossStreakEndedAt: '2026-04-23T18:00:00.000Z',
-        attendanceStreak: 5,
-        attendanceStreakStartedAt: '2026-04-18T18:00:00.000Z',
-        attendanceStreakEndedAt: '2026-04-22T18:00:00.000Z',
-      },
-      {
-        playerId: 2,
-        name: 'Bea',
-        tier: PlayerTier.Standard,
-        longestWinStreak: 2,
-        longestWinStreakStartedAt: '2026-04-18T18:00:00.000Z',
-        longestWinStreakEndedAt: '2026-04-19T18:00:00.000Z',
-        currentLossStreak: 1,
-        currentLossStreakStartedAt: '2026-04-21T18:00:00.000Z',
-        currentLossStreakEndedAt: '2026-04-21T18:00:00.000Z',
-        longestLossStreak: 1,
-        longestLossStreakStartedAt: '2026-04-21T18:00:00.000Z',
-        longestLossStreakEndedAt: '2026-04-21T18:00:00.000Z',
-        attendanceStreak: 4,
-        attendanceStreakStartedAt: '2026-04-18T18:00:00.000Z',
-        attendanceStreakEndedAt: '2026-04-21T18:00:00.000Z',
-      },
-    ]);
-    vi.mocked(getSingleGameRecords).mockResolvedValue({
-      highestScore: {
-        gameId: 3,
-        playedAt: '2026-04-22T18:00:00.000Z',
-        playerId: 3,
-        name: 'Cara',
-        tier: PlayerTier.Standard,
-        score: 20,
-      },
-      lowestWinningScore: {
-        gameId: 4,
-        playedAt: '2026-04-23T18:00:00.000Z',
-        playerId: 4,
-        name: 'Eve',
-        tier: PlayerTier.Premium,
-        score: 7,
-      },
-      biggestBlowout: {
-        gameId: 5,
-        playedAt: '2026-04-24T18:00:00.000Z',
-        winners: [
-          { playerId: 1, name: 'Ada', tier: PlayerTier.Premium },
-          { playerId: 2, name: 'Bea', tier: PlayerTier.Standard },
-        ],
-        winnerScore: 15,
-        runnerUpScore: 4,
-        margin: 11,
-        participantCount: 3,
-      },
-      closestGame: {
-        gameId: 4,
-        playedAt: '2026-04-23T18:00:00.000Z',
-        winners: [{ playerId: 4, name: 'Eve', tier: PlayerTier.Premium }],
-        winnerScore: 7,
-        runnerUpScore: 7,
-        margin: 0,
-        participantCount: 3,
-      },
-    });
-    vi.mocked(getPlayerHeadToHeadRecords).mockResolvedValue([
-      {
-        playerId: 1,
-        playerName: 'Ada',
-        playerTier: PlayerTier.Premium,
-        opponentId: 2,
-        opponentName: 'Bea',
-        opponentTier: PlayerTier.Premium,
-        gamesTogether: 4,
-        winsAgainstOpponent: 2,
-        lossesToOpponent: 1,
-        timesOutscoredOpponent: 3,
-        timesOutscoredByOpponent: 1,
-      },
-      {
-        playerId: 2,
-        playerName: 'Bea',
-        playerTier: PlayerTier.Premium,
-        opponentId: 1,
-        opponentName: 'Ada',
-        opponentTier: PlayerTier.Premium,
-        gamesTogether: 4,
-        winsAgainstOpponent: 1,
-        lossesToOpponent: 2,
-        timesOutscoredOpponent: 1,
-        timesOutscoredByOpponent: 3,
-      },
-    ]);
-    vi.mocked(getRivalryAggregates).mockResolvedValue([
-      {
-        playerA: { playerId: 1, name: 'Ada', tier: PlayerTier.Premium },
-        playerB: { playerId: 2, name: 'Bea', tier: PlayerTier.Standard },
-        gamesTogether: 4,
-        playerAWins: 2,
-        playerBWins: 1,
-        decidedGames: 3,
-        closenessScore: 0.167,
-      },
-      {
-        playerA: { playerId: 1, name: 'Ada', tier: PlayerTier.Premium },
-        playerB: { playerId: 3, name: 'Cara', tier: PlayerTier.Standard },
-        gamesTogether: 5,
-        playerAWins: 5,
-        playerBWins: 0,
-        decidedGames: 5,
-        closenessScore: 0.5,
-      },
-    ]);
-    vi.mocked(getPlayerConsistencyRatings).mockResolvedValue([
-      {
-        playerId: 1,
-        name: 'Ada',
-        tier: PlayerTier.Premium,
-        games: 5,
-        averageScore: 9.4,
-        stdDev: 1.2,
-      },
-      {
-        playerId: 2,
-        name: 'Bea',
-        tier: PlayerTier.Standard,
-        games: 4,
-        averageScore: 8.7,
-        stdDev: 2.5,
-      },
-    ]);
-    vi.mocked(getPlayerDominanceIndex).mockResolvedValue([
-      { playerId: 1, name: 'Ada', tier: PlayerTier.Premium, games: 5, dominance: 0.31 },
-      { playerId: 2, name: 'Bea', tier: PlayerTier.Standard, games: 4, dominance: 0.24 },
-    ]);
-    vi.mocked(getPlayerNailBiterRecords).mockResolvedValue([
-      {
-        playerId: 1,
-        name: 'Ada',
-        tier: PlayerTier.Premium,
-        nailBiterGames: 4,
-        nailBiterWins: 3,
-        winRate: 0.75,
-      },
-      {
-        playerId: 2,
-        name: 'Bea',
-        tier: PlayerTier.Standard,
-        nailBiterGames: 3,
-        nailBiterWins: 1,
-        winRate: 1 / 3,
-      },
-    ]);
-    vi.mocked(getPlayerClutchFactors).mockResolvedValue([
-      {
-        playerId: 1,
-        name: 'Ada',
-        tier: PlayerTier.Premium,
-        smallGames: 3,
-        smallWins: 1,
-        smallRate: 1 / 3,
-        bigGames: 4,
-        bigWins: 3,
-        bigRate: 0.75,
-        delta: 0.75 - 1 / 3,
-      },
-      {
-        playerId: 2,
-        name: 'Bea',
-        tier: PlayerTier.Standard,
-        smallGames: 4,
-        smallWins: 3,
-        smallRate: 0.75,
-        bigGames: 3,
-        bigWins: 1,
-        bigRate: 1 / 3,
-        delta: 1 / 3 - 0.75,
-      },
-    ]);
-    vi.mocked(getPlayerKingmakers).mockResolvedValue([
-      {
-        playerId: 2,
-        name: 'Bea',
-        tier: PlayerTier.Standard,
-        beneficiary: { playerId: 1, name: 'Ada', tier: PlayerTier.Premium },
-        sharedLossGames: 4,
-        beneficiaryWins: 3,
-        baselineRate: 0.5,
-        actualRate: 0.75,
-        edge: 0.25,
-      },
-    ]);
     vi.mocked(getSettings).mockResolvedValue({
       winRateMinGames: 3,
       podiumRateMinGames: 4,
@@ -939,60 +907,62 @@ describe('StatsPage', () => {
   });
 
   it('requires three games before showing score leaderboard rows', async () => {
-    vi.mocked(getPlayerScoreStats).mockResolvedValue([
-      {
-        playerId: 1,
-        name: 'Ada',
-        tier: PlayerTier.Premium,
-        games: 3,
-        avgScore: 9.3,
-        medianScore: 9,
-      },
-      {
-        playerId: 2,
-        name: 'Bea',
-        tier: PlayerTier.Standard,
-        games: 2,
-        avgScore: 10,
-        medianScore: 10,
-      },
-    ]);
-    vi.mocked(getPlayerCumulativeScoreStats).mockResolvedValue([
-      {
-        playerId: 1,
-        name: 'Ada',
-        tier: PlayerTier.Premium,
-        games: 3,
-        totalScore: 28,
-        pointsPerGame: 9.3,
-      },
-      {
-        playerId: 2,
-        name: 'Bea',
-        tier: PlayerTier.Standard,
-        games: 2,
-        totalScore: 20,
-        pointsPerGame: 10,
-      },
-    ]);
-    vi.mocked(getPlayerNormalizedScoreStats).mockResolvedValue([
-      {
-        playerId: 1,
-        name: 'Ada',
-        tier: PlayerTier.Premium,
-        games: 3,
-        avgScore: 0.93,
-        medianScore: 0.9,
-      },
-      {
-        playerId: 2,
-        name: 'Bea',
-        tier: PlayerTier.Standard,
-        games: 2,
-        avgScore: 1,
-        medianScore: 1,
-      },
-    ]);
+    setStatsPageData({
+      scoreStats: [
+        {
+          playerId: 1,
+          name: 'Ada',
+          tier: PlayerTier.Premium,
+          games: 3,
+          avgScore: 9.3,
+          medianScore: 9,
+        },
+        {
+          playerId: 2,
+          name: 'Bea',
+          tier: PlayerTier.Standard,
+          games: 2,
+          avgScore: 10,
+          medianScore: 10,
+        },
+      ],
+      cumulativeScoreStats: [
+        {
+          playerId: 1,
+          name: 'Ada',
+          tier: PlayerTier.Premium,
+          games: 3,
+          totalScore: 28,
+          pointsPerGame: 9.3,
+        },
+        {
+          playerId: 2,
+          name: 'Bea',
+          tier: PlayerTier.Standard,
+          games: 2,
+          totalScore: 20,
+          pointsPerGame: 10,
+        },
+      ],
+      normalizedScoreStats: [
+        {
+          playerId: 1,
+          name: 'Ada',
+          tier: PlayerTier.Premium,
+          games: 3,
+          avgScore: 0.93,
+          medianScore: 0.9,
+        },
+        {
+          playerId: 2,
+          name: 'Bea',
+          tier: PlayerTier.Standard,
+          games: 2,
+          avgScore: 1,
+          medianScore: 1,
+        },
+      ],
+    });
 
     const element = await StatsPage({ searchParams: Promise.resolve({}) });
     const markup = renderToStaticMarkup(element);
@@ -1027,36 +997,38 @@ describe('StatsPage', () => {
   });
 
   it('shows the score threshold empty state when no score leaderboard rows qualify', async () => {
-    vi.mocked(getPlayerScoreStats).mockResolvedValue([
-      {
-        playerId: 1,
-        name: 'Ada',
-        tier: PlayerTier.Premium,
-        games: 2,
-        avgScore: 9.5,
-        medianScore: 9.5,
-      },
-    ]);
-    vi.mocked(getPlayerCumulativeScoreStats).mockResolvedValue([
-      {
-        playerId: 1,
-        name: 'Ada',
-        tier: PlayerTier.Premium,
-        games: 2,
-        totalScore: 19,
-        pointsPerGame: 9.5,
-      },
-    ]);
-    vi.mocked(getPlayerNormalizedScoreStats).mockResolvedValue([
-      {
-        playerId: 1,
-        name: 'Ada',
-        tier: PlayerTier.Premium,
-        games: 2,
-        avgScore: 0.95,
-        medianScore: 0.95,
-      },
-    ]);
+    setStatsPageData({
+      scoreStats: [
+        {
+          playerId: 1,
+          name: 'Ada',
+          tier: PlayerTier.Premium,
+          games: 2,
+          avgScore: 9.5,
+          medianScore: 9.5,
+        },
+      ],
+      cumulativeScoreStats: [
+        {
+          playerId: 1,
+          name: 'Ada',
+          tier: PlayerTier.Premium,
+          games: 2,
+          totalScore: 19,
+          pointsPerGame: 9.5,
+        },
+      ],
+      normalizedScoreStats: [
+        {
+          playerId: 1,
+          name: 'Ada',
+          tier: PlayerTier.Premium,
+          games: 2,
+          avgScore: 0.95,
+          medianScore: 0.95,
+        },
+      ],
+    });
 
     const element = await StatsPage({ searchParams: Promise.resolve({}) });
     const markup = renderToStaticMarkup(element);
@@ -1065,36 +1037,8 @@ describe('StatsPage', () => {
   });
 
   it('renders card empty states when no stats are available', async () => {
-    vi.mocked(getPlayerWinRates).mockResolvedValue([]);
-    vi.mocked(getPlayerScoreStats).mockResolvedValue([]);
-    vi.mocked(getPlayerCumulativeScoreStats).mockResolvedValue([]);
-    vi.mocked(getPlayerNormalizedScoreStats).mockResolvedValue([]);
-    vi.mocked(getWinningScoreComparison).mockResolvedValue({
-      winnerRows: 0,
-      nonWinnerRows: 0,
-      avgWinningScore: 0,
-      avgLosingScore: 0,
-      scoreGap: 0,
-    });
-    vi.mocked(getWinningScoreByGameSize).mockResolvedValue([]);
-    vi.mocked(getPlayerPodiumRates).mockResolvedValue([]);
-    vi.mocked(getPlayerFinishBreakdowns).mockResolvedValue([]);
-    vi.mocked(getTierShowdownStats).mockResolvedValue([]);
-    vi.mocked(getPlayerExpectedVsActualWins).mockResolvedValue([]);
-    vi.mocked(getGameActivityTimestamps).mockResolvedValue([]);
-    vi.mocked(getPlayerParticipationRates).mockResolvedValue([]);
-    vi.mocked(getPlayerAttendanceEvents).mockResolvedValue([]);
-    vi.mocked(getPlayerCurrentWinStreaks).mockResolvedValue([]);
-    vi.mocked(getPlayerWinEvents).mockResolvedValue([]);
-    vi.mocked(getPlayerStreakRecords).mockResolvedValue([]);
-    vi.mocked(getSingleGameRecords).mockResolvedValue({
-      highestScore: null,
-      lowestWinningScore: null,
-      biggestBlowout: null,
-      closestGame: null,
-    });
-    vi.mocked(getPlayerHeadToHeadRecords).mockResolvedValue([]);
-    vi.mocked(getRivalryAggregates).mockResolvedValue([]);
+    // The empty bundle from `emptyStatsPageData()` already models "no stats recorded"; only the
+    // settings thresholds differ for this case.
     vi.mocked(getSettings).mockResolvedValue({
       winRateMinGames: 2,
       podiumRateMinGames: 5,
@@ -1140,87 +1084,62 @@ describe('StatsPage', () => {
   });
 
   it('filters the podium leaderboard using the podium threshold instead of the win-rate threshold', async () => {
-    vi.mocked(getPlayerWinRates).mockResolvedValue([
-      {
-        playerId: 1,
-        name: 'Ada',
-        tier: PlayerTier.Premium,
-        games: 5,
-        wins: 2,
-        winRate: 0.4,
-      },
-      {
-        playerId: 2,
-        name: 'Bea',
-        tier: PlayerTier.Standard,
-        games: 3,
-        wins: 1,
-        winRate: 1 / 3,
-      },
-    ]);
-    vi.mocked(getPlayerScoreStats).mockResolvedValue([]);
-    vi.mocked(getPlayerCumulativeScoreStats).mockResolvedValue([
-      {
-        playerId: 1,
-        name: 'Ada',
-        tier: PlayerTier.Premium,
-        games: 5,
-        totalScore: 42,
-        pointsPerGame: 8.4,
-      },
-      {
-        playerId: 2,
-        name: 'Bea',
-        tier: PlayerTier.Standard,
-        games: 0,
-        totalScore: 0,
-        pointsPerGame: 0,
-      },
-    ]);
-    vi.mocked(getPlayerNormalizedScoreStats).mockResolvedValue([]);
-    vi.mocked(getWinningScoreComparison).mockResolvedValue({
-      winnerRows: 0,
-      nonWinnerRows: 0,
-      avgWinningScore: 0,
-      avgLosingScore: 0,
-      scoreGap: 0,
+    setStatsPageData({
+      winRates: [
+        {
+          playerId: 1,
+          name: 'Ada',
+          tier: PlayerTier.Premium,
+          games: 5,
+          wins: 2,
+          winRate: 0.4,
+        },
+        {
+          playerId: 2,
+          name: 'Bea',
+          tier: PlayerTier.Standard,
+          games: 3,
+          wins: 1,
+          winRate: 1 / 3,
+        },
+      ],
+      cumulativeScoreStats: [
+        {
+          playerId: 1,
+          name: 'Ada',
+          tier: PlayerTier.Premium,
+          games: 5,
+          totalScore: 42,
+          pointsPerGame: 8.4,
+        },
+        {
+          playerId: 2,
+          name: 'Bea',
+          tier: PlayerTier.Standard,
+          games: 0,
+          totalScore: 0,
+          pointsPerGame: 0,
+        },
+      ],
+      podiumRates: [
+        {
+          playerId: 1,
+          name: 'Ada',
+          tier: PlayerTier.Premium,
+          games: 5,
+          podiums: 3,
+          podiumRate: 0.6,
+        },
+        {
+          playerId: 2,
+          name: 'Bea',
+          tier: PlayerTier.Standard,
+          games: 3,
+          podiums: 3,
+          podiumRate: 1,
+        },
+      ],
     });
-    vi.mocked(getWinningScoreByGameSize).mockResolvedValue([]);
-    vi.mocked(getPlayerPodiumRates).mockResolvedValue([
-      {
-        playerId: 1,
-        name: 'Ada',
-        tier: PlayerTier.Premium,
-        games: 5,
-        podiums: 3,
-        podiumRate: 0.6,
-      },
-      {
-        playerId: 2,
-        name: 'Bea',
-        tier: PlayerTier.Standard,
-        games: 3,
-        podiums: 3,
-        podiumRate: 1,
-      },
-    ]);
-    vi.mocked(getPlayerFinishBreakdowns).mockResolvedValue([]);
-    vi.mocked(getTierShowdownStats).mockResolvedValue([]);
-    vi.mocked(getPlayerExpectedVsActualWins).mockResolvedValue([]);
-    vi.mocked(getGameActivityTimestamps).mockResolvedValue([]);
-    vi.mocked(getPlayerParticipationRates).mockResolvedValue([]);
-    vi.mocked(getPlayerAttendanceEvents).mockResolvedValue([]);
-    vi.mocked(getPlayerCurrentWinStreaks).mockResolvedValue([]);
-    vi.mocked(getPlayerWinEvents).mockResolvedValue([]);
-    vi.mocked(getPlayerStreakRecords).mockResolvedValue([]);
-    vi.mocked(getSingleGameRecords).mockResolvedValue({
-      highestScore: null,
-      lowestWinningScore: null,
-      biggestBlowout: null,
-      closestGame: null,
-    });
-    vi.mocked(getPlayerHeadToHeadRecords).mockResolvedValue([]);
-    vi.mocked(getRivalryAggregates).mockResolvedValue([]);
     vi.mocked(getSettings).mockResolvedValue({
       winRateMinGames: 2,
       podiumRateMinGames: 4,
