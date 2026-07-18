@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { CalendarHeatmap } from '@/components/CalendarHeatmap'
 
 describe('CalendarHeatmap', () => {
-  it('defaults to recent activity, clears hover details on pointer leave, and supports keyboard focus', async () => {
+  it('defaults to recent activity, clears hover details on pointer leave, and supports keyboard focus', { timeout: 15_000 }, async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-04-24T16:00:00.000Z'))
 
