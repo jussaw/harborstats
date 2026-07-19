@@ -1083,6 +1083,69 @@ describe('StatsPage', () => {
     expect(markup.match(/No games recorded yet\./g)).toHaveLength(24);
   });
 
+  it('mutes provisional Elo in the power ranking instead of stacking a label', async () => {
+    vi.mocked(getRatingReplay).mockResolvedValue({
+      ratedGameCount: 30,
+      players: [
+        {
+          playerId: 1,
+          name: 'Ada',
+          tier: PlayerTier.Premium,
+          rating: 1560,
+          displayRating: 1560,
+          peakRating: 1560,
+          lastGameChange: 12,
+          gamesPlayed: 20,
+          provisional: false,
+          history: [],
+        },
+        {
+          playerId: 2,
+          name: 'Bea',
+          tier: PlayerTier.Standard,
+          rating: 1498,
+          displayRating: 1498,
+          peakRating: 1498,
+          lastGameChange: -8,
+          gamesPlayed: 3,
+          provisional: true,
+          history: [],
+        },
+        {
+          playerId: 3,
+          name: 'Zed',
+          tier: PlayerTier.Standard,
+          rating: 1600,
+          displayRating: 1600,
+          peakRating: 1600,
+          lastGameChange: 20,
+          gamesPlayed: 2,
+          provisional: true,
+          history: [],
+        },
+      ],
+    });
+
+    const element = await StatsPage({ searchParams: Promise.resolve({}) });
+    const markup = renderToStaticMarkup(element);
+    const powerRankingIndex = markup.indexOf('id="power-ranking"');
+    const ratingHistoryIndex = markup.indexOf('id="rating-history"');
+    const powerRankingSection = markup.slice(powerRankingIndex, ratingHistoryIndex);
+
+    // The provisional player gets a styled tooltip and screen-reader hint, but no stacked
+    // visible label and no native title attribute.
+    expect(powerRankingSection).toContain('Provisional — fewer than 5 rated games');
+    expect(powerRankingSection).toContain('role="tooltip"');
+    expect(powerRankingSection).not.toContain('title="Provisional');
+    expect(powerRankingSection).toContain('(provisional)');
+    expect(powerRankingSection).not.toContain('>Provisional<');
+    // The provisional Elo cell is dimmed/italic; the established one stays bold gold.
+    expect(powerRankingSection).toContain('italic');
+    expect(powerRankingSection).toContain('font-semibold');
+    // Provisional players sort below established ones even with a higher rating.
+    expect(powerRankingSection.indexOf('Ada')).toBeLessThan(powerRankingSection.indexOf('Zed'));
+  });
+
   it('filters the podium leaderboard using the podium threshold instead of the win-rate threshold', async () => {
     setStatsPageData({
       winRates: [

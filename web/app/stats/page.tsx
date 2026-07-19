@@ -21,8 +21,10 @@ import { StatsLeaderboardTable } from '@/components/StatsLeaderboardTable';
 import { StatsPlayerFilter } from '@/components/StatsPlayerFilter';
 import { StatsSearch, type StatsSectionView } from '@/components/StatsSearch';
 import { WinningScoreByGameSizeChart } from '@/components/WinningScoreByGameSizeChart';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { formatAverage, formatPercent, formatSignedNumber } from '@/lib/format';
 import { PlayerTier } from '@/lib/player-tier';
+import { PROVISIONAL_GAMES } from '@/lib/rating';
 import { getPlayers } from '@/lib/players';
 import { getSettings } from '@/lib/settings';
 import { getRatingReplay } from '@/lib/ratings';
@@ -879,6 +881,7 @@ export default async function StatsPage({ searchParams }: Props) {
           initialSort={{ key: 'rating', direction: 'desc' }}
           rows={ratedPlayers.map((player) => ({
             key: player.playerId,
+            pinBottom: player.provisional,
             sortValues: {
               player: player.name,
               rating: player.displayRating,
@@ -889,22 +892,32 @@ export default async function StatsPage({ searchParams }: Props) {
               <>
                 <td className="px-3 py-2 text-(--cream)">
                   <PlayerName name={player.name} tier={player.tier} />
-                  {player.provisional ? (
-                    <span
-                      className="
-              ml-2 text-xs text-(--cream)/55
-            "
-                    >
-                      Provisional
-                    </span>
-                  ) : null}
                 </td>
                 <td
-                  className="
+                  className={
+                    player.provisional
+                      ? `
+              px-3 py-2 text-right font-normal text-(--gold)/50 italic tabular-nums
+            `
+                      : `
               px-3 py-2 text-right font-semibold text-(--gold) tabular-nums
-            "
+            `
+                  }
                 >
-                  {player.displayRating}
+                  {player.provisional ? (
+                    <Tooltip
+                      content={`Provisional — fewer than ${PROVISIONAL_GAMES} rated games`}
+                      align="right"
+                      widthClass="w-48"
+                    >
+                      <button type="button" className="cursor-help">
+                        {player.displayRating}
+                        <span className="sr-only"> (provisional)</span>
+                      </button>
+                    </Tooltip>
+                  ) : (
+                    player.displayRating
+                  )}
                 </td>
                 <td className="px-3 py-2 text-right text-(--cream)/70 tabular-nums">
                   {formatSignedNumber(player.lastGameChange)}
