@@ -114,6 +114,16 @@ describe('RatingHistoryChart', () => {
     expect(container.querySelectorAll('polyline')).toHaveLength(2);
   });
 
+  it('sorts the legend alphabetically regardless of the incoming rating order', () => {
+    render(<RatingHistoryChart players={[bea, ada]} rosterPlayerIds={[1, 2]} />);
+
+    const legend = screen.getByLabelText('Rating history legend');
+    const names = within(legend)
+      .getAllByRole('button')
+      .map((button) => button.textContent?.trim());
+    expect(names).toEqual(['Ada', 'Bea']);
+  });
+
   it('dims the other lines when a legend entry is hovered', async () => {
     const user = userEvent.setup();
     const { container } = render(

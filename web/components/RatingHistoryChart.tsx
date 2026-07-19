@@ -102,6 +102,10 @@ export function RatingHistoryChart({ players, rosterPlayerIds }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
 
   const series = useMemo(() => players.filter((player) => player.history.length > 0), [players]);
+  const legendSeries = useMemo(
+    () => [...series].sort((left, right) => left.name.localeCompare(right.name)),
+    [series],
+  );
   const colorByPlayerId = useMemo(() => buildPlayerColorMap(rosterPlayerIds), [rosterPlayerIds]);
 
   useEffect(() => {
@@ -422,7 +426,7 @@ export function RatingHistoryChart({ players, rosterPlayerIds }: Props) {
           className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-(--cream)/70"
           aria-label="Rating history legend"
         >
-          {series.map((player) => {
+          {legendSeries.map((player) => {
             const hidden = hiddenPlayerIds.has(player.playerId);
             return (
               <li key={player.playerId}>
