@@ -139,4 +139,75 @@ describe('StatsLeaderboardTable', () => {
     expect(screen.getByText('Nothing here yet.')).toBeInTheDocument()
     expect(screen.queryByText('👑')).not.toBeInTheDocument()
   })
+
+  describe('pinBottom rows', () => {
+    // Pins Ann — the wins leader — so pinning visibly overrides the sort value.
+    function buildRowsWithPinnedAnn() {
+      return buildRows().map((row) => (row.key === 2 ? { ...row, pinBottom: true } : row))
+    }
+
+    function renderPinnedTable() {
+      return render(
+        <StatsLeaderboardTable
+          columns={columns}
+          rows={buildRowsWithPinnedAnn()}
+          initialSort={{ key: 'wins', direction: 'desc' }}
+        />,
+      )
+    }
+
+    it('sorts pinned rows last and ranks them after unpinned rows', () => {
+      renderPinnedTable()
+
+      expect(dataRowNames()).toEqual(['Cy', 'Bob', 'Ann'])
+
+      // The crown moves to the top unpinned row; pinned Ann takes the trailing rank.
+      const rows = screen.getAllByRole('row')
+      expect(within(rows[1]).getByText('👑')).toBeInTheDocument()
+      expect(within(rows[1]).getByText('Cy')).toBeInTheDocument()
+      expect(within(rows[3]).getByText('3')).toBeInTheDocument()
+      expect(within(rows[3]).getByText('Ann')).toBeInTheDocument()
+    })
+
+    it('keeps pinned rows last when the sort direction toggles', async () => {
+      const user = userEvent.setup()
+      renderPinnedTable()
+
+      await user.click(screen.getByRole('button', { name: 'Wins' }))
+
+      expect(dataRowNames()).toEqual(['Bob', 'Cy', 'Ann'])
+    })
+
+    it('keeps pinned rows last when sorting by another column', async () => {
+      const user = userEvent.setup()
+      renderPinnedTable()
+
+      await user.click(screen.getByRole('button', { name: 'Player' }))
+
+      // Ann sorts first alphabetically but stays pinned to the bottom.
+      expect(dataRowNames()).toEqual(['Bob', 'Cy', 'Ann'])
+    })
+
+    it('does not share a rank across the pinned boundary on tied values', () => {
+      const rows: StatsTableRow[] = [
+        { key: 1, pinBottom: true, sortValues: { player: 'Ann', wins: 30 }, cells: <td>Ann</td> },
+        { key: 2, sortValues: { player: 'Bob', wins: 30 }, cells: <td>Bob</td> },
+        { key: 3, sortValues: { player: 'Cy', wins: 20 }, cells: <td>Cy</td> },
+      ]
+      render(
+        <StatsLeaderboardTable
+          columns={columns}
+          rows={rows}
+          initialSort={{ key: 'wins', direction: 'desc' }}
+        />,
+      )
+
+      // Pinned Ann ties Bob on wins but ranks 3, not a shared 1.
+      const renderedRows = screen.getAllByRole('row')
+      expect(within(renderedRows[1]).getByText('👑')).toBeInTheDocument()
+      expect(within(renderedRows[1]).getByText('Bob')).toBeInTheDocument()
+      expect(within(renderedRows[3]).getByText('3')).toBeInTheDocument()
+      expect(within(renderedRows[3]).getByText('Ann')).toBeInTheDocument()
+    })
+  })
 })

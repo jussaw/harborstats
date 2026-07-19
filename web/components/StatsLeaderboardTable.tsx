@@ -27,6 +27,8 @@ export interface StatsTableRow {
   cells: ReactNode
   // Comparable values keyed by each sortable column's sortKey.
   sortValues?: Record<string, SortValue>
+  // Sorts (and ranks) after all unpinned rows for every sort column and direction.
+  pinBottom?: boolean
 }
 
 interface Props {
@@ -81,6 +83,18 @@ function compareValues(a: SortValue, b: SortValue, type: SortType, direction: So
   return direction === 'asc' ? base : -base
 }
 
+function compareRows(
+  a: StatsTableRow,
+  b: StatsTableRow,
+  key: string,
+  type: SortType,
+  direction: SortDirection,
+) {
+  const pinDelta = (a.pinBottom ? 1 : 0) - (b.pinBottom ? 1 : 0)
+  if (pinDelta !== 0) return pinDelta
+  return compareValues(a.sortValues?.[key] ?? null, b.sortValues?.[key] ?? null, type, direction)
+}
+
 function SortIndicator({ direction }: { direction: SortDirection }) {
   if (direction === 'asc') return <ArrowUp className="size-3" aria-hidden="true" />
   return <ArrowDown className="size-3" aria-hidden="true" />
@@ -108,17 +122,12 @@ export function StatsLeaderboardTable({
   const rankColumn = columns.find((column) => column.rank)
 
   const sortedRows = useMemo(() => {
-    if (!sort) return rows
+    if (!sort) {
+      return [...rows.filter((row) => !row.pinBottom), ...rows.filter((row) => row.pinBottom)]
+    }
     const column = columns.find((candidate) => candidate.sortKey === sort.key)
     const type = column?.sortType ?? 'number'
-    return [...rows].sort((a, b) =>
-      compareValues(
-        a.sortValues?.[sort.key] ?? null,
-        b.sortValues?.[sort.key] ?? null,
-        type,
-        sort.direction,
-      ),
-    )
+    return [...rows].sort((a, b) => compareRows(a, b, sort.key, type, sort.direction))
   }, [rows, sort, columns])
 
   // Ranks are fixed to the card's default metric (initialSort), keyed by row identity, so
@@ -132,10 +141,12 @@ export function StatsLeaderboardTable({
     }
     const { key, direction } = initialSort
     const type = columns.find((candidate) => candidate.sortKey === key)?.sortType ?? 'number'
-    const baseRows = [...rows].sort((a, b) =>
-      compareValues(a.sortValues?.[key] ?? null, b.sortValues?.[key] ?? null, type, direction),
+    const baseRows = [...rows].sort((a, b) => compareRows(a, b, key, type, direction))
+    // Rank on a pin-aware composite so a pinned row never shares a rank across the partition.
+    const ranks = rankWithTies(
+      baseRows,
+      (row) => `${row.pinBottom ? 1 : 0}|${row.sortValues?.[key] ?? ''}`,
     )
-    const ranks = rankWithTies(baseRows, (row) => row.sortValues?.[key] ?? null)
     baseRows.forEach((row, index) => map.set(row.key, ranks[index]))
     return map
   }, [rankColumn, rows, initialSort, columns])
