@@ -1,6 +1,7 @@
 'use client'
 
 import { Info } from 'lucide-react'
+import { Tooltip } from '@/components/ui/Tooltip'
 import type { PlayerCurrentWinStreak } from '@/lib/stats'
 import { isWithinRecentLocalCalendarDays } from '@/lib/activity-local-time'
 import { localTimeLoadingMessage, useResolvedTimeZone } from '@/lib/use-resolved-time-zone'
@@ -25,33 +26,23 @@ function EmptyState() {
 
 function EligibilityTooltip() {
   return (
-    <span className="relative inline-flex items-center">
+    <Tooltip
+      content="To be eligible, a player must have played a game in the last 7 days."
+      widthClass="w-52"
+    >
       <button
         type="button"
         aria-label="Current win streak eligibility info"
         className="
-          group inline-flex size-5 items-center justify-center rounded-full
+          inline-flex size-5 items-center justify-center rounded-full
           text-(--cream)/45 transition-colors
           hover:text-(--gold)
           focus:text-(--gold) focus:outline-none
         "
       >
         <Info className="size-3.5" />
-        <span
-          role="tooltip"
-          className="
-            pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 w-52
-            -translate-x-1/2 rounded-lg border border-(--gold)/20
-            bg-(--navy-900) px-3 py-2 text-center text-xs/snug text-(--cream)
-            opacity-0 shadow-[0_12px_24px_rgba(0,0,0,0.28)] transition-opacity
-            group-hover:opacity-100
-            group-focus:opacity-100
-          "
-        >
-          To be eligible, a player must have played a game in the last 7 days.
-        </span>
       </button>
-    </span>
+    </Tooltip>
   )
 }
 
