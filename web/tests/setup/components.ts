@@ -1,9 +1,23 @@
 import '@testing-library/jest-dom/vitest'
-import { cleanup } from '@testing-library/react'
+import { cleanup, configure } from '@testing-library/react'
 import { afterEach, vi } from 'vitest'
 import { applyTestEnv } from '../helpers/test-env'
 
 applyTestEnv()
+
+// Testing Library's default async budget (1000ms) is too tight for `findBy*`/
+// `waitFor` when the full component suite saturates all CPU cores: a cold
+// accessible-role scan can miss a promptly-rendered node before the budget
+// expires, flaking load-dependent assertions (e.g. GameForm's validation
+// alert). Green assertions still resolve as soon as the condition holds, so
+// this only widens the retry window; it does not slow passing tests.
+//
+// Keep this comfortably below Vitest's 5000ms component `testTimeout`: if the
+// two were equal, a genuinely missing element would trip the test timeout at
+// the same instant, masking Testing Library's descriptive locator error with a
+// generic "Test timed out" and leaving no room for the final retry. A truly
+// failing assertion now surfaces up to ~3s slower, but with the precise error.
+configure({ asyncUtilTimeout: 3000 })
 
 if (typeof HTMLDialogElement !== 'undefined') {
   if (!HTMLDialogElement.prototype.showModal) {
