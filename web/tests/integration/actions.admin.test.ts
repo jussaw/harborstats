@@ -11,7 +11,7 @@ import {
 import { saveSettings } from '@/app/admin/settings/actions';
 import { COOKIE_NAME as ADMIN_COOKIE_NAME, signSession } from '@/lib/admin-auth';
 import { db } from '@/lib/db';
-import { gamePlayers, games, players } from '@/db/schema';
+import { auditLogs, gamePlayers, games, players } from '@/db/schema';
 import { getSettings, updateRateMinGames } from '@/lib/settings';
 import { PlayerTier } from '@/lib/player-tier';
 import * as playersLib from '@/lib/players';
@@ -219,6 +219,62 @@ describe('admin game actions', () => {
     expect(remainingGames).toHaveLength(0);
     expect(remainingPlayers).toHaveLength(0);
     expect(mocked.redirectMock).toHaveBeenCalledWith('/admin/games');
+  });
+
+  test('deleteGameAction handles a stale/double delete without touching other games', async () => {
+    await setupValidAdminSession();
+    const alice = await createTestPlayer({ name: 'Alice' });
+    const target = await createTestGame({
+      players: [{ playerId: alice.id, score: 10, isWinner: true }],
+    });
+    const survivor = await createTestGame({
+      players: [{ playerId: alice.id, score: 8, isWinner: true }],
+    });
+
+    const formData = new FormData();
+    formData.set('game_id', String(target.id));
+
+    // First delete succeeds and removes the target game.
+    await expect(deleteGameAction(formData)).rejects.toMatchObject({ path: '/admin/games' });
+    // Second delete of the same (already-gone) game is a handled no-op.
+    await expect(deleteGameAction(formData)).rejects.toMatchObject({ path: '/admin/games' });
+
+    expect(await db.select().from(games).where(eq(games.id, target.id))).toHaveLength(0);
+    // The unrelated game is left intact by the stale delete.
+    expect(await db.select().from(games).where(eq(games.id, survivor.id))).toHaveLength(1);
+
+    // Exactly one game.delete audit event across both calls: the real deletion
+    // records once, the stale no-op records nothing.
+    const deleteAudits = await db
+      .select()
+      .from(auditLogs)
+      .where(eq(auditLogs.action, 'game.delete'));
+    expect(deleteAudits).toHaveLength(1);
+    expect(deleteAudits[0]).toMatchObject({ entityId: String(target.id) });
+  });
+
+  test.each([
+    ['a malformed', 'not-a-number'],
+    ['a missing', ''],
+    ['a zero', '0'],
+    ['a negative', '-5'],
+  ])('deleteGameAction handles %s game id without deleting any game', async (_label, gameId) => {
+    await setupValidAdminSession();
+    const alice = await createTestPlayer({ name: 'Alice' });
+    const game = await createTestGame({
+      players: [{ playerId: alice.id, score: 10, isWinner: true }],
+    });
+
+    const formData = new FormData();
+    formData.set('game_id', gameId);
+
+    await expect(deleteGameAction(formData)).rejects.toMatchObject({ path: '/admin/games' });
+
+    // No stored game was removed and no success audit was recorded.
+    expect(await db.select().from(games).where(eq(games.id, game.id))).toHaveLength(1);
+    expect(
+      await db.select().from(auditLogs).where(eq(auditLogs.action, 'game.delete')),
+    ).toHaveLength(0);
   });
 });
 

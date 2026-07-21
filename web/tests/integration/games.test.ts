@@ -348,10 +348,31 @@ describe('games lib', () => {
       players: [{ playerId: ada.id, score: 10, isWinner: true }],
     });
 
-    await deleteGame(game.id);
+    await expect(deleteGame(game.id)).resolves.toBe(true);
 
     expect(await db.select().from(games)).toHaveLength(0);
     expect(await db.select().from(gamePlayers)).toHaveLength(0);
+  });
+
+  it('reports whether a row was removed and is a no-op on a repeat/missing delete', async () => {
+    const ada = await createTestPlayer({ name: 'Ada' });
+    const target = await createTestGame({
+      players: [{ playerId: ada.id, score: 10, isWinner: true }],
+    });
+    const survivor = await createTestGame({
+      players: [{ playerId: ada.id, score: 8, isWinner: true }],
+    });
+
+    // First delete removes the row and reports success.
+    await expect(deleteGame(target.id)).resolves.toBe(true);
+    // Second (stale/double) delete matches nothing and reports no-op.
+    await expect(deleteGame(target.id)).resolves.toBe(false);
+    // An id that never existed also reports no-op.
+    await expect(deleteGame(999999)).resolves.toBe(false);
+
+    // The unrelated game is untouched by any of the above.
+    const remaining = await db.select().from(games).where(eq(games.id, survivor.id));
+    expect(remaining).toHaveLength(1);
   });
 
   it('lists recent games ordered by played date and game id and groups player rows by game', async () => {

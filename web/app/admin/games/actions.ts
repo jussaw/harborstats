@@ -31,13 +31,18 @@ export async function updateGameAction(formData: FormData): Promise<GameActionRe
 export async function deleteGameAction(formData: FormData) {
   await requireAdminSession()
   const gameId = Number(formData.get('game_id'))
-  await deleteGame(gameId)
-  await recordAudit({
-    action: 'game.delete',
-    actorType: 'admin',
-    entityType: 'game',
-    entityId: gameId,
-    summary: `Deleted game #${gameId}`,
-  })
+  // Only audit a real deletion: a malformed/nonpositive id, or a stale/double
+  // delete where no row matched, must not record a false game.delete success.
+  // Either way we land back on the (now up-to-date) games list, so there's no
+  // user-visible error state to surface.
+  if (Number.isInteger(gameId) && gameId > 0 && (await deleteGame(gameId))) {
+    await recordAudit({
+      action: 'game.delete',
+      actorType: 'admin',
+      entityType: 'game',
+      entityId: gameId,
+      summary: `Deleted game #${gameId}`,
+    })
+  }
   redirect('/admin/games')
 }

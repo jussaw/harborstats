@@ -127,16 +127,51 @@ describe('audit recording', () => {
 
     await expect(deleteGameAction(formData)).rejects.toMatchObject({ path: '/admin/games' });
 
-    const [entry] = await db
+    const entries = await db
       .select()
       .from(auditLogs)
       .where(eq(auditLogs.action, 'game.delete'));
-    expect(entry).toMatchObject({
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
       action: 'game.delete',
       actorType: 'admin',
+      actorIp: TEST_IP,
       entityType: 'game',
       entityId: String(game.id),
     });
+  });
+
+  test('deleteGameAction records no game.delete entry for a stale/double delete', async () => {
+    const ada = await createTestPlayer({ name: 'Ada' });
+    const game = await createTestGame({
+      players: [{ playerId: ada.id, score: 10, isWinner: true }],
+    });
+
+    const formData = new FormData();
+    formData.set('game_id', String(game.id));
+
+    // Real deletion records one event; the repeat delete of the now-gone game
+    // must not add a second, falsely-successful, event.
+    await expect(deleteGameAction(formData)).rejects.toMatchObject({ path: '/admin/games' });
+    await expect(deleteGameAction(formData)).rejects.toMatchObject({ path: '/admin/games' });
+
+    expect(
+      await db.select().from(auditLogs).where(eq(auditLogs.action, 'game.delete')),
+    ).toHaveLength(1);
+  });
+
+  test('deleteGameAction records no game.delete entry for a malformed game id', async () => {
+    const ada = await createTestPlayer({ name: 'Ada' });
+    await createTestGame({
+      players: [{ playerId: ada.id, score: 10, isWinner: true }],
+    });
+
+    const formData = new FormData();
+    formData.set('game_id', 'not-a-number');
+
+    await expect(deleteGameAction(formData)).rejects.toMatchObject({ path: '/admin/games' });
+
+    expect(await db.select().from(auditLogs)).toHaveLength(0);
   });
 
   test('saveSettings records a settings.update entry with the new thresholds', async () => {
