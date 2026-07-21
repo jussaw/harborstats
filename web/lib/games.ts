@@ -122,8 +122,15 @@ export async function updateGame(
   })
 }
 
-export async function deleteGame(id: number) {
-  await db.delete(games).where(eq(games.id, id))
+/**
+ * Deletes a game (its `game_players` cascade via the FK). Returns `true` when a
+ * row actually matched and was removed, `false` when no game had that id — so
+ * callers can tell a real deletion from a stale/double delete and avoid
+ * recording a success audit for a no-op.
+ */
+export async function deleteGame(id: number): Promise<boolean> {
+  const deleted = await db.delete(games).where(eq(games.id, id)).returning({ id: games.id })
+  return deleted.length > 0
 }
 
 export function parseGameFormData(formData: FormData): {
