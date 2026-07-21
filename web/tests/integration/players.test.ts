@@ -11,6 +11,7 @@ import {
   listPlayersWithUsage,
   PlayerInUseError,
   renamePlayer,
+  updatePlayer,
   updatePlayerTier,
 } from '@/lib/players';
 import { db } from '@/lib/db';
@@ -59,7 +60,12 @@ describe('players lib', () => {
     await expect(listPlayersWithUsage()).resolves.toEqual([
       expect.objectContaining({ id: ada.id, name: 'Ada', tier: PlayerTier.Premium, gameCount: 2 }),
       expect.objectContaining({ id: bea.id, name: 'Bea', tier: PlayerTier.Standard, gameCount: 1 }),
-      expect.objectContaining({ id: cara.id, name: 'Cara', tier: PlayerTier.Standard, gameCount: 1 }),
+      expect.objectContaining({
+        id: cara.id,
+        name: 'Cara',
+        tier: PlayerTier.Standard,
+        gameCount: 1,
+      }),
     ]);
   });
 
@@ -72,7 +78,7 @@ describe('players lib', () => {
     expect(playerId).toBeDefined();
 
     if (playerId === undefined) {
-      throw new Error('Expected createPlayer to persist a player id')
+      throw new Error('Expected createPlayer to persist a player id');
     }
 
     await renamePlayer(playerId, 'Mina Harbor');
@@ -85,6 +91,37 @@ describe('players lib', () => {
         tier: PlayerTier.Standard,
       }),
     );
+  });
+
+  it('updatePlayer atomically applies name and tier and reports the update', async () => {
+    const player = await createTestPlayer({ name: 'Nadia', tier: PlayerTier.Standard });
+
+    await expect(updatePlayer(player.id, 'Nadia Cove', PlayerTier.Premium)).resolves.toBe(true);
+
+    await expect(getPlayerById(player.id)).resolves.toEqual(
+      expect.objectContaining({
+        id: player.id,
+        name: 'Nadia Cove',
+        tier: PlayerTier.Premium,
+      }),
+    );
+  });
+
+  it('updatePlayer reports no match and changes nothing for a missing id', async () => {
+    const player = await createTestPlayer({ name: 'Untouched', tier: PlayerTier.Standard });
+
+    await expect(updatePlayer(9999, 'Ghost', PlayerTier.Premium)).resolves.toBe(false);
+
+    // The unrelated player is left exactly as it was.
+    await expect(getPlayerById(player.id)).resolves.toEqual(
+      expect.objectContaining({
+        id: player.id,
+        name: 'Untouched',
+        tier: PlayerTier.Standard,
+      }),
+    );
+    const ghost = await db.select().from(players).where(eq(players.name, 'Ghost'));
+    expect(ghost).toHaveLength(0);
   });
 
   it('deletes an unused player successfully', async () => {

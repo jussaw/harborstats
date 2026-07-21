@@ -4,7 +4,7 @@ import { cookies } from 'next/headers';
 import { loginAction } from '@/app/admin/actions';
 import { unlockGameCreationAction } from '@/app/actions/game-unlock';
 import { updateGameAction, deleteGameAction } from '@/app/admin/games/actions';
-import { createPlayerAction } from '@/app/admin/players/actions';
+import { createPlayerAction, updatePlayerAction } from '@/app/admin/players/actions';
 import { saveSettings } from '@/app/admin/settings/actions';
 import { COOKIE_NAME as ADMIN_COOKIE_NAME, signSession } from '@/lib/admin-auth';
 import { db } from '@/lib/db';
@@ -82,6 +82,50 @@ describe('audit recording', () => {
     expect(Number(entry.entityId)).toBeGreaterThan(0);
   });
 
+  test('updatePlayerAction records exactly one player.update entry for a real update', async () => {
+    const player = await createTestPlayer({ name: 'Bob', tier: PlayerTier.Standard });
+
+    const formData = new FormData();
+    formData.set('id', String(player.id));
+    formData.set('name', 'Bobby');
+    formData.set('tier', PlayerTier.Premium);
+
+    await expect(updatePlayerAction(formData)).rejects.toMatchObject({ path: '/admin/players' });
+
+    const entries = await db.select().from(auditLogs).where(eq(auditLogs.action, 'player.update'));
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      action: 'player.update',
+      actorType: 'admin',
+      actorIp: TEST_IP,
+      entityType: 'player',
+      entityId: String(player.id),
+    });
+    expect(entries[0].metadata).toMatchObject({ name: 'Bobby', tier: PlayerTier.Premium });
+  });
+
+  test('updatePlayerAction records no player.update entry for a stale or malformed id', async () => {
+    await createTestPlayer({ name: 'Bob', tier: PlayerTier.Standard });
+
+    const staleForm = new FormData();
+    staleForm.set('id', '9999');
+    staleForm.set('name', 'Bobby');
+    staleForm.set('tier', PlayerTier.Premium);
+    await expect(updatePlayerAction(staleForm)).rejects.toMatchObject({ path: '/admin/players' });
+
+    const malformedForm = new FormData();
+    malformedForm.set('id', 'not-a-number');
+    malformedForm.set('name', 'Bobby');
+    malformedForm.set('tier', PlayerTier.Premium);
+    await expect(updatePlayerAction(malformedForm)).rejects.toMatchObject({
+      path: '/admin/players',
+    });
+
+    expect(
+      await db.select().from(auditLogs).where(eq(auditLogs.action, 'player.update')),
+    ).toHaveLength(0);
+  });
+
   test('updateGameAction records a game.update entry', async () => {
     const ada = await createTestPlayer({ name: 'Ada' });
     const bea = await createTestPlayer({ name: 'Bea' });
@@ -103,10 +147,7 @@ describe('audit recording', () => {
 
     await expect(updateGameAction(formData)).rejects.toMatchObject({ path: '/admin/games' });
 
-    const [entry] = await db
-      .select()
-      .from(auditLogs)
-      .where(eq(auditLogs.action, 'game.update'));
+    const [entry] = await db.select().from(auditLogs).where(eq(auditLogs.action, 'game.update'));
     expect(entry).toMatchObject({
       action: 'game.update',
       actorType: 'admin',
@@ -127,10 +168,7 @@ describe('audit recording', () => {
 
     await expect(deleteGameAction(formData)).rejects.toMatchObject({ path: '/admin/games' });
 
-    const entries = await db
-      .select()
-      .from(auditLogs)
-      .where(eq(auditLogs.action, 'game.delete'));
+    const entries = await db.select().from(auditLogs).where(eq(auditLogs.action, 'game.delete'));
     expect(entries).toHaveLength(1);
     expect(entries[0]).toMatchObject({
       action: 'game.delete',
