@@ -363,6 +363,52 @@ describe('admin player actions', () => {
     });
   });
 
+  test('updatePlayerAction records exactly one player.update audit for a real update', async () => {
+    await setupValidAdminSession();
+    const player = await createTestPlayer({ name: 'Bob', tier: PlayerTier.Standard });
+
+    const formData = new FormData();
+    formData.set('id', String(player.id));
+    formData.set('name', 'Bobby');
+    formData.set('tier', PlayerTier.Premium);
+
+    await expect(updatePlayerAction(formData)).rejects.toMatchObject({ path: '/admin/players' });
+
+    const updateAudits = await db
+      .select()
+      .from(auditLogs)
+      .where(eq(auditLogs.action, 'player.update'));
+    expect(updateAudits).toHaveLength(1);
+    expect(updateAudits[0]).toMatchObject({ entityId: String(player.id) });
+  });
+
+  test.each([
+    ['a malformed', 'not-a-number'],
+    ['a missing/stale', '9999'],
+    ['a zero', '0'],
+    ['a negative', '-5'],
+  ])(
+    'updatePlayerAction handles %s player id without mutating a player or recording an audit',
+    async (_label, id) => {
+      await setupValidAdminSession();
+      const player = await createTestPlayer({ name: 'Bob', tier: PlayerTier.Standard });
+
+      const formData = new FormData();
+      formData.set('id', id);
+      formData.set('name', 'Bobby');
+      formData.set('tier', PlayerTier.Premium);
+
+      await expect(updatePlayerAction(formData)).rejects.toMatchObject({ path: '/admin/players' });
+
+      // The existing player is untouched and no false success audit was written.
+      const [storedPlayer] = await db.select().from(players).where(eq(players.id, player.id));
+      expect(storedPlayer).toMatchObject({ name: 'Bob', tier: PlayerTier.Standard });
+      expect(
+        await db.select().from(auditLogs).where(eq(auditLogs.action, 'player.update')),
+      ).toHaveLength(0);
+    },
+  );
+
   test('deletePlayerAction redirects with the real usage count when the player is still referenced', async () => {
     await setupValidAdminSession();
     const player = await createTestPlayer({ name: 'Alice' });
