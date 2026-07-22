@@ -28,6 +28,13 @@ export default defineConfig({
     },
     url: TEST_BASE_URL,
     reuseExistingServer: false,
+    // webServer runs a full `next build && next start`; on slower (ARM) hosts this
+    // exceeds Playwright's 60s default, so bound it higher instead of failing spuriously.
+    timeout: 180_000,
+    // Surface build/start output so a failed server startup shows the real error
+    // instead of a bare timeout.
+    stdout: 'pipe',
+    stderr: 'pipe',
   },
   globalSetup: './tests/e2e/global-setup.ts',
 })

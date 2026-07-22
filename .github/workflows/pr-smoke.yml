@@ -71,5 +71,5 @@ jobs:
       - name: Integration tests
         run: pnpm test:integration
 
-      - name: Playwright smoke (isolated dev server)
-        run: pnpm exec playwright test tests/e2e/smoke.spec.ts
+      - name: End-to-end tests (Playwright, isolated test server)
+        run: pnpm exec playwright test
