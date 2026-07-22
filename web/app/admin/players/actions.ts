@@ -50,19 +50,24 @@ export async function deletePlayerAction(formData: FormData) {
   await requireAdminSession();
   const id = Number(formData.get('id'));
   try {
-    await deletePlayer(id);
+    // Only audit a real deletion: a malformed/nonpositive id, or a stale/double
+    // delete where no row matched, must not record a false player.delete
+    // success. Either way we land back on the (now up-to-date) players list, so
+    // there's no user-visible error state to surface.
+    if (Number.isInteger(id) && id > 0 && (await deletePlayer(id))) {
+      await recordAudit({
+        action: 'player.delete',
+        actorType: 'admin',
+        entityType: 'player',
+        entityId: id,
+        summary: `Deleted player #${id}`,
+      });
+    }
   } catch (err) {
     if (err instanceof PlayerInUseError) {
       redirect(`/admin/players?error=player-in-use&count=${err.gameCount}`);
     }
     throw err;
   }
-  await recordAudit({
-    action: 'player.delete',
-    actorType: 'admin',
-    entityType: 'player',
-    entityId: id,
-    summary: `Deleted player #${id}`,
-  });
   redirect('/admin/players');
 }

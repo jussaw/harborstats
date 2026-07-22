@@ -79,11 +79,19 @@ export class PlayerInUseError extends Error {
   }
 }
 
-export async function deletePlayer(id: number): Promise<void> {
+/**
+ * Deletes a player. Throws `PlayerInUseError` when the player is still
+ * referenced by games. Returns `true` when a row actually matched and was
+ * removed, `false` when no player had that id — so callers can tell a real
+ * deletion from a stale/double delete and avoid recording a success audit for
+ * a no-op.
+ */
+export async function deletePlayer(id: number): Promise<boolean> {
   const [{ total }] = await db
     .select({ total: count() })
     .from(gamePlayers)
     .where(eq(gamePlayers.playerId, id));
   if (total > 0) throw new PlayerInUseError(total);
-  await db.delete(players).where(eq(players.id, id));
+  const deleted = await db.delete(players).where(eq(players.id, id)).returning({ id: players.id });
+  return deleted.length > 0;
 }
