@@ -167,6 +167,39 @@ describe('createGameAction', () => {
       .map((player) => player.playerId);
     expect(winnerIds).toEqual([alice.id]);
   });
+
+  test('persists a null submitted_from_ip when the selected forwarding header is malformed', async () => {
+    await setupValidSession();
+
+    const alice = await createTestPlayer({ name: 'Alice' });
+    const bob = await createTestPlayer({ name: 'Bob' });
+
+    // A malformed cf-connecting-ip must not reach the inet column and abort the
+    // insert; it is rejected before persistence and does not fall through to the
+    // otherwise-valid x-forwarded-for / x-real-ip headers.
+    headersMock.mockResolvedValue(
+      new Headers({
+        'cf-connecting-ip': 'not-an-ip',
+        'x-forwarded-for': '198.51.100.1',
+        'x-real-ip': '198.51.100.9',
+      }),
+    );
+
+    const formData = new FormData();
+    formData.set('played_at', '2026-01-05T12:00:00.000Z');
+    formData.set('player_id_0', String(alice.id));
+    formData.set('score_0', '11');
+    formData.set('player_id_1', String(bob.id));
+    formData.set('score_1', '6');
+
+    await expect(createGameAction(formData)).resolves.toEqual({ ok: true });
+
+    const storedGames = await db.select().from(games);
+    expect(storedGames).toHaveLength(1);
+    expect(storedGames[0]).toMatchObject({
+      submittedFromIp: null,
+    });
+  });
 });
 
 describe('unlockGameCreationAction', () => {
