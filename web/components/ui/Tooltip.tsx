@@ -1,20 +1,22 @@
-import type { ReactNode } from 'react'
+'use client';
+
+import { cloneElement, Fragment, isValidElement, useId, type ReactNode } from 'react';
 
 interface TooltipProps {
-  content: ReactNode
+  content: ReactNode;
   // The trigger the bubble is anchored to (an icon button, an inline value, etc.).
-  children: ReactNode
-  widthClass?: string
+  children: ReactNode;
+  widthClass?: string;
   // Bubble anchor relative to the trigger; 'right' keeps the bubble from extending
   // past the trigger's right edge (needed inside horizontal scroll containers).
-  align?: 'center' | 'right'
-  className?: string
+  align?: 'center' | 'right';
+  className?: string;
 }
 
 const ALIGN_CLASS: Record<NonNullable<TooltipProps['align']>, string> = {
   center: 'left-1/2 -translate-x-1/2',
   right: 'right-0',
-}
+};
 
 export function Tooltip({
   content,
@@ -23,13 +25,31 @@ export function Tooltip({
   align = 'center',
   className = '',
 }: TooltipProps) {
+  // Stable, SSR/hydration-safe id so the bubble and the trigger's
+  // aria-describedby agree on both the server and the client.
+  const tooltipId = useId();
+
+  // Wire the trigger to the bubble so assistive tech reads the tooltip text as
+  // the trigger's accessible description. Only a single valid host element can
+  // carry the attribute; a bare string or fragment is left untouched and simply
+  // keeps the visual hover/focus reveal.
+  const trigger =
+    isValidElement<{ 'aria-describedby'?: string }>(children) && children.type !== Fragment
+      ? cloneElement(children, {
+          'aria-describedby': [children.props['aria-describedby'], tooltipId]
+            .filter(Boolean)
+            .join(' '),
+        })
+      : children;
+
   return (
     <span className={`
       group relative inline-flex items-center
       ${className}
     `}>
-      {children}
+      {trigger}
       <span
+        id={tooltipId}
         role="tooltip"
         className={`
           pointer-events-none absolute bottom-full z-10 mb-2 rounded-lg border
@@ -45,5 +65,5 @@ export function Tooltip({
         {content}
       </span>
     </span>
-  )
+  );
 }
