@@ -430,6 +430,78 @@ describe('admin player actions', () => {
     expect(remainingPlayers).toHaveLength(1);
   });
 
+  test('deletePlayerAction removes an unused player and audits the deletion exactly once', async () => {
+    await setupValidAdminSession();
+    const player = await createTestPlayer({ name: 'Alice' });
+
+    const formData = new FormData();
+    formData.set('id', String(player.id));
+
+    await expect(deletePlayerAction(formData)).rejects.toMatchObject({
+      path: '/admin/players',
+    });
+
+    expect(await db.select().from(players).where(eq(players.id, player.id))).toHaveLength(0);
+
+    const deleteAudits = await db
+      .select()
+      .from(auditLogs)
+      .where(eq(auditLogs.action, 'player.delete'));
+    expect(deleteAudits).toHaveLength(1);
+    expect(deleteAudits[0]).toMatchObject({ entityId: String(player.id) });
+  });
+
+  test('deletePlayerAction handles a stale/double delete without touching other players', async () => {
+    await setupValidAdminSession();
+    const target = await createTestPlayer({ name: 'Alice' });
+    const survivor = await createTestPlayer({ name: 'Bob' });
+
+    const formData = new FormData();
+    formData.set('id', String(target.id));
+
+    // First delete succeeds and removes the target player.
+    await expect(deletePlayerAction(formData)).rejects.toMatchObject({ path: '/admin/players' });
+    // Second delete of the same (already-gone) player is a handled no-op.
+    await expect(deletePlayerAction(formData)).rejects.toMatchObject({ path: '/admin/players' });
+
+    expect(await db.select().from(players).where(eq(players.id, target.id))).toHaveLength(0);
+    // The unrelated player is left intact by the stale delete.
+    expect(await db.select().from(players).where(eq(players.id, survivor.id))).toHaveLength(1);
+
+    // Exactly one player.delete audit event across both calls: the real
+    // deletion records once, the stale no-op records nothing.
+    const deleteAudits = await db
+      .select()
+      .from(auditLogs)
+      .where(eq(auditLogs.action, 'player.delete'));
+    expect(deleteAudits).toHaveLength(1);
+    expect(deleteAudits[0]).toMatchObject({ entityId: String(target.id) });
+  });
+
+  test.each([
+    ['a malformed', 'not-a-number'],
+    ['a missing', ''],
+    ['a zero', '0'],
+    ['a negative', '-5'],
+  ])(
+    'deletePlayerAction handles %s player id without deleting any player',
+    async (_label, playerId) => {
+      await setupValidAdminSession();
+      const player = await createTestPlayer({ name: 'Alice' });
+
+      const formData = new FormData();
+      formData.set('id', playerId);
+
+      await expect(deletePlayerAction(formData)).rejects.toMatchObject({ path: '/admin/players' });
+
+      // No stored player was removed and no success audit was recorded.
+      expect(await db.select().from(players).where(eq(players.id, player.id))).toHaveLength(1);
+      expect(
+        await db.select().from(auditLogs).where(eq(auditLogs.action, 'player.delete')),
+      ).toHaveLength(0);
+    },
+  );
+
   test('deletePlayerAction rethrows unexpected errors', async () => {
     await setupValidAdminSession();
     const failure = new Error('database offline');

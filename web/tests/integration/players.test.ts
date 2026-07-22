@@ -127,9 +127,24 @@ describe('players lib', () => {
   it('deletes an unused player successfully', async () => {
     const player = await createTestPlayer({ name: 'Delete Me' });
 
-    await deletePlayer(player.id);
+    await expect(deletePlayer(player.id)).resolves.toBe(true);
 
     await expect(getPlayerById(player.id)).resolves.toBeNull();
+  });
+
+  it('reports whether a row was removed and is a no-op on a repeat/missing delete', async () => {
+    const target = await createTestPlayer({ name: 'Delete Me' });
+    const survivor = await createTestPlayer({ name: 'Keep Me' });
+
+    // First delete removes the row and reports success.
+    await expect(deletePlayer(target.id)).resolves.toBe(true);
+    // Second (stale/double) delete matches nothing and reports no-op.
+    await expect(deletePlayer(target.id)).resolves.toBe(false);
+    // An id that never existed also reports no-op.
+    await expect(deletePlayer(999999)).resolves.toBe(false);
+
+    // The unrelated player is untouched by any of the above.
+    await expect(getPlayerById(survivor.id)).resolves.not.toBeNull();
   });
 
   it('throws PlayerInUseError when deleting a referenced player', async () => {
