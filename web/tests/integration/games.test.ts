@@ -7,6 +7,7 @@ import {
   createGame,
   deleteGame,
   getGameForEdit,
+  getGameRecap,
   listGamesForPlayer,
   listGamesPage,
   listRecentGames,
@@ -806,5 +807,66 @@ describe('games lib', () => {
       ],
     });
     await expect(getGameForEdit(9999)).resolves.toBeNull();
+  });
+
+  it('returns a game recap with participants ordered by score descending', async () => {
+    const ada = await createTestPlayer({ name: 'Ada' });
+    const bea = await createTestPlayer({ name: 'Bea' });
+    const cara = await createTestPlayer({ name: 'Cara' });
+
+    const game = await createTestGame({
+      playedAt: new Date('2026-05-01T18:00:00.000Z'),
+      notes: 'Harbor decider',
+      players: [
+        { playerId: bea.id, score: 7, isWinner: false },
+        { playerId: ada.id, score: 11, isWinner: true },
+        { playerId: cara.id, score: 9, isWinner: false },
+      ],
+    });
+
+    await expect(getGameRecap(game.id)).resolves.toEqual({
+      id: game.id,
+      playedAt: game.playedAt,
+      notes: 'Harbor decider',
+      players: [
+        { playerId: ada.id, playerName: 'Ada', score: 11, isWinner: true },
+        { playerId: cara.id, playerName: 'Cara', score: 9, isWinner: false },
+        { playerId: bea.id, playerName: 'Bea', score: 7, isWinner: false },
+      ],
+    });
+  });
+
+  it('returns a solo game recap', async () => {
+    const ada = await createTestPlayer({ name: 'Ada' });
+
+    const game = await createTestGame({
+      notes: '',
+      players: [{ playerId: ada.id, score: 12, isWinner: true }],
+    });
+
+    await expect(getGameRecap(game.id)).resolves.toEqual({
+      id: game.id,
+      playedAt: game.playedAt,
+      notes: '',
+      players: [{ playerId: ada.id, playerName: 'Ada', score: 12, isWinner: true }],
+    });
+  });
+
+  it('never exposes the submitted-from IP in a recap', async () => {
+    const ada = await createTestPlayer({ name: 'Ada' });
+
+    const game = await createTestGame({
+      submittedFromIp: '203.0.113.7',
+      players: [{ playerId: ada.id, score: 10, isWinner: true }],
+    });
+
+    const recap = await getGameRecap(game.id);
+    expect(recap).not.toBeNull();
+    expect(JSON.stringify(recap)).not.toContain('203.0.113.7');
+    expect(recap).not.toHaveProperty('submittedFromIp');
+  });
+
+  it('returns null for a missing game', async () => {
+    await expect(getGameRecap(9999)).resolves.toBeNull();
   });
 });

@@ -369,6 +369,58 @@ export async function listAllGames(): Promise<RecentGame[]> {
   return groupGameRows(rows)
 }
 
+export interface GameRecapPlayer {
+  playerId: number
+  playerName: string
+  score: number
+  isWinner: boolean
+}
+
+export interface GameRecap {
+  id: number
+  playedAt: Date
+  notes: string
+  players: GameRecapPlayer[]
+}
+
+/**
+ * Narrow public loader for the shareable game recap page. Selects only the
+ * game's id/date/notes and each participant's id/name/score/winner flag — never
+ * `submittedFromIp` or any other private column. Returns `null` when no game has
+ * that id so the route can render a 404. Participants are ordered by score
+ * descending (then name) for a stable scoreboard; the winner flag is preserved
+ * independently so explicit-winner score ties still highlight the right player.
+ */
+export async function getGameRecap(id: number): Promise<GameRecap | null> {
+  const rows = await db
+    .select({
+      id: games.id,
+      playedAt: games.playedAt,
+      notes: games.notes,
+      playerId: gamePlayers.playerId,
+      playerName: players.name,
+      score: gamePlayers.score,
+      isWinner: gamePlayers.isWinner,
+    })
+    .from(games)
+    .innerJoin(gamePlayers, eq(gamePlayers.gameId, games.id))
+    .innerJoin(players, eq(players.id, gamePlayers.playerId))
+    .where(eq(games.id, id))
+    .orderBy(desc(gamePlayers.score), asc(players.name))
+  if (rows.length === 0) return null
+  return {
+    id: rows[0].id,
+    playedAt: rows[0].playedAt,
+    notes: rows[0].notes,
+    players: rows.map((r) => ({
+      playerId: r.playerId,
+      playerName: r.playerName,
+      score: r.score,
+      isWinner: r.isWinner,
+    })),
+  }
+}
+
 export interface GameForEdit {
   id: number
   playedAt: Date

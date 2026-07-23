@@ -42,6 +42,26 @@ describe('GameCard', () => {
     expect(items[2]).toHaveTextContent('Tom')
   })
 
+  it('is a plain article with no recap link by default', () => {
+    const { container } = render(<GameCard game={game} />)
+
+    expect(container.querySelector('a')).toBeNull()
+    expect(container.querySelector('article')).not.toBeNull()
+  })
+
+  it('links to its recap while keeping the article text content when href is set', () => {
+    const { container } = render(<GameCard game={game} href />)
+
+    const link = container.querySelector('a')
+    expect(link).not.toBeNull()
+    expect(link).toHaveAttribute('href', '/games/1')
+    const article = link?.querySelector('article')
+    expect(article).not.toBeNull()
+    expect(article).toHaveTextContent('Magnus')
+    expect(article).toHaveTextContent('11')
+    expect(article).toHaveTextContent('Three-way port battle')
+  })
+
   it('omits the crown when no winner is recorded', () => {
     render(
       <GameCard

@@ -39,7 +39,7 @@ export default async function GamesPage({ searchParams }: Props) {
       ) : (
         <div className="space-y-4">
           {games.map((game) => (
-            <GameCard key={game.id} game={game} />
+            <GameCard key={game.id} game={game} href />
           ))}
         </div>
       )}
