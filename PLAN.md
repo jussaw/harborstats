@@ -1,124 +1,112 @@
-# HarborStats Growth Roadmap — Ratings, New Stats, Achievements
+# HarborStats Product Roadmap
 
-## Context
+## Purpose
 
-HarborStats is a Catan recorder + stats dashboard for a friend group. Raw data is intentionally
-thin — per game: a date, free-text notes, and a set of `(player, score 0–30, winner)` rows;
-players carry a single `premium`/`standard` tier. The app already ships ~40 stat cards across 6
-sections.
+HarborStats is a trusted, social history of a friend group’s Catan games. It
+records outcomes, makes the standings understandable, and turns a sequence of
+game nights into useful stories about the players and their rivalries.
 
-This roadmap adds three features **without changing the data model or how games are entered** —
-everything is derived from the existing `games` / `game_players` / `players` tables. Delivered as
-three independent, shippable phases.
+This is a product roadmap, not an execution checklist. The work board, audit
+ledger, issue tracker, and pull requests own active task status, implementation
+notes, validation evidence, and delivery history.
 
-**Locked decisions:** phased roadmap · multiplayer Elo (transparent/explainable) · pure-derived
-badges (no persistence).
+## Operating model
 
-## Conventions to Reuse (applies to all phases)
+- The **HarborStats Daily App & Documentation Audit Digest** detects concrete
+  product and documentation drift. It does not replace this roadmap.
+- Update this document when product direction, a material roadmap commitment,
+  or shipped product capability changes—not for each implementation subtask.
+- Keep delivery work isolated in reviewed pull requests. Documentation-only
+  findings may be approved automatically by the daily digest; changes coupled
+  to product behavior, runtime, CI, schema, security, or UI remain explicitly
+  approval-gated.
 
-- [ ] Server stats go in `web/lib/stats.ts`; new **pure** engines (rating, achievements) get
-      their own `web/lib/` modules so they're unit-testable in isolation.
-- [ ] Wire cards in `web/app/stats/page.tsx` (`Promise.all` + grouped render); declare sections
-      in `web/lib/stats-sections.ts`.
-- [ ] Reuse `rankWithTies` (`web/lib/rank.ts`) for leaderboard `#` columns.
-- [ ] Reuse existing loaders — `getGameSizeAggregateData`, `getOrderedGameOutcomeData`,
-      `getPlayerHeadToHeadRecords`, `getPlayerWinRateByGameSize`, `getPlayerMarginStats`,
-      `getSingleGameRecords` — instead of re-querying.
-- [ ] Reuse UI: `StatsCard`, `StatsLeaderboardTable`, `RivalryCard`, and `components/ui/`
-      primitives (`Card`, `Badge`, `Button`).
-- [ ] Follow "Elevated Harbor" guardrails: semantic tokens only (no inline hex), **Cinzel on
-      titles/headings only**, hand-rolled SVG charts modeled on `CumulativeGamesAreaChart.tsx`.
-- [ ] Keep existing stats section anchor IDs stable (e2e + sidebar depend on them); new IDs OK.
-- [ ] Use a sensible hard-coded min-games gate (e.g., 5) matching the score-distribution
-      precedent in `app/stats/page.tsx`.
-- [ ] Add no new dependencies (`web/AGENTS.md`); the optional share-image uses Next's built-in
-      `ImageResponse`.
+## Product principles
 
----
+1. **Trust the history.** A recorded game, its participants, winner, and
+   resulting rating history must remain understandable and auditable.
+2. **Explain the standings.** Ratings, rankings, streaks, and rivalry metrics
+   should show how they were derived rather than act as opaque scores.
+3. **Make game night social.** The product should create useful recaps and
+   friendly stories without making game entry burdensome.
+4. **Keep data entry thin.** Additional game metadata must be optional and
+   justified by valuable analysis or a clear game-night workflow.
+5. **Design for the whole roster.** Public views, responsive layouts, and
+   accessible interaction are core product requirements, not polish work.
 
-## Phase 1 — New Stat Cards (quick wins, self-contained) ✅ COMPLETE
+## Shipped capabilities
 
-- [x] **Consistency rating** — per-player score std-dev (SQL `STDDEV_SAMP`, min 5 games); ascending
-      = "most consistent." → Scoring section.
-- [x] **Dominance index** — avg of `playerScore / sum(scores in that game)` per player. → Scoring.
-- [x] **Nail-biter record** — games where `winnerScore − runnerUpScore ≤ 2`; per-player nail-biter
-      appearances + win rate (reuse margin logic). → Finishes & Tiers.
-- [x] **Clutch factor** — win rate at full tables (5–6P) vs small (3–4P), reusing
-      `getPlayerWinRateByGameSize` buckets; show big-table rate + delta. → Finishes & Tiers.
-- [x] **Kingmaker** — when player X loses, which opponent wins most often *above* the 1/(N−1)
-      baseline (in-memory over `getOrderedGameOutcomeData`). → Head-to-Head.
-- [x] Render all 5 cards in `web/app/stats/page.tsx`.
-- [x] Unit tests in `web/tests/unit/` covering each stat's math on small datasets.
+- Game recording and management with public game history, player profiles,
+  aggregate statistics, and an authenticated administrative surface.
+- Derived multiplayer Elo ratings, Power Rankings, rating history, provisional
+  rating treatment, and explainable chronological replay semantics.
+- Rich group analytics, including records, streaks, score and finish analysis,
+  Head-to-Head records, rivalry cards, and matchup views.
+- Responsive, accessible public stats experiences with tested chart interaction
+  and stable player-identity presentation.
+- Auditability and delivery safeguards for state-changing actions, database
+  integrity, and browser/CI regression coverage.
 
-**Files:** modify `web/lib/stats.ts`, `web/app/stats/page.tsx` (+ `stats-sections.ts` if adding
-subsection anchors); new `web/tests/unit/stats-*.test.ts`.
+## Current delivery priority
 
----
+### Game Detail Recap Pages
 
-## Phase 2 — Multiplayer Elo Skill Rating
+Create a public, shareable detail page for a recorded game. A recap should
+present the game’s existing public information—date, participants, scores,
+winner, relevant notes, rated status, and rating impact when applicable—in a
+clear mobile-friendly hierarchy.
 
-- [x] Build pure engine `web/lib/rating.ts`:
-  - [x] Base `1500`, scale `400`, fixed `K = 24` (including provisional players).
-  - [x] Process games in `played_at` then `id` order; explicit winner takes precedence and non-winners compare by score.
-  - [x] Expand each game to all unordered pairs; `S = 1 / 0 / 0.5` (ahead / behind / equal score &
-        not the explicit winner); `E_i = 1/(1+10^((R_j−R_i)/400))`; accumulate
-        `Δ_i += (K/(N−1))·(S_i−E_i)` and apply **after** the game (simultaneous update).
-  - [x] Flag players as **provisional** under 5 rated multiplayer games.
-  - [x] Output current rating, peak, last-game change, games count, provisional flag, and replayable history.
-- [x] Add a server loader that pulls all eligible games chronologically and runs the replay.
-- [x] **Power Ranking** leaderboard card (Elo sort, `rankWithTies`, signed change, provisional mark).
-- [x] Create new **Ratings** section in `web/lib/stats-sections.ts` (id `ratings`) + sidebar anchor.
-- [x] **Rating-over-time** chart — new `web/components/RatingHistoryChart.tsx` (multi-line SVG).
-- [ ] **Quality of Wins** card — avg opponent rating (at time of game) among games won.
-- [ ] Show current rating on player profile (`web/components/PlayersSection.tsx`).
-- [ ] Unit tests `web/tests/unit/rating.test.ts` with a hand-verified progression (incl. a
-      provisional player and a score-tie → 0.5/0.5); component test for the chart.
+The recap is read-only. It must preserve historical rating semantics, provide a
+safe direct-link and not-found experience, and never expose data that is not
+already public elsewhere in the product.
 
-**Files:** new `web/lib/rating.ts`, `web/components/RatingHistoryChart.tsx`; modify
-`web/lib/stats-sections.ts`, `web/app/stats/page.tsx`, `web/components/PlayersSection.tsx`,
-`web/components/StatsSidebarSections.tsx`.
+## Approved next
 
----
+### Achievements and Trophy Cabinet
 
-## Phase 3 — Achievements (Trophy Cabinet) + "HarborStats Wrapped"
+Add a derived badge system and a player-facing Trophy Cabinet. The first badge
+catalog should reward meaningful participation, performance, improvement,
+streaks, and notable rivalries while keeping badges explainable and derived
+from recorded game history.
 
-- [ ] Build pure engine `web/lib/achievements.ts` returning earned badges per player, each
-      `{ id, name, description, icon, rarity, earned }` with a predicate.
-- [ ] Implement the starter badge catalog (~12): First Win · Century Club (100 VP) · Double
-      Century (200) · Hat-Trick (3 in a row) · On Fire (5 in a row) · Perfect Month · Giant-Slayer
-      (beat top-rated player) · Bridesmaid (≥5 seconds) · Iron Man (longest attendance streak) ·
-      Table-Setter (top dominance) · Mr. Reliable (lowest std-dev) · Peak (reached #1 rating).
-- [ ] **Trophy Cabinet** component `web/components/TrophyCabinet.tsx` (earned = gold, locked =
-      greyed); mount in `PlayersSection.tsx`.
-- [ ] **"HarborStats Wrapped"** recap route `web/app/wrapped/page.tsx` (server component), default
-      current year, year selectable via search param — Player of the Year, Most Improved (Elo
-      gain), biggest blowout, longest streak, total games, fun superlatives.
-- [ ] Add a sidebar nav entry for Wrapped (`web/components/Sidebar.tsx`).
-- [ ] **Stretch:** shareable PNG via Next `ImageResponse` (`web/app/wrapped/opengraph-image.tsx`),
-      no new dependency.
-- [ ] Unit tests `web/tests/unit/achievements.test.ts` (fixtures that do/don't trip each
-      predicate); component test for `TrophyCabinet`.
+Achievement state should remain derived unless a future product need justifies
+persisting unlock moments or notifications.
 
-**Files:** new `web/lib/achievements.ts`, `web/components/TrophyCabinet.tsx`,
-`web/app/wrapped/page.tsx`; modify `web/components/PlayersSection.tsx`, `web/components/Sidebar.tsx`.
+## Future opportunities
 
-> Visual design (Power Ranking layout, chart styling, badge art, Wrapped page) is iterated with
-> rendered mockups during implementation.
+These are product candidates, not approved implementation commitments.
 
----
+### Seasons and tournaments
 
-## Verification (per phase, run from `web/`)
+Support named seasons with date boundaries, standings, champions, and archived
+results. Before delivery, decide whether ratings carry across seasons and
+separate that decision from season-specific standings.
 
-- [ ] `pnpm test` — unit + component tests pass (pure engines covered by hand-verified fixtures).
-- [ ] `pnpm lint` clean.
-- [ ] `pnpm build` succeeds.
-- [ ] Manual smoke (`pnpm dev`): `/stats` shows the new cards + Ratings section; player profile
-      shows current rating + trophy cabinet; `/wrapped` renders; existing anchors/sidebar intact.
-- [ ] Run `pnpm test:e2e` only if a change alters existing `/stats` anchor contracts.
+### Optional game context and filtered analytics
 
-## Out of Scope (deferred — would need schema/data-entry changes)
+Optionally capture expansion, map, player count, duration, seat order, or
+location only when the group will consistently provide it. Use the data to
+answer useful questions without turning game entry into administration.
 
-- [ ] Seasons / tournaments
-- [ ] Seat-order / map / location capture
-- [ ] Per-game detail pages
-- [ ] Persisted achievement timestamps + "newly unlocked" push notifications
+### HarborStats Wrapped
+
+Provide a year-selectable recap of the group: player and improvement stories,
+notable games, streaks, total activity, and concise superlatives. It should
+build on the same transparent historical data as stats and ratings.
+
+### Achievement history and notifications
+
+Consider persisted unlock timestamps, "newly unlocked" moments, or
+notifications only after the derived Trophy Cabinet demonstrates sustained
+value and the privacy/notification model is defined.
+
+## Deliberate constraints
+
+- Ratings remain replay-derived from chronological eligible games; do not
+  replace the history with opaque mutable totals.
+- Multiplayer results must preserve explicit winners, score ties, and
+  provisional-rating behavior accurately.
+- New features must not weaken game-data validation, audit coverage, or public
+  accessibility.
+- A daily audit finding is evidence for roadmap maintenance, not an automatic
+  product commitment unless it is explicitly approved.
