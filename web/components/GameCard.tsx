@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { FormattedDate } from './FormattedDate'
 
 interface GameCardGame {
@@ -9,12 +10,14 @@ interface GameCardGame {
 
 interface GameCardProps {
   game: GameCardGame
+  /** When true, the card links to its shareable recap at `/games/{id}`. */
+  href?: boolean
 }
 
-export function GameCard({ game }: GameCardProps) {
+export function GameCard({ game, href = false }: GameCardProps) {
   const sortedPlayers = [...game.players].sort((a, b) => b.score - a.score)
 
-  return (
+  const article = (
     <article
       className="
         rounded-xl border border-(--border-gold-subtle) bg-(--surface-subtle)
@@ -53,5 +56,24 @@ export function GameCard({ game }: GameCardProps) {
 
       {game.notes && <p className="mt-3 text-xs text-(--cream)/45 italic">{game.notes}</p>}
     </article>
+  )
+
+  if (!href) {
+    return article
+  }
+
+  return (
+    <Link
+      href={`/games/${game.id}`}
+      className="
+        block rounded-xl transition-colors
+        hover:bg-(--gold)/5
+        focus-visible:outline-2 focus-visible:outline-offset-2
+        focus-visible:outline-(--gold)
+      "
+      aria-label={`View recap for the game on ${game.playedAt.toISOString().slice(0, 10)}`}
+    >
+      {article}
+    </Link>
   )
 }

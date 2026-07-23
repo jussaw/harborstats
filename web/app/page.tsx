@@ -165,7 +165,7 @@ export default async function HomePage() {
       ) : (
         <div className="space-y-4">
           {games.map((game) => (
-            <GameCard key={game.id} game={game} />
+            <GameCard key={game.id} game={game} href />
           ))}
         </div>
       )}
