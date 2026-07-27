@@ -25,9 +25,11 @@ import type {
   PlayerWinEvent,
   PlayerWinRateByGameSize,
 } from '@/lib/stats';
+import { deriveTrophies, type TrophyInput } from '@/lib/trophies';
 import { PlayerProfileCard } from './PlayerProfileCard';
 import { RatingHistoryChart } from './RatingHistoryChart';
 import { PlayerBestWinRecordCard } from './PlayerBestWinRecordCard';
+import { TrophyCabinet } from './TrophyCabinet';
 import { cardSurfaceClasses } from './ui/Card';
 
 interface Props {
@@ -520,6 +522,32 @@ function PlayerDetail({
   const victoryMarginValue = marginStat?.averageVictoryMargin ?? null;
   const defeatMarginValue = marginStat?.averageDefeatMargin ?? null;
 
+  const trophyInput: TrophyInput = {
+    games: scoreStat?.games ?? 0,
+    totalGames: participationStat?.totalGames ?? 0,
+    participationRate: participationStat?.participationRate ?? 0,
+    podiumRate: podiumStat?.podiumRate ?? 0,
+    firstRate: finishBreakdown?.firstRate ?? 0,
+    winDelta: expectedVsActualStat?.winDelta ?? 0,
+    averageVictoryMargin: victoryMarginValue,
+    winGames: marginStat?.winGames ?? 0,
+    longestWinStreak: streakRecord?.longestWinStreak ?? 0,
+    attendanceStreak: streakRecord?.attendanceStreak ?? 0,
+    rating: ratingPlayer
+      ? {
+          displayRating: ratingPlayer.displayRating,
+          provisional: ratingPlayer.provisional,
+          gamesPlayed: ratingPlayer.gamesPlayed,
+        }
+      : null,
+    rivals: playerH2H.map((record) => ({
+      opponentName: record.opponentName,
+      gamesTogether: record.gamesTogether,
+      winsAgainstOpponent: record.winsAgainstOpponent,
+    })),
+  };
+  const trophyCabinet = deriveTrophies(trophyInput);
+
   return (
     <div className="space-y-5">
       <PlayerProfileCard player={player} games={playerGames} ratingPlayer={ratingPlayer} />
@@ -543,6 +571,7 @@ function PlayerDetail({
           />
         </div>
       </section>
+      <TrophyCabinet cabinet={trophyCabinet} />
       <div
         className="
           grid grid-cols-1 gap-5

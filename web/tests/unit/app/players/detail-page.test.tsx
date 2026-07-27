@@ -440,6 +440,10 @@ describe('PlayerProfilePage', () => {
     expect(markup).toContain('Most-Played-With Partner');
     expect(markup).toContain('Nemesis');
     expect(markup).toContain('Favorite Opponent');
+    expect(markup).toContain('Trophy Cabinet');
+    expect(markup).toContain('1 / 12 earned');
+    expect(markup).toContain('Iron Attendance');
+    expect(markup).toContain('Attended 6 games in a row');
     const longestWinStreakSectionIndex = markup.indexOf('id="player-longest-win-streak-ever"');
     const longestWinStreakSection = markup.slice(
       longestWinStreakSectionIndex,
@@ -713,6 +717,8 @@ describe('PlayerProfilePage', () => {
     expect(markup).toContain('Nemesis');
     expect(markup).toContain('Favorite Opponent');
     expect(markup).toContain('View Games (0)');
+    expect(markup).toContain('Trophy Cabinet');
+    expect(markup).toContain('0 / 12 earned');
     expect(markup).toContain('0.0%');
     expect(markup).toContain('0 appearances in 5 total games');
     expect(markup).toContain('0 wins');
