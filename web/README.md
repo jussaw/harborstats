@@ -104,10 +104,14 @@ proxy.ts                    request proxy entrypoint
 
 ## Database schema
 
-Three tables with cascading deletes:
+Five tables:
 
-- **`players`** — id, name (unique), tier (`premium` | `standard`), created_at
-- **`games`** — id, played_at, notes, submitted_from_ip, created_at
-- **`game_players`** — game_id FK, player_id FK, score (≥ 0), is_winner
+- **`players`** — roster of people; id, name (unique), tier (`premium` | `standard`), created_at
+- **`games`** — one recorded game; id, played_at, notes, submitted_from_ip, created_at
+- **`game_players`** — per-player result within a game; game_id FK, player_id FK, score (0–30 inclusive), is_winner
+- **`app_settings`** — single-row app configuration (stat thresholds, hashed game-creation password)
+- **`audit_logs`** — append-only history of state-changing actions and auth events
+
+Deleting a game cascades to its `game_players` rows.
 
 Players are managed directly in the admin UI. Renaming a player updates all historical records automatically via JOIN.
