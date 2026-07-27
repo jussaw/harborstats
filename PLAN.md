@@ -49,19 +49,6 @@ notes, validation evidence, and delivery history.
 
 ## Current delivery priority
 
-### Game Detail Recap Pages
-
-Create a public, shareable detail page for a recorded game. A recap should
-present the game’s existing public information—date, participants, scores,
-winner, relevant notes, rated status, and rating impact when applicable—in a
-clear mobile-friendly hierarchy.
-
-The recap is read-only. It must preserve historical rating semantics, provide a
-safe direct-link and not-found experience, and never expose data that is not
-already public elsewhere in the product.
-
-## Approved next
-
 ### Achievements and Trophy Cabinet
 
 Add a derived badge system and a player-facing Trophy Cabinet. The first badge
