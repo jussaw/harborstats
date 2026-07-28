@@ -3,7 +3,13 @@
 import { redirect } from 'next/navigation';
 import { requireAdminSession } from '@/lib/admin-auth';
 import { parsePlayerTier } from '@/lib/player-tier';
-import { createPlayer, updatePlayer, deletePlayer, PlayerInUseError } from '@/lib/players';
+import {
+  createPlayer,
+  updatePlayer,
+  deletePlayer,
+  DuplicatePlayerNameError,
+  PlayerInUseError,
+} from '@/lib/players';
 import { recordAudit } from '@/lib/audit';
 
 export async function createPlayerAction(formData: FormData) {
@@ -11,7 +17,18 @@ export async function createPlayerAction(formData: FormData) {
   const name = ((formData.get('name') as string) ?? '').trim();
   const tier = parsePlayerTier(formData.get('tier') as string | null);
   if (!name) redirect('/admin/players?error=name-required');
-  const id = await createPlayer(name, tier);
+  let id: number;
+  try {
+    id = await createPlayer(name, tier);
+  } catch (err) {
+    // A taken name is a user-recoverable input error, not a server fault:
+    // bounce back to the list with a banner and record no audit. Any other DB
+    // failure is preserved.
+    if (err instanceof DuplicatePlayerNameError) {
+      redirect('/admin/players?error=duplicate-name');
+    }
+    throw err;
+  }
   await recordAudit({
     action: 'player.create',
     actorType: 'admin',
@@ -33,15 +50,26 @@ export async function updatePlayerAction(formData: FormData) {
   // where no row matched, must not record a false player.update success. Either
   // way we land back on the (now up-to-date) players list, so there's no
   // user-visible error state to surface.
-  if (Number.isInteger(id) && id > 0 && (await updatePlayer(id, name, tier))) {
-    await recordAudit({
-      action: 'player.update',
-      actorType: 'admin',
-      entityType: 'player',
-      entityId: id,
-      summary: `Updated player "${name}"`,
-      metadata: { name, tier },
-    });
+  try {
+    if (Number.isInteger(id) && id > 0 && (await updatePlayer(id, name, tier))) {
+      await recordAudit({
+        action: 'player.update',
+        actorType: 'admin',
+        entityType: 'player',
+        entityId: id,
+        summary: `Updated player "${name}"`,
+        metadata: { name, tier },
+      });
+    }
+  } catch (err) {
+    // Renaming onto a taken name is a user-recoverable input error: bounce back
+    // to the list with a banner and record no audit. Any other DB failure is
+    // preserved. A self-rename (same name, new tier) never conflicts, so tier
+    // updates keep working.
+    if (err instanceof DuplicatePlayerNameError) {
+      redirect('/admin/players?error=duplicate-name');
+    }
+    throw err;
   }
   redirect('/admin/players');
 }

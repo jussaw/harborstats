@@ -1,8 +1,12 @@
-import { eq, sql, count } from 'drizzle-orm';
+import { eq, sql, count, DrizzleQueryError } from 'drizzle-orm';
 import type { InferSelectModel } from 'drizzle-orm';
+import postgres from 'postgres';
 import { players, gamePlayers } from '@/db/schema';
 import { parsePlayerTier, type PlayerTier } from '@/lib/player-tier';
+import { DuplicatePlayerNameError } from './player-errors';
 import { db } from './db';
+
+export { DuplicatePlayerNameError };
 
 type DbPlayer = InferSelectModel<typeof players>;
 
@@ -43,13 +47,47 @@ export async function listPlayersWithUsage(): Promise<PlayerWithUsage[]> {
   return result.map((player) => ({ ...player, tier: parsePlayerTier(player.tier) }));
 }
 
+const PLAYERS_NAME_UNIQUE_CONSTRAINT = 'players_name_unique';
+const PG_UNIQUE_VIOLATION = '23505';
+
+/**
+ * Drizzle wraps a failed query in a `DrizzleQueryError` whose `cause` is the raw
+ * postgres.js error. Report a duplicate ONLY for a unique violation (23505) on
+ * the players-name constraint; every other error is left untranslated.
+ */
+function isDuplicatePlayerName(error: unknown): boolean {
+  const cause = error instanceof DrizzleQueryError ? error.cause : undefined;
+  return (
+    cause instanceof postgres.PostgresError &&
+    cause.code === PG_UNIQUE_VIOLATION &&
+    cause.constraint_name === PLAYERS_NAME_UNIQUE_CONSTRAINT
+  );
+}
+
+/**
+ * Runs a name-writing mutation, translating a players-name unique violation into
+ * a typed `DuplicatePlayerNameError`. Any other failure is rethrown untouched.
+ */
+async function withDuplicateNameGuard<T>(name: string, run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch (error) {
+    if (isDuplicatePlayerName(error)) throw new DuplicatePlayerNameError(name);
+    throw error;
+  }
+}
+
 export async function createPlayer(name: string, tier: PlayerTier): Promise<number> {
-  const [{ id }] = await db.insert(players).values({ name, tier }).returning({ id: players.id });
-  return id;
+  return withDuplicateNameGuard(name, async () => {
+    const [{ id }] = await db.insert(players).values({ name, tier }).returning({ id: players.id });
+    return id;
+  });
 }
 
 export async function renamePlayer(id: number, name: string): Promise<void> {
-  await db.update(players).set({ name }).where(eq(players.id, id));
+  await withDuplicateNameGuard(name, async () => {
+    await db.update(players).set({ name }).where(eq(players.id, id));
+  });
 }
 
 export async function updatePlayerTier(id: number, tier: PlayerTier): Promise<void> {
@@ -64,12 +102,14 @@ export async function updatePlayerTier(id: number, tier: PlayerTier): Promise<vo
  * success audit for a mutation that never happened.
  */
 export async function updatePlayer(id: number, name: string, tier: PlayerTier): Promise<boolean> {
-  const updated = await db
-    .update(players)
-    .set({ name, tier })
-    .where(eq(players.id, id))
-    .returning({ id: players.id });
-  return updated.length > 0;
+  return withDuplicateNameGuard(name, async () => {
+    const updated = await db
+      .update(players)
+      .set({ name, tier })
+      .where(eq(players.id, id))
+      .returning({ id: players.id });
+    return updated.length > 0;
+  });
 }
 
 export class PlayerInUseError extends Error {

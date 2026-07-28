@@ -6,6 +6,7 @@ import { PlayerTier } from '@/lib/player-tier';
 import {
   createPlayer,
   deletePlayer,
+  DuplicatePlayerNameError,
   getPlayerById,
   getPlayers,
   listPlayersWithUsage,
@@ -159,5 +160,63 @@ describe('players lib', () => {
       gameCount: 1,
       message: 'Player is referenced in 1 game(s) and cannot be deleted',
     });
+  });
+
+  it('rejects a duplicate create with DuplicatePlayerNameError and keeps the single existing row', async () => {
+    await createPlayer('Ada', PlayerTier.Premium);
+
+    await expect(createPlayer('Ada', PlayerTier.Standard)).rejects.toBeInstanceOf(
+      DuplicatePlayerNameError,
+    );
+
+    // The original row is untouched: still exactly one "Ada", still premium.
+    const rows = await db.select().from(players).where(eq(players.name, 'Ada'));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.tier).toBe(PlayerTier.Premium);
+  });
+
+  it('rejects a duplicate rename with DuplicatePlayerNameError and leaves both rows unchanged', async () => {
+    const ada = await createTestPlayer({ name: 'Ada', tier: PlayerTier.Premium });
+    const bea = await createTestPlayer({ name: 'Bea', tier: PlayerTier.Standard });
+
+    await expect(renamePlayer(bea.id, 'Ada')).rejects.toBeInstanceOf(DuplicatePlayerNameError);
+
+    await expect(getPlayerById(ada.id)).resolves.toEqual(
+      expect.objectContaining({ id: ada.id, name: 'Ada', tier: PlayerTier.Premium }),
+    );
+    await expect(getPlayerById(bea.id)).resolves.toEqual(
+      expect.objectContaining({ id: bea.id, name: 'Bea', tier: PlayerTier.Standard }),
+    );
+  });
+
+  it('allows a self update to the same name with a new tier', async () => {
+    const nadia = await createTestPlayer({ name: 'Nadia', tier: PlayerTier.Standard });
+
+    // Keeping the row's own name while changing the tier must not trip the
+    // uniqueness guard — a row never conflicts with itself.
+    await expect(updatePlayer(nadia.id, 'Nadia', PlayerTier.Premium)).resolves.toBe(true);
+    await expect(renamePlayer(nadia.id, 'Nadia')).resolves.toBeUndefined();
+
+    await expect(getPlayerById(nadia.id)).resolves.toEqual(
+      expect.objectContaining({ id: nadia.id, name: 'Nadia', tier: PlayerTier.Premium }),
+    );
+  });
+
+  it('rejects an updatePlayer onto a taken name with DuplicatePlayerNameError and leaves both rows unchanged', async () => {
+    // updatePlayer is the function the real admin flow calls; the guard must
+    // live here too, not only on renamePlayer.
+    const ada = await createTestPlayer({ name: 'Ada', tier: PlayerTier.Premium });
+    const bea = await createTestPlayer({ name: 'Bea', tier: PlayerTier.Standard });
+
+    await expect(updatePlayer(bea.id, 'Ada', PlayerTier.Premium)).rejects.toBeInstanceOf(
+      DuplicatePlayerNameError,
+    );
+
+    await expect(getPlayerById(ada.id)).resolves.toEqual(
+      expect.objectContaining({ id: ada.id, name: 'Ada', tier: PlayerTier.Premium }),
+    );
+    await expect(getPlayerById(bea.id)).resolves.toEqual(
+      expect.objectContaining({ id: bea.id, name: 'Bea', tier: PlayerTier.Standard }),
+    );
   });
 });

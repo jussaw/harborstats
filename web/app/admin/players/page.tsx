@@ -1,21 +1,21 @@
-import { listPlayersWithUsage } from '@/lib/players'
-import { PLAYER_TIER_OPTIONS } from '@/lib/player-tier'
-import { ConfirmDeleteButton } from '@/app/admin/ConfirmDeleteButton'
-import { PageWidth } from '@/components/PageWidth'
-import { buttonClasses } from '@/components/ui/Button'
-import { cardSurfaceClasses } from '@/components/ui/Card'
-import { fieldClasses } from '@/components/ui/Field'
-import { createPlayerAction, updatePlayerAction, deletePlayerAction } from './actions'
+import { listPlayersWithUsage } from '@/lib/players';
+import { PLAYER_TIER_OPTIONS } from '@/lib/player-tier';
+import { ConfirmDeleteButton } from '@/app/admin/ConfirmDeleteButton';
+import { PageWidth } from '@/components/PageWidth';
+import { buttonClasses } from '@/components/ui/Button';
+import { cardSurfaceClasses } from '@/components/ui/Card';
+import { fieldClasses } from '@/components/ui/Field';
+import { createPlayerAction, updatePlayerAction, deletePlayerAction } from './actions';
 
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic';
 
 interface Props {
-  searchParams: Promise<{ error?: string; count?: string }>
+  searchParams: Promise<{ error?: string; count?: string }>;
 }
 
 export default async function AdminPlayersPage({ searchParams }: Props) {
-  const [players, params] = await Promise.all([listPlayersWithUsage(), searchParams])
-  const { error, count: inUseCount } = params
+  const [players, params] = await Promise.all([listPlayersWithUsage(), searchParams]);
+  const { error, count: inUseCount } = params;
 
   return (
     <PageWidth width="5xl" className="px-6 py-8">
@@ -26,20 +26,34 @@ export default async function AdminPlayersPage({ searchParams }: Props) {
         </div>
 
         {error === 'player-in-use' && (
-          <p className="
+          <p
+            className="
             rounded-lg border border-amber-500/40 bg-amber-950/40 px-4 py-2.5
             text-sm text-amber-300
-          ">
+          "
+          >
             Cannot delete — this player appears in {inUseCount} game
             {inUseCount === '1' ? '' : 's'}. Remove those games first.
           </p>
         )}
         {error === 'name-required' && (
-          <p className="
+          <p
+            className="
             rounded-lg border border-red-500/40 bg-red-950/40 px-4 py-2.5
             text-sm text-red-300
-          ">
+          "
+          >
             Player name is required.
+          </p>
+        )}
+        {error === 'duplicate-name' && (
+          <p
+            className="
+            rounded-lg border border-red-500/40 bg-red-950/40 px-4 py-2.5
+            text-sm text-red-300
+          "
+          >
+            A player with that name already exists.
           </p>
         )}
 
@@ -50,19 +64,27 @@ export default async function AdminPlayersPage({ searchParams }: Props) {
             ${cardSurfaceClasses}
           `}
         >
-          <p className="
+          <p
+            className="
             mb-4 text-[10px] font-medium tracking-[0.2em] text-(--gold)
             uppercase
-          ">
+          "
+          >
             Add Player
           </p>
-          <form action={createPlayerAction} className="
+          <form
+            action={createPlayerAction}
+            className="
             flex flex-wrap items-end gap-3
-          ">
+          "
+          >
             <div className="flex min-w-40 flex-1 flex-col gap-1.5">
-              <label className="
+              <label
+                className="
                 flex flex-col gap-1.5 text-xs font-medium text-(--cream)/60
-              " htmlFor="new-name">
+              "
+                htmlFor="new-name"
+              >
                 <span>Name</span>
                 <input
                   id="new-name"
@@ -75,15 +97,14 @@ export default async function AdminPlayersPage({ searchParams }: Props) {
               </label>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="
+              <label
+                className="
                 flex flex-col gap-1.5 text-xs font-medium text-(--cream)/60
-              " htmlFor="new-tier">
+              "
+                htmlFor="new-tier"
+              >
                 <span>Tier</span>
-                <select
-                  id="new-tier"
-                  name="tier"
-                  className={fieldClasses}
-                >
+                <select id="new-tier" name="tier" className={fieldClasses}>
                   {PLAYER_TIER_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
@@ -115,9 +136,12 @@ export default async function AdminPlayersPage({ searchParams }: Props) {
                   hover:bg-(--gold)/5
                 "
               >
-                <form action={updatePlayerAction} className="
+                <form
+                  action={updatePlayerAction}
+                  className="
                   flex min-w-0 flex-1 items-center gap-3
-                ">
+                "
+                >
                   <input type="hidden" name="id" value={player.id} />
                   <input
                     name="name"
@@ -147,9 +171,11 @@ export default async function AdminPlayersPage({ searchParams }: Props) {
                       </option>
                     ))}
                   </select>
-                  <span className="
+                  <span
+                    className="
                     shrink-0 text-xs text-(--cream)/30 tabular-nums
-                  ">
+                  "
+                  >
                     {player.gameCount} {player.gameCount === 1 ? 'game' : 'games'}
                   </span>
                   <button
@@ -180,5 +206,5 @@ export default async function AdminPlayersPage({ searchParams }: Props) {
         )}
       </PageWidth>
     </PageWidth>
-  )
+  );
 }
