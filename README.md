@@ -70,6 +70,7 @@ Configure local environment variables in `web/.env`.
 | `DATABASE_URL` | `postgres://postgres:postgres@localhost:5432/harborstats` | Postgres connection string used by the app and scripts |
 | `ADMIN_PASSWORD` | required | Shared password for the `/admin` area |
 | `ADMIN_SESSION_SECRET` | required | Secret used to sign admin session cookies |
+| `ADMIN_SESSION_VERSION` | `1` | Optional; bumping or changing it invalidates all existing admin sessions without rotating `ADMIN_SESSION_SECRET` |
 
 ## Common commands
 
