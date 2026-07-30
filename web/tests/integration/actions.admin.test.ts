@@ -196,6 +196,131 @@ describe('admin game actions', () => {
     expect(storedGame).toMatchObject({ notes: 'Original' });
   });
 
+  test('updateGameAction handles a stale edit submitted after the game was deleted', async () => {
+    await setupValidAdminSession();
+    const alice = await createTestPlayer({ name: 'Alice' });
+    const bob = await createTestPlayer({ name: 'Bob' });
+    const target = await createTestGame({
+      notes: 'Original',
+      players: [
+        { playerId: alice.id, score: 6, isWinner: true },
+        { playerId: bob.id, score: 5, isWinner: false },
+      ],
+    });
+    const survivor = await createTestGame({
+      players: [{ playerId: alice.id, score: 8, isWinner: true }],
+    });
+
+    // The game is deleted out from under an open edit form (e.g. by another
+    // admin) before this otherwise-valid edit is submitted.
+    await db.delete(games).where(eq(games.id, target.id));
+
+    const formData = new FormData();
+    formData.set('game_id', String(target.id));
+    formData.set('played_at', '2026-01-03T12:00:00.000Z');
+    formData.set('notes', 'Updated game');
+    formData.set('player_id_0', String(alice.id));
+    formData.set('score_0', '4');
+    formData.set('player_id_1', String(bob.id));
+    formData.set('score_1', '11');
+
+    // The stale edit is a handled no-op redirect, not a generic error result.
+    await expect(updateGameAction(formData)).rejects.toMatchObject({ path: '/admin/games' });
+
+    // No participant rows were (re)inserted against the missing game.
+    expect(
+      await db.select().from(gamePlayers).where(eq(gamePlayers.gameId, target.id)),
+    ).toHaveLength(0);
+    // The unrelated game is left intact by the stale edit.
+    expect(await db.select().from(games).where(eq(games.id, survivor.id))).toHaveLength(1);
+    // No false game.update success audit was recorded.
+    expect(
+      await db.select().from(auditLogs).where(eq(auditLogs.action, 'game.update')),
+    ).toHaveLength(0);
+  });
+
+  test.each([
+    ['a malformed', 'not-a-number'],
+    ['a missing/stale', '9999'],
+    ['a zero', '0'],
+    ['a negative', '-5'],
+  ])(
+    'updateGameAction handles %s game id without mutating a game or recording an audit',
+    async (_label, gameId) => {
+      await setupValidAdminSession();
+      const alice = await createTestPlayer({ name: 'Alice' });
+      const bob = await createTestPlayer({ name: 'Bob' });
+      const game = await createTestGame({
+        notes: 'Original',
+        players: [
+          { playerId: alice.id, score: 6, isWinner: true },
+          { playerId: bob.id, score: 5, isWinner: false },
+        ],
+      });
+
+      const formData = new FormData();
+      formData.set('game_id', gameId);
+      formData.set('played_at', '2026-01-03T12:00:00.000Z');
+      formData.set('notes', 'Updated game');
+      formData.set('player_id_0', String(alice.id));
+      formData.set('score_0', '4');
+      formData.set('player_id_1', String(bob.id));
+      formData.set('score_1', '11');
+
+      await expect(updateGameAction(formData)).rejects.toMatchObject({ path: '/admin/games' });
+
+      // The existing game and its participant rows are untouched.
+      const [storedGame] = await db.select().from(games).where(eq(games.id, game.id));
+      expect(storedGame).toMatchObject({ notes: 'Original' });
+      const storedPlayers = await db
+        .select()
+        .from(gamePlayers)
+        .where(eq(gamePlayers.gameId, game.id));
+      expect(storedPlayers).toHaveLength(2);
+      expect(storedPlayers).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ playerId: alice.id, score: 6, isWinner: true }),
+          expect.objectContaining({ playerId: bob.id, score: 5, isWinner: false }),
+        ]),
+      );
+      // No false game.update success audit was recorded.
+      expect(
+        await db.select().from(auditLogs).where(eq(auditLogs.action, 'game.update')),
+      ).toHaveLength(0);
+    },
+  );
+
+  test('updateGameAction records exactly one game.update audit for a real update', async () => {
+    await setupValidAdminSession();
+    const alice = await createTestPlayer({ name: 'Alice' });
+    const bob = await createTestPlayer({ name: 'Bob' });
+    const game = await createTestGame({
+      notes: 'Original',
+      players: [
+        { playerId: alice.id, score: 6, isWinner: true },
+        { playerId: bob.id, score: 5, isWinner: false },
+      ],
+    });
+
+    const formData = new FormData();
+    formData.set('game_id', String(game.id));
+    formData.set('played_at', '2026-01-03T12:00:00.000Z');
+    formData.set('notes', 'Updated game');
+    formData.set('player_id_0', String(alice.id));
+    formData.set('score_0', '4');
+    formData.set('player_id_1', String(bob.id));
+    formData.set('score_1', '11');
+
+    await expect(updateGameAction(formData)).rejects.toMatchObject({ path: '/admin/games' });
+
+    const updateAudits = await db
+      .select()
+      .from(auditLogs)
+      .where(eq(auditLogs.action, 'game.update'));
+    expect(updateAudits).toHaveLength(1);
+    expect(updateAudits[0]).toMatchObject({ entityId: String(game.id) });
+  });
+
   test('deleteGameAction removes the stored game and its rows before redirecting', async () => {
     await setupValidAdminSession();
     const alice = await createTestPlayer({ name: 'Alice' });
