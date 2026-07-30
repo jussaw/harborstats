@@ -55,6 +55,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Lint
+        run: pnpm lint
+
       - name: DevOps shell tests
         working-directory: .
         run: bash devops/tests/backup-restore.test.sh
