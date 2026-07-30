@@ -27,6 +27,7 @@ After startup, add players from the admin roster page at `/admin/players`.
 | `DATABASE_URL` | `postgres://postgres:postgres@localhost:5432/harborstats` | Postgres connection string |
 | `ADMIN_PASSWORD` | *(required)* | Shared password for the `/admin` panel |
 | `ADMIN_SESSION_SECRET` | *(required)* | Secret key used to sign admin session cookies — rotate to invalidate all sessions |
+| `ADMIN_SESSION_VERSION` | `1` | Optional; bumping or changing it invalidates all existing admin sessions without rotating `ADMIN_SESSION_SECRET` |
 
 ## Scripts
 
