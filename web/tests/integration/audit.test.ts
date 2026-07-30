@@ -8,7 +8,7 @@ import { createPlayerAction, updatePlayerAction } from '@/app/admin/players/acti
 import { saveSettings } from '@/app/admin/settings/actions';
 import { COOKIE_NAME as ADMIN_COOKIE_NAME, signSession } from '@/lib/admin-auth';
 import { db } from '@/lib/db';
-import { auditLogs } from '@/db/schema';
+import { auditLogs, players } from '@/db/schema';
 import { PlayerTier } from '@/lib/player-tier';
 import { createTestGame, createTestPlayer } from '../helpers/db';
 
@@ -124,6 +124,53 @@ describe('audit recording', () => {
     expect(
       await db.select().from(auditLogs).where(eq(auditLogs.action, 'player.update')),
     ).toHaveLength(0);
+  });
+
+  test('createPlayerAction redirects to the duplicate-name error and records no audit for a taken name', async () => {
+    const existing = await createTestPlayer({ name: 'Ada', tier: PlayerTier.Premium });
+
+    const formData = new FormData();
+    formData.set('name', 'Ada');
+    formData.set('tier', PlayerTier.Standard);
+
+    await expect(createPlayerAction(formData)).rejects.toMatchObject({
+      path: '/admin/players?error=duplicate-name',
+    });
+
+    // No player.create audit event for the rejected duplicate.
+    expect(
+      await db.select().from(auditLogs).where(eq(auditLogs.action, 'player.create')),
+    ).toHaveLength(0);
+
+    // The existing row is unchanged: one "Ada", still premium.
+    const rows = await db.select().from(players).where(eq(players.name, 'Ada'));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ id: existing.id, tier: PlayerTier.Premium });
+  });
+
+  test('updatePlayerAction redirects to the duplicate-name error and records no audit when renaming onto a taken name', async () => {
+    const ada = await createTestPlayer({ name: 'Ada', tier: PlayerTier.Premium });
+    const bea = await createTestPlayer({ name: 'Bea', tier: PlayerTier.Standard });
+
+    const formData = new FormData();
+    formData.set('id', String(bea.id));
+    formData.set('name', 'Ada');
+    formData.set('tier', PlayerTier.Premium);
+
+    await expect(updatePlayerAction(formData)).rejects.toMatchObject({
+      path: '/admin/players?error=duplicate-name',
+    });
+
+    // No player.update audit event for the rejected duplicate.
+    expect(
+      await db.select().from(auditLogs).where(eq(auditLogs.action, 'player.update')),
+    ).toHaveLength(0);
+
+    // Both source rows are left exactly as they were.
+    const [adaRow] = await db.select().from(players).where(eq(players.id, ada.id));
+    const [beaRow] = await db.select().from(players).where(eq(players.id, bea.id));
+    expect(adaRow).toMatchObject({ name: 'Ada', tier: PlayerTier.Premium });
+    expect(beaRow).toMatchObject({ name: 'Bea', tier: PlayerTier.Standard });
   });
 
   test('updateGameAction records a game.update entry', async () => {
