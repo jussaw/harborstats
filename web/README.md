@@ -45,6 +45,25 @@ After startup, add players from the admin roster page at `/admin/players`.
 | `pnpm db:baseline` | **One-time** — marks the initial migration as applied on an existing DB that already has the schema (run before first `db:migrate` on a pre-existing database) |
 | `pnpm db:studio` | Open Drizzle Studio (visual DB browser) |
 
+## Testing
+
+| Command                 | Scope                                                                          |
+| ----------------------- | ------------------------------------------------------------------------------ |
+| `pnpm test`             | Alias for `pnpm test:fast` — fast unit + component tests only; **no database** |
+| `pnpm test:unit`        | Unit tests (pure server/lib/helper logic)                                      |
+| `pnpm test:components`  | Component tests (UI behavior in jsdom)                                         |
+| `pnpm test:integration` | DB-backed integration tests                                                    |
+| `pnpm test:e2e:install` | Install the Playwright Chromium browser (first-time setup)                     |
+| `pnpm test:e2e`         | Playwright end-to-end tests                                                    |
+| `pnpm test:all`         | Fast + integration + e2e                                                       |
+| `pnpm test:ci`          | Production build, then fast + integration + e2e                                |
+
+Prerequisites:
+
+- `pnpm test` (fast unit + component tests) needs no database and no extra setup.
+- `pnpm test:integration` and `pnpm test:e2e` auto-run the test-DB prepare step, but require the local Postgres container to be running first (`pnpm db:up`). `pnpm test:all` and `pnpm test:ci` include these DB-backed suites.
+- `pnpm test:e2e` also needs the Playwright Chromium browser, installed once via `pnpm test:e2e:install`.
+
 ## Adding a schema change
 
 1. Edit `db/schema.ts`
