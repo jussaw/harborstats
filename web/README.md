@@ -91,7 +91,7 @@ app/
   players/page.tsx          player index
   players/[id]/page.tsx     player detail page
   stats/page.tsx            stats dashboard
-  admin/                    admin pages for login, players, games, and settings
+  admin/                    admin pages for login, players, games, and settings, plus protected audit history at /admin/audit and authenticated CSV/JSON export at /admin/export
   actions.ts                server actions shared by app routes
   layout.tsx                root layout and app shell
   globals.css               theme and global styles
