@@ -46,18 +46,9 @@ notes, validation evidence, and delivery history.
   and stable player-identity presentation.
 - Auditability and delivery safeguards for state-changing actions, database
   integrity, and browser/CI regression coverage.
-
-## Current delivery priority
-
-### Achievements and Trophy Cabinet
-
-Add a derived badge system and a player-facing Trophy Cabinet. The first badge
-catalog should reward meaningful participation, performance, improvement,
-streaks, and notable rivalries while keeping badges explainable and derived
-from recorded game history.
-
-Achievement state should remain derived unless a future product need justifies
-persisting unlock moments or notifications.
+- A derived, explainable Trophy Cabinet on player profiles that awards
+  participation, performance, improvement, streak, and rivalry badges from
+  recorded game history without persisting unlock state.
 
 ## Future opportunities
 
