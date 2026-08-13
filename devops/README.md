@@ -46,6 +46,12 @@ Required values:
 | `ADMIN_SESSION_SECRET` | Yes | `web` | Secret used to sign admin session cookies |
 | `POSTGRES_PASSWORD` | No (defaults to `postgres`) | `db`, `web`, `migrate`, `baseline` | Password for the internal Postgres user; set a real value in production |
 
+Optional app values:
+
+| Variable | Default | Used by | Notes |
+| --- | --- | --- | --- |
+| `ADMIN_SESSION_VERSION` | `1` | `web` | Bump it and redeploy `web` to invalidate all existing admin sessions without rotating `ADMIN_SESSION_SECRET`. Unset or empty renders as `1` |
+
 Required values when using the `pgadmin` profile:
 
 | Variable | Required | Used by | Notes |
@@ -68,6 +74,7 @@ Notes:
 - `migrate` and `baseline` also get their `DATABASE_URL` from the compose file
 - `POSTGRES_PASSWORD` is only applied when the `pgdata` volume is first initialized. To change it for an existing deployment, run `docker exec -it harborstats-db psql -U postgres -d harborstats -c "ALTER USER postgres WITH PASSWORD 'new-password';"`, update `devops/.env`, then restart the stack
 - `restore-db.sh` restarts `web`, so `ADMIN_PASSWORD` and `ADMIN_SESSION_SECRET` need to be present in `devops/.env` or exported in the shell before you restore
+- Keep a bumped `ADMIN_SESSION_VERSION` in `devops/.env` rather than only in your shell, otherwise the next deploy or restore restarts `web` with the default `1` and re-validates the sessions you meant to invalidate
 - If you want the scripts to read a different env file, set `ENV_FILE=/path/to/file.env`
 
 Example:
