@@ -11,6 +11,7 @@ This root README is the primary entrypoint for the repo. It covers how the proje
 - Record games with players, scores, winners, notes, and timestamps
 - Browse the recent game history from the home page
 - Explore stats and activity views
+- View multiplayer Elo ratings replayed from recorded game history, with Power Ranking standings, a Rating History chart, and provisional ratings for players with fewer than five rated games
 - View player profile pages with player-specific summaries
 - Manage data from an admin area protected by a shared password
 - Run unit, component, integration, and end-to-end tests
