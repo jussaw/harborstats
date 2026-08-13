@@ -132,8 +132,9 @@ pnpm test:e2e:install
 Production-style deployment assets live in `devops/`.
 
 - `devops/docker-compose.yml` defines the deploy stack
-- `devops/deploy.sh` pulls the latest code, starts the database, runs baseline and migrations, then brings up the app
+- `devops/deploy.sh` pulls the latest code, starts the database, runs pending migrations, then brings up the app
 - `web/Dockerfile` provides the `runner` and `migrator` image targets used by the deploy stack
+- The `baseline` job is never run by `devops/deploy.sh`; it is a manual, one-time step for an existing database that already contains the initial schema — see [devops/README.md](devops/README.md)
 
 For the full deployment guide, including service roles, environment assumptions, and manual compose commands, see [devops/README.md](devops/README.md).
 
