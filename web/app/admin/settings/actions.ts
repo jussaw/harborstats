@@ -50,6 +50,14 @@ export async function setNewGamePasswordAction(
     if (err instanceof InvalidPasswordError) {
       return { ok: false, error: err.message }
     }
+    // The error itself carries secrets here: Drizzle interpolates the bound
+    // params — the password hash — into its message, and postgres.js copies the
+    // whole server payload onto the error. So log a constant event plus a
+    // type-level category only, never the error or any of its fields.
+    // eslint-disable-next-line no-console -- no logger abstraction; surface the failure to server logs
+    console.error('[settings] failed to save the new-game password', {
+      errorKind: err instanceof Error ? 'error' : typeof err,
+    });
     return { ok: false, error: 'Failed to save password.' }
   }
 
