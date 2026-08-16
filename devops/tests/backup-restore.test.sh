@@ -346,6 +346,58 @@ run_pgadmin_profile_test() {
   fi
 }
 
+render_admin_session_version() {
+  local env_file="$1"
+  local value="$2"
+  local rendered
+
+  if [[ "$value" == "__unset__" ]]; then
+    rendered="$(
+      env -u ADMIN_SESSION_VERSION \
+        ADMIN_PASSWORD=test-admin \
+        ADMIN_SESSION_SECRET=test-session-secret \
+        docker compose --env-file "$env_file" -f "$COMPOSE_FILE" config
+    )"
+  else
+    rendered="$(
+      ADMIN_PASSWORD=test-admin \
+        ADMIN_SESSION_SECRET=test-session-secret \
+        ADMIN_SESSION_VERSION="$value" \
+        docker compose --env-file "$env_file" -f "$COMPOSE_FILE" config
+    )"
+  fi
+
+  printf '%s\n' "$rendered" |
+    sed -n -E 's/^[[:space:]]*ADMIN_SESSION_VERSION:[[:space:]]*"?([^"]*)"?[[:space:]]*$/\1/p'
+}
+
+run_admin_session_version_test() {
+  # The deployed web service must receive the admin session-version lever, and
+  # an unset or empty value must fall back to "1" rather than reaching the app
+  # as an empty string (which would silently invalidate every admin session).
+  assert_contains 'ADMIN_SESSION_VERSION: ${ADMIN_SESSION_VERSION:-1}' "$COMPOSE_FILE"
+
+  if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>&1; then
+    echo "SKIP: docker compose unavailable; skipping rendered ADMIN_SESSION_VERSION checks" >&2
+    return 0
+  fi
+
+  setup_test_dir
+  trap cleanup_test_dir RETURN
+
+  # Render against an empty env file so the assertions never depend on a real
+  # devops/.env on the host.
+  local empty_env="$TEST_DIR/empty.env"
+  : >"$empty_env"
+
+  assert_equals "1" "$(render_admin_session_version "$empty_env" "__unset__")" \
+    "Unset ADMIN_SESSION_VERSION should render as 1"
+  assert_equals "7" "$(render_admin_session_version "$empty_env" "7")" \
+    "Explicit ADMIN_SESSION_VERSION should render as given"
+  assert_equals "1" "$(render_admin_session_version "$empty_env" "")" \
+    "Empty ADMIN_SESSION_VERSION should render as 1"
+}
+
 run_migration_scripts_exit_nonzero_test() {
   local bad_database_url="postgres://postgres:postgres@127.0.0.1:1/harborstats?connect_timeout=1"
 
@@ -371,6 +423,7 @@ main() {
   run_env_file_test
   run_deploy_env_file_test
   run_pgadmin_profile_test
+  run_admin_session_version_test
   run_migration_scripts_exit_nonzero_test
   echo "backup-restore tests passed"
 }

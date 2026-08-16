@@ -32,6 +32,7 @@ services:
       DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/harborstats
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       ADMIN_SESSION_SECRET: ${ADMIN_SESSION_SECRET}
+      ADMIN_SESSION_VERSION: ${ADMIN_SESSION_VERSION:-1}
     ports:
       - "23413:3000"
     restart: always
