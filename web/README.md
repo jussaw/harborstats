@@ -45,6 +45,27 @@ After startup, add players from the admin roster page at `/admin/players`.
 | `pnpm db:baseline` | **One-time** — marks the initial migration as applied on an existing DB that already has the schema (run before first `db:migrate` on a pre-existing database) |
 | `pnpm db:studio` | Open Drizzle Studio (visual DB browser) |
 
+## Test database safety
+
+> [!WARNING]
+> Integration and e2e tests **truncate every table** in whatever database `DATABASE_URL` points at. Point them at your real data and it is gone.
+
+The integration and e2e helpers (`tests/helpers/test-env.ts` and `tests/helpers/db.ts`) connect to
+the database named in `DATABASE_URL` and, before each run, execute
+`TRUNCATE TABLE audit_logs, app_settings, game_players, games, players RESTART IDENTITY CASCADE` —
+wiping all five tables. This is intentional for a disposable test database, but it is destructive to
+any database it touches.
+
+For safety, the default test connection uses a database named `harborstats_test` (note the `_test`
+suffix) — separate from the `harborstats` database that `docker-compose.yml` creates for local
+development. That default only applies when `DATABASE_URL` is **unset**: if you have exported
+`DATABASE_URL` (for example, pointing at the `harborstats` dev database), the helpers use your value
+instead and will truncate whatever it names — destroying your real game data.
+
+Before running `pnpm test:integration`, `pnpm test:e2e`, `pnpm test:all`, or `pnpm test:ci`, make
+sure `DATABASE_URL` is either unset or ends in `_test`. If it points at `harborstats` (or any real
+database), unset it or override it with a `_test` database first.
+
 ## Testing
 
 | Command                 | Scope                                                                          |
