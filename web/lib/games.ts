@@ -67,11 +67,20 @@ function validateAndNormalizeGamePlayers(inputPlayers: GamePlayer[]): GamePlayer
     throw new GameValidationError('Game must have exactly one winner.');
   }
 
+  const maxScore = Math.max(...inputPlayers.map((player) => player.score));
+
   if (explicitWinnerCount === 1) {
+    // Every downstream engine (lib/stats.ts victory margins, lib/rating.ts pair
+    // scoring, lib/trophies.ts) assumes the winner is the top scorer. Letting a
+    // sub-max winner through would desync them against each other, so the
+    // invariant is enforced here at the single validation boundary.
+    const winner = inputPlayers.find((player) => player.isWinner)!;
+    if (winner.score !== maxScore) {
+      throw new GameValidationError('Explicit winner must have the highest score.');
+    }
     return inputPlayers.map((player) => ({ ...player }));
   }
 
-  const maxScore = Math.max(...inputPlayers.map((player) => player.score));
   const topPlayers = inputPlayers.filter((player) => player.score === maxScore);
   if (topPlayers.length !== 1) {
     throw new GameValidationError('Tie games require an explicit single winner.');
