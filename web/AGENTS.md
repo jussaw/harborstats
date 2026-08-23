@@ -59,6 +59,10 @@ Rules to preserve:
 - `players.name` is unique.
 - Deleting a player referenced by games must fail with `PlayerInUseError`.
 - Deleting a game cascades to its `game_players`.
+- A player can appear at most once per game. Enforced by the unique index
+  `game_players_game_id_player_id_unique` on (`game_id`, `player_id`) (`db/schema.ts`).
+- A game has at most one winner. Enforced by the partial unique index
+  `game_players_one_winner_per_game` on `game_id` where `is_winner = true` (`db/schema.ts`).
 
 ## Audit Requirements
 
