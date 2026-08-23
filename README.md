@@ -99,6 +99,17 @@ Run these from `web/`.
 | `pnpm db:baseline` | Mark the initial migration as already applied for an existing database |
 | `pnpm db:studio` | Open Drizzle Studio |
 
+## CI
+
+Pull requests are checked by the PR Smoke pipeline in [.github/workflows/pr-smoke.yml](.github/workflows/pr-smoke.yml). It runs on pull requests that change files under `.github/workflows/**`, `devops/**`, or `web/**`. The pipeline runs these checks in order:
+
+- Lint
+- DevOps shell tests
+- Build
+- Fast tests
+- Integration tests
+- End-to-end (Playwright) tests
+
 ## Development workflow
 
 ### Database and schema changes
