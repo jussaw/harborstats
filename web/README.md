@@ -19,6 +19,7 @@ pnpm dev         # http://localhost:3000
 ```
 
 After startup, add players from the admin roster page at `/admin/players`.
+Then go to `/admin/settings` to set the game creation password — you will need it before recording any game.
 
 ## Environment variables
 

@@ -61,6 +61,7 @@ pnpm dev
 The app runs at [http://localhost:3000](http://localhost:3000).
 
 After the app is running, sign in to `/admin/players` and create your player roster there.
+Then go to `/admin/settings` to set the game creation password — you will need it before recording any game.
 
 ## Environment variables
 
