@@ -172,7 +172,9 @@ export function parseGameFormData(formData: FormData): {
   notes: string;
   players: GamePlayer[];
 } {
-  const playedAt = new Date(formData.get('played_at') as string);
+  const rawPlayedAt = formData.get('played_at');
+  const playedAt =
+    typeof rawPlayedAt === 'string' && rawPlayedAt !== '' ? new Date(rawPlayedAt) : new Date(NaN);
   const notes = (formData.get('notes') as string) ?? '';
   const playersList: GamePlayer[] = [];
   let row = 0;

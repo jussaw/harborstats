@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { gamePlayers, games } from '@/db/schema';
 import { db } from '@/lib/db';
 import {
+  GameValidationError,
   createGame,
   deleteGame,
   getGameForEdit,
@@ -94,6 +95,49 @@ describe('games lib', () => {
       { playerId: 1, score: 10, isWinner: false },
       { playerId: 2, score: 10, isWinner: false },
     ]);
+  });
+
+  it('rejects game form data with no played_at instead of defaulting to the epoch', () => {
+    const formData = new FormData();
+    // No played_at key set — simulates an absent field rather than a blank one.
+    formData.set('player_id_0', '1');
+    formData.set('score_0', '10');
+
+    const parsed = parseGameFormData(formData);
+
+    expect(Number.isFinite(parsed.playedAt.getTime())).toBe(false);
+  });
+
+  it('rejects game form data with an empty or invalid played_at string', () => {
+    // A blank datetime-local input posts played_at='' — the real-world trigger.
+    const blank = new FormData();
+    blank.set('played_at', '');
+    blank.set('player_id_0', '1');
+    blank.set('score_0', '10');
+    expect(Number.isFinite(parseGameFormData(blank).playedAt.getTime())).toBe(false);
+
+    // A garbage string should also produce an invalid date.
+    const garbage = new FormData();
+    garbage.set('played_at', 'not-a-date');
+    garbage.set('player_id_0', '1');
+    garbage.set('score_0', '10');
+    expect(Number.isFinite(parseGameFormData(garbage).playedAt.getTime())).toBe(false);
+  });
+
+  it('rejects creating a game with no played_at instead of recording an epoch game', async () => {
+    const ada = await createTestPlayer({ name: 'Ada' });
+    const formData = new FormData();
+    formData.set('player_id_0', String(ada.id));
+    formData.set('score_0', '10');
+
+    const { playedAt, notes, players } = parseGameFormData(formData);
+
+    await expect(
+      createGame({ playedAt, notes, submittedFromIp: '127.0.0.1', players }),
+    ).rejects.toThrow(GameValidationError);
+
+    const storedGames = await db.select().from(games);
+    expect(storedGames).toHaveLength(0);
   });
 
   it('creates a game and its player rows in the database', async () => {
