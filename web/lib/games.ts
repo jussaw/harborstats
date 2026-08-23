@@ -167,6 +167,41 @@ export async function deleteGame(id: number): Promise<boolean> {
   return deleted.length > 0;
 }
 
+const ROW_KEY_PATTERN = /^(?:player_id|score|is_winner)_(\d+)$/;
+
+/**
+ * Guards against a caller submitting non-contiguous row indices (e.g. rows 0 and
+ * 2 with no row 1). The parse loop stops at the first absent `player_id_<row>`,
+ * so without this check every row past the gap would be dropped silently and the
+ * game would be recorded with fewer participants than were submitted.
+ *
+ * Checks all three field prefixes (`player_id_`, `score_`, `is_winner_`) so
+ * that orphan score or winner keys past the last `player_id_` key are also
+ * caught — otherwise those values would be silently discarded.
+ */
+function assertNoRowIndexGap(formData: FormData, missingRow: number) {
+  const keys = Array.from(formData.keys());
+  keys.some((key) => {
+    const match = ROW_KEY_PATTERN.exec(key);
+    if (match && Number(match[1]) >= missingRow) {
+      throw new GameValidationError('Form data has a gap in row indices.');
+    }
+    return false;
+  });
+}
+
+/**
+ * Turns the game form's flat `player_id_<row>` / `score_<row>` /
+ * `is_winner_<row>` fields into a participant list.
+ *
+ * Half-filled rows are rejected rather than skipped: dropping them would record
+ * a game missing a participant, and — because the winner is derived from the
+ * surviving rows when no winner is checked — could hand the win to the wrong
+ * player. A fully blank row is still skipped, since the form always renders a
+ * fixed number of rows and trailing ones are normally left empty.
+ *
+ * Row numbers in error messages are 1-based to match what the form shows.
+ */
 export function parseGameFormData(formData: FormData): {
   playedAt: Date;
   notes: string;
@@ -178,13 +213,22 @@ export function parseGameFormData(formData: FormData): {
   let row = 0;
   while (formData.has(`player_id_${row}`)) {
     const playerId = formData.get(`player_id_${row}`) as string;
-    const score = formData.get(`score_${row}`) as string;
+    const score = formData.get(`score_${row}`) as string | null;
     const isWinner = formData.get(`is_winner_${row}`) === '1';
-    if (playerId && score !== null && score !== '') {
+    const hasScore = score !== null && score !== '';
+    if (playerId && !hasScore) {
+      throw new GameValidationError(`Row ${row + 1} is missing a score.`);
+    }
+    if (!playerId && hasScore) {
+      throw new GameValidationError(`Row ${row + 1} is missing a player.`);
+    }
+    if (playerId) {
       playersList.push({ playerId: Number(playerId), score: Number(score), isWinner });
     }
     row += 1;
   }
+  assertNoRowIndexGap(formData, row);
+
   const hasExplicitWinner = playersList.some((p) => p.isWinner);
   if (!hasExplicitWinner && playersList.length > 0) {
     const maxScore = Math.max(...playersList.map((p) => p.score));

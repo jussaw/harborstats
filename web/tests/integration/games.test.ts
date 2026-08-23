@@ -6,6 +6,7 @@ import { db } from '@/lib/db';
 import {
   createGame,
   deleteGame,
+  GameValidationError,
   getGameForEdit,
   listGamesForPlayer,
   listGamesPage,
@@ -40,18 +41,76 @@ function createGameFormData(
 }
 
 describe('games lib', () => {
-  it('skips incomplete player rows when parsing game form data', () => {
+  it('rejects a player row that is missing a score', () => {
+    expect(() =>
+      parseGameFormData(
+        createGameFormData([
+          { playerId: 1, score: 10 },
+          { playerId: 2 },
+        ]),
+      ),
+    ).toThrow(GameValidationError);
+    expect(() =>
+      parseGameFormData(
+        createGameFormData([
+          { playerId: 1, score: 10 },
+          { playerId: 2 },
+        ]),
+      ),
+    ).toThrow('Row 2 is missing a score.');
+  });
+
+  it('rejects a row with a score but no player', () => {
+    expect(() =>
+      parseGameFormData(
+        createGameFormData([
+          { playerId: 1, score: 10 },
+          { playerId: '', score: 8 },
+        ]),
+      ),
+    ).toThrow('Row 2 is missing a player.');
+  });
+
+  it('rejects index gaps in form data', () => {
+    const formData = new FormData();
+    formData.set('played_at', '2026-04-20T15:16');
+    formData.set('player_id_0', '1');
+    formData.set('score_0', '10');
+    formData.set('player_id_2', '2');
+    formData.set('score_2', '8');
+
+    expect(() => parseGameFormData(formData)).toThrow(GameValidationError);
+    expect(() => parseGameFormData(formData)).toThrow('Form data has a gap in row indices.');
+  });
+
+  it('rejects orphan score or winner keys past the last player_id row', () => {
+    const formData = new FormData();
+    formData.set('played_at', '2026-04-20T15:16');
+    formData.set('player_id_0', '1');
+    formData.set('score_0', '10');
+    // No player_id_1, but score_1 and is_winner_1 are present — must be caught
+    formData.set('score_1', '8');
+    formData.set('is_winner_1', '1');
+
+    expect(() => parseGameFormData(formData)).toThrow('Form data has a gap in row indices.');
+  });
+
+  it('allows trailing blank rows', () => {
     const parsed = parseGameFormData(
       createGameFormData([
         { playerId: 1, score: 10 },
-        { playerId: '', score: 8 },
-        { playerId: 2 },
+        { playerId: 2, score: 8 },
+        { playerId: '', score: '' },
+        {},
       ]),
     );
 
     expect(parsed.playedAt.toISOString()).toBe('2026-04-20T15:16:00.000Z');
     expect(parsed.notes).toBe('');
-    expect(parsed.players).toEqual([{ playerId: 1, score: 10, isWinner: true }]);
+    expect(parsed.players).toEqual([
+      { playerId: 1, score: 10, isWinner: true },
+      { playerId: 2, score: 8, isWinner: false },
+    ]);
   });
 
   it('preserves an explicit winner from the form data', () => {
