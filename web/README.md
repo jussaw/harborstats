@@ -1,6 +1,6 @@
 # HarborStats
 
-A mobile-friendly Catan game recorder for tracking [colonist.io](https://colonist.io) results among a friend group. Log players, scores, and winners after each game; browse the full history on the home feed.
+A mobile-friendly Catan game recorder for tracking [colonist.io](https://colonist.io) results among a friend group. Log players, scores, and winners after each game; the home page shows a recent-games feed, and `/games` holds the full filterable, paginated history.
 
 ## Prerequisites
 
