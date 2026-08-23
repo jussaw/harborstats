@@ -2,7 +2,7 @@
 
 import { cookies, headers } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { verifyPassword, signSession, COOKIE_NAME } from '@/lib/admin-auth'
+import { verifyPassword, signSession, requireAdminSession, COOKIE_NAME } from '@/lib/admin-auth'
 import { checkRateLimit, clearRateLimit } from '@/lib/rate-limit'
 import { getClientIp } from '@/lib/request-ip'
 import { recordAudit } from '@/lib/audit'
@@ -63,6 +63,7 @@ export async function loginAction(formData: FormData) {
 }
 
 export async function logoutAction() {
+  await requireAdminSession()
   const cookieStore = await cookies()
   cookieStore.delete(COOKIE_NAME)
   await recordAudit({
