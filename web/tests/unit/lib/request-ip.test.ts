@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getClientIp } from '@/lib/request-ip';
+import { getClientIp, normalizeForRateLimit } from '@/lib/request-ip';
 
 describe('getClientIp', () => {
   it('prefers cf-connecting-ip over other headers', () => {
@@ -73,5 +73,55 @@ describe('getClientIp', () => {
   it('returns null for an x-real-ip carrying a port', () => {
     const headers = new Headers({ 'x-real-ip': '198.51.100.9:9000' });
     expect(getClientIp(headers)).toBeNull();
+  });
+});
+
+describe('normalizeForRateLimit', () => {
+  it('returns an IPv4 address unchanged', () => {
+    expect(normalizeForRateLimit('198.51.100.1')).toBe('198.51.100.1');
+  });
+
+  it('collapses a compressed IPv6 address to its /64 prefix', () => {
+    expect(normalizeForRateLimit('2001:db8::1')).toBe('2001:db8:0:0::/64');
+  });
+
+  it('collapses a fully expanded IPv6 address to its /64 prefix', () => {
+    expect(normalizeForRateLimit('2001:0db8:85a3:0000:0000:8a2e:0370:7334')).toBe(
+      '2001:db8:85a3:0::/64',
+    );
+  });
+
+  it('maps two addresses in the same /64 to the same key', () => {
+    const a = normalizeForRateLimit('2001:db8::1');
+    const b = normalizeForRateLimit('2001:db8:0:0:ffff:ffff:ffff:ffff');
+    expect(a).toBe(b);
+  });
+
+  it('maps addresses in different /64s to different keys', () => {
+    const a = normalizeForRateLimit('2001:db8:1::1');
+    const b = normalizeForRateLimit('2001:db8:2::1');
+    expect(a).not.toBe(b);
+    expect(a).toBe('2001:db8:1:0::/64');
+    expect(b).toBe('2001:db8:2:0::/64');
+  });
+
+  it('handles the compressed loopback address', () => {
+    expect(normalizeForRateLimit('::1')).toBe('0:0:0:0::/64');
+  });
+
+  it('returns a non-IP input unchanged', () => {
+    expect(normalizeForRateLimit('unknown')).toBe('unknown');
+  });
+
+  it('unwraps an IPv4-mapped IPv6 address to the embedded IPv4', () => {
+    expect(normalizeForRateLimit('::ffff:192.0.2.1')).toBe('192.0.2.1');
+  });
+
+  it('maps two distinct IPv4-mapped addresses to different keys', () => {
+    const a = normalizeForRateLimit('::ffff:192.0.2.1');
+    const b = normalizeForRateLimit('::ffff:198.51.100.9');
+    expect(a).not.toBe(b);
+    expect(a).toBe('192.0.2.1');
+    expect(b).toBe('198.51.100.9');
   });
 });
