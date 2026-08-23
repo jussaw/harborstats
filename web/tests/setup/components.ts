@@ -51,7 +51,12 @@ if (typeof window !== 'undefined' && !window.matchMedia) {
 
 afterEach(() => {
   cleanup()
-  localStorage.clear()
+  if (typeof localStorage !== 'undefined') {
+    localStorage.clear()
+  }
+  if (typeof sessionStorage !== 'undefined') {
+    sessionStorage.clear()
+  }
   vi.restoreAllMocks()
   vi.unstubAllEnvs()
   vi.unstubAllGlobals()

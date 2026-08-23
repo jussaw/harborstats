@@ -8,7 +8,55 @@ on:
       - 'web/**'
 
 jobs:
-  test:
+  fast-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        # HarborStats supports Node >=22.13 <27 (see web/package.json engines).
+        # CI exercises both ends of the range: Node 22 (Dockerfile baseline)
+        # and Node 26 (latest supported). The component test suite uses
+        # --no-webstorage on Node >=25 to work around vitest 4's jsdom
+        # localStorage issue (fixed in vitest 5).
+        node-version: [22, 26]
+
+    defaults:
+      run:
+        working-directory: web
+
+    env:
+      CI: true
+      TZ: UTC
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint (Node 22 only)
+        if: matrix.node-version == 22
+        run: pnpm lint
+
+      - name: Build (Node 22 only)
+        if: matrix.node-version == 22
+        run: pnpm build
+
+      - name: Fast tests
+        run: pnpm test:fast
+
+  full-suite:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
@@ -47,16 +95,13 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          # pnpm 11.7 uses node:sqlite and requires Node >=22.13.
+          # Full suite runs on Node 22 (the Dockerfile/production baseline).
           node-version: 22
           cache: pnpm
           cache-dependency-path: web/pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
-      - name: Lint
-        run: pnpm lint
 
       - name: DevOps shell tests
         working-directory: .
@@ -67,9 +112,6 @@ jobs:
 
       - name: Build
         run: pnpm build
-
-      - name: Fast tests
-        run: pnpm test:fast
 
       - name: Integration tests
         run: pnpm test:integration

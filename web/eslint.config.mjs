@@ -64,9 +64,13 @@ const eslintConfig = defineConfig([
       'vitest*.ts',
       'drizzle.config.ts',
       'scripts/generate-pwa-icons.ts',
+      'tests/unit/scripts/check-node-version.test.ts',
     ],
     rules: {
       'import-x/no-extraneous-dependencies': 'off',
+      'import-x/extensions': 'off',
+      'import-x/no-unresolved': 'off',
+      'import-x/no-named-as-default': 'off',
     },
   },
   {

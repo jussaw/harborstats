@@ -4,7 +4,7 @@ A mobile-friendly Catan game recorder for tracking [colonist.io](https://colonis
 
 ## Prerequisites
 
-- [Node.js](https://nodejs.org) 22.13+
+- [Node.js](https://nodejs.org) 22.13 – 26.x (tested on 22 and 26; Node 25+ requires the `--no-webstorage` workaround in `vitest.components.config.ts` until vitest 5)
 - [pnpm](https://pnpm.io)
 - [Docker](https://www.docker.com) (for the local Postgres database)
 
