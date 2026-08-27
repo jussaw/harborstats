@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { cookies } from 'next/headers';
-import { loginAction } from '@/app/admin/actions';
+import { loginAction, logoutAction } from '@/app/admin/actions';
 import { updateGameAction, deleteGameAction } from '@/app/admin/games/actions';
 import {
   createPlayerAction,
@@ -103,6 +103,43 @@ describe('admin login action', () => {
       });
     },
   );
+});
+
+describe('admin logout action', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test('logoutAction throws when no valid admin session cookie is present', async () => {
+    setupMissingAdminSession();
+
+    await expect(logoutAction()).rejects.toThrow('Admin authentication required');
+    expect(await db.select().from(auditLogs).where(eq(auditLogs.action, 'admin.logout'))).toHaveLength(
+      0,
+    );
+  });
+
+  test('logoutAction clears the cookie and records an audit row for an authenticated admin', async () => {
+    vi.stubEnv('ADMIN_SESSION_SECRET', 'test-secret');
+    const sessionCookie = await signSession();
+    const deleteMock = vi.fn();
+    vi.mocked(cookies).mockResolvedValue({
+      get: vi.fn((name: string) =>
+        name === ADMIN_COOKIE_NAME ? { value: sessionCookie } : undefined,
+      ),
+      delete: deleteMock,
+    } as unknown as Awaited<ReturnType<typeof cookies>>);
+
+    await expect(logoutAction()).rejects.toMatchObject({ path: '/admin/login' });
+    expect(deleteMock).toHaveBeenCalledWith(ADMIN_COOKIE_NAME);
+
+    const rows = await db
+      .select()
+      .from(auditLogs)
+      .where(eq(auditLogs.action, 'admin.logout'));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ actorType: 'admin', summary: 'Admin signed out' });
+  });
 });
 
 describe('admin game actions', () => {
