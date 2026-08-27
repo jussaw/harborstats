@@ -7,7 +7,21 @@ const AUTH_REQUIRED_ERROR = 'Admin authentication required'
 // without rotating ADMIN_SESSION_SECRET — a redeploy-friendly "log everyone
 // out" lever. Kept stateless (env-based) so verifySession stays edge-safe.
 function getSessionVersion(): string {
-  return process.env.ADMIN_SESSION_VERSION ?? '1'
+  return process.env.ADMIN_SESSION_VERSION || '1'
+}
+
+// The session cookie is `scope:version:iat.signature`, so a version containing
+// '.' or ':' would corrupt the payload structure and make every cookie fail to
+// verify — permanently locking out all admins with no obvious diagnostic.
+// Validated at sign time to fail loud and early rather than silently producing
+// unverifiable cookies. An empty version falls back to '1' via getSessionVersion.
+function assertValidSessionVersion(version: string): void {
+  if (version.includes('.') || version.includes(':')) {
+    throw new Error(
+      'ADMIN_SESSION_VERSION must not contain . or : — these characters break the ' +
+        'session cookie format and would permanently lock out all admins.',
+    )
+  }
 }
 
 async function importKey(secret: string, usage: KeyUsage): Promise<CryptoKey> {
@@ -43,8 +57,10 @@ function hexToBytes(hex: string): ArrayBuffer {
 
 export async function signSession(): Promise<string> {
   const secret = getSessionSecret()
+  const version = getSessionVersion()
+  assertValidSessionVersion(version)
   const iat = Math.floor(Date.now() / 1000).toString()
-  const payload = `${SESSION_SCOPE}:${getSessionVersion()}:${iat}`
+  const payload = `${SESSION_SCOPE}:${version}:${iat}`
   const sig = await hmacHex(secret, payload)
   return `${payload}.${sig}`
 }
