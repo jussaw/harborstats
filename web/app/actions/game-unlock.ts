@@ -5,7 +5,7 @@ import { signGameSession, COOKIE_NAME } from '@/lib/game-auth'
 import { getNewGamePasswordHash } from '@/lib/settings'
 import { verifyPasswordHash } from '@/lib/password-hash'
 import { checkRateLimit, clearRateLimit } from '@/lib/rate-limit'
-import { getClientIp } from '@/lib/request-ip'
+import { getClientIp, normalizeForRateLimit } from '@/lib/request-ip'
 import { recordAudit } from '@/lib/audit'
 
 export interface UnlockState {
@@ -28,7 +28,7 @@ export async function unlockGameCreationAction(
   const password = (formData.get('password') as string) ?? ''
 
   const hdrs = await headers()
-  const rateKey = `game-unlock:${getClientIp(hdrs) ?? 'unknown'}`
+  const rateKey = `game-unlock:${normalizeForRateLimit(getClientIp(hdrs) ?? 'unknown')}`
   if (!checkRateLimit(rateKey).allowed) {
     // Reuse the generic 'incorrect' shape so a throttled client learns nothing
     // about whether the submitted password was correct.

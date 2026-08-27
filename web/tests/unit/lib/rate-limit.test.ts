@@ -131,20 +131,46 @@ describe('rate-limit', () => {
     60_000,
   );
 
-  it('evicts the soonest-to-expire windows first when at the ceiling', () => {
-    // Fill exactly to the ceiling with windows that expire soonest.
-    const early = 1_000_000;
-    for (let i = 0; i < RATE_LIMIT_MAX_BUCKETS; i += 1) {
-      checkRateLimit(`early-${i}`, early);
+  it('evicts the least-exhausted (latest-to-expire) windows first at the ceiling', () => {
+    // The ceiling engages by dropping 10% of the map down to the low-water mark.
+    const evicted = RATE_LIMIT_MAX_BUCKETS - Math.floor(RATE_LIMIT_MAX_BUCKETS * 0.9);
+
+    // Fill most of the map with OLD windows (soonest resetAt) — the most-
+    // exhausted, and the ones we want to keep. One is exhausted so we can prove
+    // it survived with its blocking state intact.
+    const old = 1_000_000;
+    const oldCount = RATE_LIMIT_MAX_BUCKETS - evicted;
+    for (let i = 0; i < oldCount; i += 1) {
+      checkRateLimit(`old-${i}`, old);
     }
+    for (let i = 0; i < MAX_ATTEMPTS - 1; i += 1) {
+      checkRateLimit('old-0', old);
+    }
+    expect(checkRateLimit('old-0', old).allowed).toBe(false);
 
-    // A newer key (later resetAt) arrives once the map is full; it forces the
-    // eviction of an earlier, soonest-to-expire window rather than itself.
-    const later = early + 60_000;
-    checkRateLimit('newcomer', later);
+    // Top the map off to exactly the ceiling with FRESH windows (latest resetAt)
+    // — the least-exhausted, and the ones eviction should target. Exhaust one so
+    // that, if it is wrongly retained, it would still read as blocked.
+    const fresh = old + 60_000;
+    for (let i = 0; i < evicted; i += 1) {
+      checkRateLimit(`fresh-${i}`, fresh);
+    }
+    for (let i = 0; i < MAX_ATTEMPTS - 1; i += 1) {
+      checkRateLimit('fresh-0', fresh);
+    }
+    expect(rateLimitBucketCount()).toBe(RATE_LIMIT_MAX_BUCKETS);
 
+    // A brand-new key at the ceiling triggers a batch eviction of the fresh
+    // (latest-to-expire) windows before it is inserted.
+    checkRateLimit('trigger', fresh);
     expect(rateLimitBucketCount()).toBeLessThanOrEqual(RATE_LIMIT_MAX_BUCKETS);
-    // The newcomer keeps its live budget (was not the one evicted).
-    expect(checkRateLimit('newcomer', later + 1).retryAfterMs).toBeUndefined();
+
+    // The old, most-exhausted window survived: still blocking mid-window.
+    expect(checkRateLimit('old-0', fresh).allowed).toBe(false);
+    // The fresh, least-exhausted window was evicted: re-checking it starts a
+    // brand-new window rather than continuing the exhausted one.
+    const reFresh = checkRateLimit('fresh-0', fresh);
+    expect(reFresh.allowed).toBe(true);
+    expect(reFresh.retryAfterMs).toBeUndefined();
   });
 });
