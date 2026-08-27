@@ -75,6 +75,47 @@ describe('admin auth helpers', () => {
     await expect(verifySession(cookie)).resolves.toBe(false);
   });
 
+  it('rejects an ADMIN_SESSION_VERSION containing cookie separators at sign time', async () => {
+    vi.stubEnv('ADMIN_SESSION_SECRET', 'session-secret');
+
+    // A version with '.' would corrupt the `payload.signature` split.
+    vi.stubEnv('ADMIN_SESSION_VERSION', '2.0');
+    await expect(signSession()).rejects.toThrow(/must not contain \. or :/);
+
+    // A version with ':' would corrupt the `scope:version:iat` split.
+    vi.stubEnv('ADMIN_SESSION_VERSION', 'rev:2');
+    await expect(signSession()).rejects.toThrow(/must not contain \. or :/);
+
+    // The default version '1' still round-trips.
+    vi.stubEnv('ADMIN_SESSION_VERSION', '1');
+    const defaultCookie = await signSession();
+    expect(defaultCookie).toMatch(/^admin:1:\d+\./);
+    await expect(verifySession(defaultCookie)).resolves.toBe(true);
+
+    // A simple custom numeric version still round-trips.
+    vi.stubEnv('ADMIN_SESSION_VERSION', '2');
+    const customCookie = await signSession();
+    expect(customCookie).toMatch(/^admin:2:\d+\./);
+    await expect(verifySession(customCookie)).resolves.toBe(true);
+  });
+
+  it('falls back to version 1 when ADMIN_SESSION_VERSION is empty', async () => {
+    vi.stubEnv('ADMIN_SESSION_SECRET', 'session-secret');
+    vi.stubEnv('ADMIN_SESSION_VERSION', '');
+
+    const cookie = await signSession();
+    expect(cookie).toMatch(/^admin:1:\d+\./);
+    await expect(verifySession(cookie)).resolves.toBe(true);
+  });
+
+  it('fails closed without throwing when verifySession sees a separator-containing version', async () => {
+    vi.stubEnv('ADMIN_SESSION_SECRET', 'session-secret');
+    vi.stubEnv('ADMIN_SESSION_VERSION', '2.0');
+
+    // A cookie that would be structurally ambiguous — verifySession must return false, not throw.
+    await expect(verifySession('admin:2.0:1776686400.deadbeef')).resolves.toBe(false);
+  });
+
   it('rejects malformed session cookies', async () => {
     vi.stubEnv('ADMIN_SESSION_SECRET', 'session-secret');
 
