@@ -43,7 +43,7 @@ All app commands run from `web/`.
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org) 22.13+
+- [Node.js](https://nodejs.org) 22.13 – 26.x (see `web/package.json` `engines.node` for the exact contract)
 - [pnpm](https://pnpm.io)
 - [Docker](https://www.docker.com) for the local Postgres database
 
