@@ -115,15 +115,18 @@ describe('games lib', () => {
   });
 
   it('preserves an explicit winner from the form data', () => {
+    // Both players share the top score so the inference path would refuse to
+    // pick a winner. Only the explicit is_winner flag can break the tie, which
+    // is exactly the behaviour this test is meant to distinguish from inference.
     const parsed = parseGameFormData(
       createGameFormData([
-        { playerId: 1, score: 5, isWinner: true },
+        { playerId: 1, score: 9, isWinner: true },
         { playerId: 2, score: 9 },
       ]),
     );
 
     expect(parsed.players).toEqual([
-      { playerId: 1, score: 5, isWinner: true },
+      { playerId: 1, score: 9, isWinner: true },
       { playerId: 2, score: 9, isWinner: false },
     ]);
   });
@@ -316,6 +319,75 @@ describe('games lib', () => {
     ).rejects.toThrow('Game must have exactly one winner.');
 
     expect(await db.select().from(games)).toHaveLength(0);
+  });
+
+  it('rejects an explicit winner who does not have the highest score', async () => {
+    const ada = await createTestPlayer({ name: 'Ada' });
+    const bea = await createTestPlayer({ name: 'Bea' });
+
+    await expect(
+      createGame({
+        playedAt: new Date('2026-04-20T18:00:00.000Z'),
+        notes: '',
+        submittedFromIp: null,
+        players: [
+          { playerId: ada.id, score: 5, isWinner: true },
+          { playerId: bea.id, score: 9, isWinner: false },
+        ],
+      }),
+    ).rejects.toThrow(GameValidationError);
+
+    expect(await db.select().from(games)).toHaveLength(0);
+  });
+
+  it('rejects an edit that demotes the winner below the top score', async () => {
+    const ada = await createTestPlayer({ name: 'Ada' });
+    const bea = await createTestPlayer({ name: 'Bea' });
+    const game = await createTestGame({
+      playedAt: new Date('2026-04-20T18:00:00.000Z'),
+      players: [
+        { playerId: ada.id, score: 9, isWinner: true },
+        { playerId: bea.id, score: 5, isWinner: false },
+      ],
+    });
+
+    await expect(
+      updateGame(game.id, {
+        playedAt: new Date('2026-04-20T18:00:00.000Z'),
+        notes: '',
+        players: [
+          { playerId: ada.id, score: 5, isWinner: true },
+          { playerId: bea.id, score: 9, isWinner: false },
+        ],
+      }),
+    ).rejects.toThrow('Explicit winner must have the highest score.');
+
+    const storedPlayers = await db.select().from(gamePlayers).orderBy(asc(gamePlayers.playerId));
+    expect(storedPlayers).toEqual([
+      expect.objectContaining({ playerId: ada.id, score: 9, isWinner: true }),
+      expect.objectContaining({ playerId: bea.id, score: 5, isWinner: false }),
+    ]);
+  });
+
+  it('accepts an explicit winner who shares the tied top score', async () => {
+    const ada = await createTestPlayer({ name: 'Ada' });
+    const bea = await createTestPlayer({ name: 'Bea' });
+
+    await createGame({
+      playedAt: new Date('2026-04-20T18:00:00.000Z'),
+      notes: '',
+      submittedFromIp: null,
+      players: [
+        { playerId: ada.id, score: 10, isWinner: true },
+        { playerId: bea.id, score: 10, isWinner: false },
+      ],
+    });
+
+    const storedPlayers = await db.select().from(gamePlayers).orderBy(asc(gamePlayers.playerId));
+    expect(storedPlayers).toEqual([
+      expect.objectContaining({ playerId: ada.id, score: 10, isWinner: true }),
+      expect.objectContaining({ playerId: bea.id, score: 10, isWinner: false }),
+    ]);
   });
 
   it('rejects tied implicit winners before creating a database row', async () => {

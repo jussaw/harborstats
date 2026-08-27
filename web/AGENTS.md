@@ -55,6 +55,13 @@ Rules to preserve:
 
 - Scores are 0–30 inclusive. The DB check `game_players_score_check` (`db/schema.ts`) mirrors
   `MAX_SCORE` in `lib/games.ts` — change both together.
+- The winner is always the top scorer. An explicit `is_winner` whose score is below the game's
+  maximum score is rejected by `validateAndNormalizeGamePlayers` (`lib/games.ts`) with
+  `Explicit winner must have the highest score`. When no explicit winner is provided, the player
+  with the unique highest score is inferred as the winner; a tied top score requires an explicit
+  winner, which must be one of the tied top scorers. `lib/stats.ts`, `lib/rating.ts`, and
+  `lib/trophies.ts` all rely on this invariant (victory margins, score-DESC rankings) — enforce it
+  at the validation boundary rather than re-deriving winners downstream.
 - `players.tier` must be `premium` or `standard` (DB check).
 - `players.name` is unique.
 - Deleting a player referenced by games must fail with `PlayerInUseError`.
