@@ -106,14 +106,19 @@ db/
   migrations/               SQL migrations and metadata
 lib/
   admin-auth.ts             admin authentication helpers
+  audit.ts                  audit log recording helpers
   db.ts                     Drizzle client
+  export.ts                 CSV serialization for /admin/export
+  game-auth.ts              game creation auth cookie helpers
   games.ts                  game queries and mutations
   players.ts                player queries and mutations
+  ratings.ts                rating replay queries (delegates to rating.ts)
   settings.ts               app settings access
   stats.ts                  stats aggregation helpers
 scripts/
   baseline.ts               mark initial migration as already applied
   migrate.ts                apply pending migrations
+  generate-pwa-icons.ts     render PWA icon PNGs from app/icon.svg
 tests/
   unit/                     unit tests
   components/               component tests
