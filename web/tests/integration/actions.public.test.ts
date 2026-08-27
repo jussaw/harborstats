@@ -6,7 +6,7 @@ import { unlockGameCreationAction } from '@/app/actions/game-unlock';
 import { signGameSession, COOKIE_NAME } from '@/lib/game-auth';
 import { setNewGamePassword } from '@/lib/settings';
 import { db } from '@/lib/db';
-import { gamePlayers, games } from '@/db/schema';
+import { auditLogs, gamePlayers, games } from '@/db/schema';
 import { createTestPlayer } from '../helpers/db';
 
 function buildFormData(fields: Record<string, string>): FormData {
@@ -77,6 +77,31 @@ describe('createGameAction', () => {
 
     const storedGames = await db.select().from(games);
     expect(storedGames).toHaveLength(0);
+  });
+
+  test('rejects a game with no played_at instead of recording an epoch game', async () => {
+    await setupValidSession();
+
+    const alice = await createTestPlayer({ name: 'Alice' });
+
+    const formData = new FormData();
+    // No played_at key — simulates an absent field rather than a blank one.
+    formData.set('player_id_0', String(alice.id));
+    formData.set('score_0', '10');
+
+    await expect(createGameAction(formData)).resolves.toEqual({
+      ok: false,
+      error: 'Played date must be valid.',
+    });
+
+    const storedGames = await db.select().from(games);
+    expect(storedGames).toHaveLength(0);
+
+    const createAudits = await db
+      .select()
+      .from(auditLogs)
+      .where(eq(auditLogs.action, 'game.create'));
+    expect(createAudits).toHaveLength(0);
   });
 
   test('parses submitted form data and persists a game using the first forwarded IP', async () => {

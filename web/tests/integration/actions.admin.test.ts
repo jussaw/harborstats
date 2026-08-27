@@ -196,6 +196,38 @@ describe('admin game actions', () => {
     expect(storedGame).toMatchObject({ notes: 'Original' });
   });
 
+  test('updateGameAction rejects missing played_at and preserves the original game date', async () => {
+    await setupValidAdminSession();
+    const alice = await createTestPlayer({ name: 'Alice' });
+    const game = await createTestGame({
+      notes: 'Original',
+      players: [{ playerId: alice.id, score: 6, isWinner: true }],
+    });
+
+    const formData = new FormData();
+    formData.set('game_id', String(game.id));
+    // No played_at key — simulates an absent field rather than a blank one.
+    formData.set('notes', 'Should not save');
+    formData.set('player_id_0', String(alice.id));
+    formData.set('score_0', '8');
+
+    await expect(updateGameAction(formData)).resolves.toEqual({
+      ok: false,
+      error: 'Played date must be valid.',
+    });
+    expect(mocked.redirectMock).not.toHaveBeenCalled();
+
+    const [storedGame] = await db.select().from(games).where(eq(games.id, game.id));
+    expect(storedGame.playedAt.toISOString()).toBe(game.playedAt.toISOString());
+    expect(storedGame.notes).toBe('Original');
+
+    const updateAudits = await db
+      .select()
+      .from(auditLogs)
+      .where(eq(auditLogs.action, 'game.update'));
+    expect(updateAudits).toHaveLength(0);
+  });
+
   test('updateGameAction handles a stale edit submitted after the game was deleted', async () => {
     await setupValidAdminSession();
     const alice = await createTestPlayer({ name: 'Alice' });
