@@ -20,6 +20,8 @@ WORKDIR /app
 ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
+# sqlite3 CLI for devops/backup-db.sh (online backup + integrity check) and inspection.
+RUN apk add --no-cache sqlite
 # The database volume mounts here; owning the mount point lets a new named
 # volume start out writable by the app.
 RUN mkdir /data && chown nextjs:nodejs /data

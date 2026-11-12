@@ -41,16 +41,15 @@ load_env_defaults "$ENV_FILE" \
   COMPOSE_FILE \
   BACKUP_DIR \
   RETENTION_DAYS \
-  DATABASE_NAME \
-  POSTGRES_USER \
   ADMIN_PASSWORD \
   ADMIN_SESSION_SECRET
 
 COMPOSE_FILE="${COMPOSE_FILE:-$SCRIPT_DIR/docker-compose.yml}"
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/harborstats}"
 RETENTION_DAYS="${RETENTION_DAYS:-30}"
-DATABASE_NAME="${DATABASE_NAME:-harborstats}"
-POSTGRES_USER="${POSTGRES_USER:-postgres}"
+
+# Inside the web container (see web/Dockerfile and devops/docker-compose.yml).
+CONTAINER_DATABASE_PATH="/data/harborstats.db"
 
 log() {
   printf '==> %s\n' "$*"
@@ -69,96 +68,109 @@ docker_compose() {
   fi
 }
 
-cleanup_temp_file() {
-  if [[ -n "${TEMP_DUMP_PATH:-}" && -f "${TEMP_DUMP_PATH:-}" ]]; then
-    rm -f "$TEMP_DUMP_PATH"
+CONTAINER_TEMP_PATH=""
+LOCAL_TEMP_PATH=""
+
+cleanup_temp_files() {
+  if [[ -n "$LOCAL_TEMP_PATH" && -f "$LOCAL_TEMP_PATH" ]]; then
+    rm -f "$LOCAL_TEMP_PATH"
+  fi
+  if [[ -n "$CONTAINER_TEMP_PATH" ]]; then
+    docker_compose exec -T web rm -f "$CONTAINER_TEMP_PATH" "$CONTAINER_TEMP_PATH-wal" "$CONTAINER_TEMP_PATH-shm" \
+      >/dev/null 2>&1 || true
   fi
 }
 
-trap cleanup_temp_file EXIT
+trap cleanup_temp_files EXIT
 
 ensure_command() {
   command -v "$1" >/dev/null 2>&1 || die "Required command not found: $1"
 }
 
-wait_for_db_health() {
-  local container_id=""
-  local health_status=""
-  local attempt
+checksum_command() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    echo "sha256sum"
+  elif command -v shasum >/dev/null 2>&1; then
+    echo "shasum -a 256"
+  else
+    die "Required command not found: sha256sum or shasum"
+  fi
+}
 
-  for attempt in {1..30}; do
-    container_id="$(docker_compose ps -q db | tr -d '[:space:]')"
-    if [[ -n "$container_id" ]]; then
-      health_status="$(
-        docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}unknown{{end}}' "$container_id" \
-          | tr -d '[:space:]'
-      )"
-
-      if [[ "$health_status" == "healthy" || "$health_status" == "running" ]]; then
-        return 0
-      fi
-    fi
-
-    sleep 2
-  done
-
-  die "Database service did not become healthy (last status: ${health_status:-missing})"
+sha256_of() {
+  # shellcheck disable=SC2046 # the command is one or two words by design
+  $(checksum_command) "$1" | awk '{ print $1 }'
 }
 
 write_checksum() {
-  local dump_path="$1"
+  local backup_path="$1"
   local checksum_path="$2"
   local temp_checksum_path="${checksum_path}.tmp"
 
-  if command -v sha256sum >/dev/null 2>&1; then
-    sha256sum "$dump_path" >"$temp_checksum_path"
-  elif command -v shasum >/dev/null 2>&1; then
-    shasum -a 256 "$dump_path" >"$temp_checksum_path"
-  else
-    log "No checksum utility found; skipping .sha256 generation"
-    return 0
-  fi
-
+  # shellcheck disable=SC2046
+  $(checksum_command) "$backup_path" >"$temp_checksum_path"
   mv "$temp_checksum_path" "$checksum_path"
 }
 
 prune_old_backups() {
+  # Only SQLite backups. Pre-SQLite Postgres dumps (*.dump) are kept until
+  # someone removes them by hand.
   find "$BACKUP_DIR" -maxdepth 1 -type f \
-    \( -name "${DATABASE_NAME}-*.dump" -o -name "${DATABASE_NAME}-*.dump.sha256" \) \
+    \( -name "harborstats-*.db" -o -name "harborstats-*.db.sha256" \) \
     -mtime "+$RETENTION_DAYS" -delete
 }
 
 main() {
   ensure_command docker
+  checksum_command >/dev/null
   mkdir -p "$BACKUP_DIR"
 
   local timestamp
   timestamp="$(date -u '+%Y%m%dT%H%M%SZ')"
 
-  local final_dump_path="$BACKUP_DIR/${DATABASE_NAME}-${timestamp}.dump"
-  TEMP_DUMP_PATH="${final_dump_path}.tmp"
-  local checksum_path="${final_dump_path}.sha256"
+  local final_backup_path="$BACKUP_DIR/harborstats-${timestamp}.db"
+  local checksum_path="${final_backup_path}.sha256"
 
-  log "Starting database service"
-  docker_compose up -d db >/dev/null
+  if [[ -z "$(docker_compose ps -q --status running web | tr -d '[:space:]')" ]]; then
+    die "The web service is not running; start it before taking a backup"
+  fi
 
-  log "Waiting for database health"
-  wait_for_db_health
+  # The SQLite online backup API copies a consistent snapshot while the app
+  # keeps writing; a plain copy of a live WAL database could be torn.
+  CONTAINER_TEMP_PATH="/data/.harborstats-backup-${timestamp}.db"
+  log "Taking an online backup of $CONTAINER_DATABASE_PATH"
+  docker_compose exec -T web \
+    sqlite3 -bail -cmd ".timeout 5000" "$CONTAINER_DATABASE_PATH" ".backup $CONTAINER_TEMP_PATH" >/dev/null
 
-  log "Writing backup to $final_dump_path"
-  docker_compose exec -T db \
-    pg_dump -U "$POSTGRES_USER" -d "$DATABASE_NAME" --format=custom --compress=9 --no-owner --no-privileges \
-    >"$TEMP_DUMP_PATH"
+  log "Checking backup integrity"
+  local integrity=""
+  integrity="$(docker_compose exec -T web sqlite3 -bail "$CONTAINER_TEMP_PATH" "PRAGMA integrity_check;" 2>&1 | tr -d '\r')" ||
+    die "Integrity check failed on the backup: $integrity"
+  [[ "$integrity" == "ok" ]] || die "Integrity check failed on the backup: $integrity"
 
-  mv "$TEMP_DUMP_PATH" "$final_dump_path"
-  TEMP_DUMP_PATH=""
+  # The checked file's hash, so the host copy is proven to be those bytes.
+  local container_checksum=""
+  container_checksum="$(docker_compose exec -T web sha256sum "$CONTAINER_TEMP_PATH" | awk '{ print $1 }')"
 
-  write_checksum "$final_dump_path" "$checksum_path"
+  LOCAL_TEMP_PATH="${final_backup_path}.tmp"
+  log "Writing backup to $final_backup_path"
+  docker_compose cp "web:$CONTAINER_TEMP_PATH" "$LOCAL_TEMP_PATH" >/dev/null
 
-  log "Pruning backups older than $RETENTION_DAYS days"
+  local local_checksum=""
+  local_checksum="$(sha256_of "$LOCAL_TEMP_PATH")"
+  if [[ -z "$container_checksum" || "$local_checksum" != "$container_checksum" ]]; then
+    die "Copied backup does not match the checked file (container ${container_checksum:-none}, host $local_checksum)"
+  fi
+
+  mv "$LOCAL_TEMP_PATH" "$final_backup_path"
+  LOCAL_TEMP_PATH=""
+
+  write_checksum "$final_backup_path" "$checksum_path"
+
+  log "Pruning SQLite backups older than $RETENTION_DAYS days"
   prune_old_backups
 
-  log "Backup complete: $final_dump_path"
+  log "Backup complete: $final_backup_path"
 }
 
 main "$@"
