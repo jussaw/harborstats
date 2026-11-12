@@ -3,6 +3,7 @@ set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 COMPOSE_FILE="$REPO_DIR/devops/docker-compose.yml"
+DOCKERFILE="$REPO_DIR/web/Dockerfile"
 
 fail() {
   echo "FAIL: $*" >&2
@@ -70,7 +71,6 @@ set -euo pipefail
 printf '%s\n' "$*" >> "$DOCKER_LOG"
 printf 'ADMIN_PASSWORD=%s\n' "${ADMIN_PASSWORD:-}" >> "$DOCKER_ENV_LOG"
 printf 'ADMIN_SESSION_SECRET=%s\n' "${ADMIN_SESSION_SECRET:-}" >> "$DOCKER_ENV_LOG"
-printf 'PGADMIN_DEFAULT_EMAIL=%s\n' "${PGADMIN_DEFAULT_EMAIL:-}" >> "$DOCKER_ENV_LOG"
 
 args="$*"
 
@@ -291,13 +291,11 @@ run_deploy_env_file_test() {
 
   export ENV_FILE="$TEST_DIR/deploy.env"
   export EXPECTED_COMPOSE_PREFIX="compose --env-file $ENV_FILE -f $COMPOSE_FILE"
-  unset ADMIN_SESSION_SECRET PGADMIN_DEFAULT_EMAIL
+  unset ADMIN_SESSION_SECRET
 
   cat >"$ENV_FILE" <<EOF
 ADMIN_PASSWORD=env-admin-password
 ADMIN_SESSION_SECRET=env-admin-session-secret
-PGADMIN_DEFAULT_EMAIL=admin@example.test
-PGADMIN_DEFAULT_PASSWORD=env-pgadmin-password
 EOF
 
   local output
@@ -307,43 +305,73 @@ EOF
   fi
 
   assert_contains "-C $REPO_DIR pull" "$GIT_LOG"
-  assert_contains "$EXPECTED_COMPOSE_PREFIX up -d db" "$DOCKER_LOG"
-  assert_contains "$EXPECTED_COMPOSE_PREFIX run --build --rm migrate" "$DOCKER_LOG"
   assert_contains "$EXPECTED_COMPOSE_PREFIX up --build -d web" "$DOCKER_LOG"
+  assert_equals "1" "$(wc -l <"$DOCKER_LOG" | tr -d '[:space:]')" "deploy.sh should make exactly one docker call"
+  assert_not_contains " db" "$DOCKER_LOG"
+  assert_not_contains "migrate" "$DOCKER_LOG"
   assert_not_contains "baseline" "$DOCKER_LOG"
-  assert_not_contains " pgadmin" "$DOCKER_LOG"
+  assert_not_contains "pgadmin" "$DOCKER_LOG"
+  assert_not_contains "--remove-orphans" "$DOCKER_LOG"
   assert_contains "ADMIN_PASSWORD=shell-admin-password" "$DOCKER_ENV_LOG"
   assert_contains "ADMIN_SESSION_SECRET=env-admin-session-secret" "$DOCKER_ENV_LOG"
-  assert_contains "PGADMIN_DEFAULT_EMAIL=admin@example.test" "$DOCKER_ENV_LOG"
 }
 
-run_pgadmin_profile_test() {
-  assert_contains 'profiles: ["pgadmin"]' "$COMPOSE_FILE"
-  assert_contains '"127.0.0.1:5050:80"' "$COMPOSE_FILE"
-  assert_contains 'PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-}' "$COMPOSE_FILE"
-  assert_contains 'PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-}' "$COMPOSE_FILE"
-  assert_not_contains 'admin@example.com' "$COMPOSE_FILE"
-  assert_not_contains 'PGADMIN_DEFAULT_PASSWORD: admin' "$COMPOSE_FILE"
+run_compose_single_web_service_test() {
+  # One container on SQLite: no Postgres, migrator or pgAdmin services, and the
+  # database lives in a named volume whose name does not depend on the project.
+  assert_contains 'container_name: harborstats-web' "$COMPOSE_FILE"
+  assert_contains '"23413:3000"' "$COMPOSE_FILE"
+  assert_contains 'DATABASE_PATH: /data/harborstats.db' "$COMPOSE_FILE"
+  assert_contains 'DATABASE_ALLOW_CREATE: ${DATABASE_ALLOW_CREATE:-}' "$COMPOSE_FILE"
+  assert_contains 'harborstats_data:/data' "$COMPOSE_FILE"
+  assert_contains 'name: harborstats_data' "$COMPOSE_FILE"
+  assert_not_contains 'postgres' "$COMPOSE_FILE"
+  assert_not_contains 'DATABASE_URL' "$COMPOSE_FILE"
+  assert_not_contains 'pgdata' "$COMPOSE_FILE"
+  assert_not_contains 'pgadmin' "$COMPOSE_FILE"
+  assert_not_contains 'migrator' "$COMPOSE_FILE"
+  assert_not_contains 'AS migrator' "$DOCKERFILE"
+  assert_contains 'ENV DATABASE_PATH=/data/harborstats.db' "$DOCKERFILE"
+  assert_contains 'db/migrations ./db/migrations' "$DOCKERFILE"
+  # The preinstall hook runs this script, so the deps stage must copy it first.
+  assert_contains 'COPY scripts/check-node-version.ts ./scripts/' "$DOCKERFILE"
 
-  if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
-    local default_services
-    default_services="$(
-      ADMIN_PASSWORD=test-admin \
-        ADMIN_SESSION_SECRET=test-session-secret \
-        docker compose -f "$COMPOSE_FILE" config --services
-    )"
-    [[ "$default_services" != *"pgadmin"* ]] || fail "pgAdmin should not be included in default compose services"
-
-    local pgadmin_services
-    pgadmin_services="$(
-      ADMIN_PASSWORD=test-admin \
-        ADMIN_SESSION_SECRET=test-session-secret \
-        PGADMIN_DEFAULT_EMAIL=admin@example.test \
-        PGADMIN_DEFAULT_PASSWORD=test-pgadmin-password \
-        docker compose --profile pgadmin -f "$COMPOSE_FILE" config --services
-    )"
-    [[ "$pgadmin_services" == *"pgadmin"* ]] || fail "pgAdmin should be included with the pgadmin compose profile"
+  if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>&1; then
+    echo "SKIP: docker compose unavailable; skipping rendered compose service checks" >&2
+    return 0
   fi
+
+  setup_test_dir
+  trap cleanup_test_dir RETURN
+  local empty_env="$TEST_DIR/empty.env"
+  : >"$empty_env"
+
+  local services
+  services="$(
+    ADMIN_PASSWORD=test-admin \
+      ADMIN_SESSION_SECRET=test-session-secret \
+      docker compose --env-file "$empty_env" -f "$COMPOSE_FILE" config --services
+  )"
+  assert_equals "web" "$services" "Compose should define exactly one service"
+
+  local volumes
+  volumes="$(
+    ADMIN_PASSWORD=test-admin \
+      ADMIN_SESSION_SECRET=test-session-secret \
+      docker compose --env-file "$empty_env" -f "$COMPOSE_FILE" config --volumes
+  )"
+  assert_equals "harborstats_data" "$volumes" "Compose should define exactly one volume"
+
+  local rendered
+  rendered="$(
+    env -u DATABASE_ALLOW_CREATE \
+      ADMIN_PASSWORD=test-admin \
+      ADMIN_SESSION_SECRET=test-session-secret \
+      docker compose --env-file "$empty_env" -f "$COMPOSE_FILE" config
+  )"
+  assert_equals 'DATABASE_ALLOW_CREATE: ""' \
+    "$(printf '%s\n' "$rendered" | sed -n -E 's/^[[:space:]]*(DATABASE_ALLOW_CREATE:.*)$/\1/p')" \
+    "DATABASE_ALLOW_CREATE should render empty unless set"
 }
 
 render_admin_session_version() {
@@ -416,7 +444,7 @@ main() {
   run_restore_test
   run_env_file_test
   run_deploy_env_file_test
-  run_pgadmin_profile_test
+  run_compose_single_web_service_test
   run_admin_session_version_test
   run_migration_scripts_exit_nonzero_test
   echo "backup-restore tests passed"

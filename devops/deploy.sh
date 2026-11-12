@@ -40,9 +40,7 @@ load_env_defaults() {
 load_env_defaults "$ENV_FILE" \
   COMPOSE_FILE \
   ADMIN_PASSWORD \
-  ADMIN_SESSION_SECRET \
-  PGADMIN_DEFAULT_EMAIL \
-  PGADMIN_DEFAULT_PASSWORD
+  ADMIN_SESSION_SECRET
 
 COMPOSE_FILE="${COMPOSE_FILE:-$SCRIPT_DIR/docker-compose.yml}"
 
@@ -57,12 +55,7 @@ docker_compose() {
 echo "==> Pulling latest changes..."
 git -C "$REPO_DIR" pull
 
-echo "==> Starting database..."
-docker_compose up -d db
-
-echo "==> Running migrations..."
-docker_compose run --build --rm migrate
-
+# Migrations run inside the web container at startup, before it serves requests.
 echo "==> Building and starting web..."
 docker_compose up --build -d web
 
