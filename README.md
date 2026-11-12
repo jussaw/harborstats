@@ -140,12 +140,13 @@ pnpm test:e2e:install
 
 Production-style deployment assets live in `devops/`.
 
-- `devops/docker-compose.yml` defines the deploy stack
-- `devops/deploy.sh` pulls the latest code, starts the database, runs pending migrations, then brings up the app
-- `web/Dockerfile` provides the `runner` and `migrator` image targets used by the deploy stack
-- The `baseline` job is never run by `devops/deploy.sh`; it is a manual, one-time step for an existing database that already contains the initial schema — see [devops/README.md](devops/README.md)
+- `devops/docker-compose.yml` defines the deploy stack: one `web` container, with the SQLite database file in the `harborstats_data` volume at `/data/harborstats.db`
+- `devops/deploy.sh` pulls the latest code, then rebuilds and restarts the app; pending migrations run inside the container at startup
+- `web/Dockerfile` provides the `runner` image target used by the deploy stack
+- In production the app refuses to start on a missing or empty database. A fresh install sets `DATABASE_ALLOW_CREATE=1` for its first start only — see [devops/README.md](devops/README.md)
+- `devops/backup-db.sh` and `devops/restore-db.sh` back up and restore the SQLite file
 
-For the full deployment guide, including service roles, environment assumptions, and manual compose commands, see [devops/README.md](devops/README.md).
+For the full deployment guide, including the environment, the fresh-install step, backups, restores, and manual compose commands, see [devops/README.md](devops/README.md).
 
 ## Additional docs
 

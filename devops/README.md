@@ -1,31 +1,32 @@
 # HarborStats DevOps Guide
 
-This directory contains the deployment assets for the HarborStats repo. It is aimed at a single-host Docker Compose deployment where the application image is built from the local `web/` app and the database runs in a named Docker volume.
+This directory contains the deployment assets for the HarborStats repo. It is aimed at a single-host Docker Compose deployment: one container, built from the local `web/` app, with the SQLite database file in a named Docker volume.
 
 ## Files in this directory
 
 - `README.md`: deployment, backup, and restore guide for the tracked `devops/` assets
 - `docker-compose.yml`: deployment stack definition
-- `deploy.sh`: convenience script that pulls the latest code and performs the standard deploy sequence
+- `deploy.sh`: convenience script that pulls the latest code and rebuilds and restarts the app
 - `.env.example`: example production environment file for Docker Compose and the backup/restore scripts
-- `backup-db.sh`: production backup script that writes timestamped Postgres dumps to the host filesystem
-- `restore-db.sh`: production restore script that replaces the deployed database from a selected dump
-- `tests/backup-restore.test.sh`: shell test coverage for the backup and restore scripts
+- `backup-db.sh`: production backup script that writes timestamped SQLite backups to the host filesystem
+- `restore-db.sh`: production restore script that replaces the deployed database file with a selected backup
+- `tests/backup-restore.test.sh`: shell test coverage for the deploy, backup, and restore scripts and the compose file
 
 ## Stack overview
 
-`devops/docker-compose.yml` defines these services:
+`devops/docker-compose.yml` defines one service:
 
-- `db`: PostgreSQL 18 with persistent storage in the `pgdata` named volume
-- `web`: the HarborStats app, built from `../web` using the `runner` target in `web/Dockerfile`
-- `migrate`: one-off migration runner, built from `../web` using the `migrator` target
-- `baseline`: one-off baseline marker for existing databases that already have the initial schema
-- `pgadmin`: optional pgAdmin instance for inspecting the database
+- `web` (container `harborstats-web`): the HarborStats app, built from `../web` using the `runner` target in `web/Dockerfile`. The database is the SQLite file `/data/harborstats.db` inside the container.
+
+and one named volume:
+
+- `harborstats_data`, mounted at `/data`. The volume name is fixed (it does not depend on the compose project name). It holds `harborstats.db` and, while the app runs, its `-wal` and `-shm` files.
+
+Migrations run inside the `web` container at startup, before the server takes requests (`web/instrumentation.ts` → `web/lib/startup.ts`). A failed migration stops the container. There is no separate migration job.
 
 Published ports from the current compose file:
 
 - `23413`: HarborStats web app
-- `127.0.0.1:5050`: pgAdmin, only when the `pgadmin` compose profile is enabled
 
 ## Required environment variables
 
@@ -35,8 +36,7 @@ The deploy stack expects these values to be available to Docker Compose when you
 cp devops/.env.example devops/.env
 ```
 
-Both `backup-db.sh` and `restore-db.sh` automatically load `devops/.env` by default. Explicit shell environment variables still override values from that file.
-`deploy.sh` uses the same env-file behavior.
+`deploy.sh`, `backup-db.sh`, and `restore-db.sh` automatically load `devops/.env` by default. Explicit shell environment variables still override values from that file.
 
 Required values:
 
@@ -44,45 +44,48 @@ Required values:
 | --- | --- | --- | --- |
 | `ADMIN_PASSWORD` | Yes | `web` | Shared password for the admin UI |
 | `ADMIN_SESSION_SECRET` | Yes | `web` | Secret used to sign admin session cookies |
-| `POSTGRES_PASSWORD` | No (defaults to `postgres`) | `db`, `web`, `migrate`, `baseline` | Password for the internal Postgres user; set a real value in production |
 
 Optional app values:
 
 | Variable | Default | Used by | Notes |
 | --- | --- | --- | --- |
 | `ADMIN_SESSION_VERSION` | `1` | `web` | Bump it and redeploy `web` to invalidate all existing admin sessions without rotating `ADMIN_SESSION_SECRET`. Unset or empty renders as `1` |
-
-Required values when using the `pgadmin` profile:
-
-| Variable | Required | Used by | Notes |
-| --- | --- | --- | --- |
-| `PGADMIN_DEFAULT_EMAIL` | Yes | `pgadmin` | Initial pgAdmin login email |
-| `PGADMIN_DEFAULT_PASSWORD` | Yes | `pgadmin` | Initial pgAdmin login password |
+| `DATABASE_ALLOW_CREATE` | unset | `web` | **Fresh installs only.** Set to `1` for the very first start so the app may create an empty database. Without it the app refuses to start when `/data/harborstats.db` is missing or has no tables (see below). Remove it again after the first start |
 
 Optional backup and restore script values:
 
 | Variable | Default | Used by | Notes |
 | --- | --- | --- | --- |
-| `BACKUP_DIR` | `/var/backups/harborstats` | `backup-db.sh` | Host directory where dumps and checksum files are written |
-| `RETENTION_DAYS` | `30` | `backup-db.sh` | Number of days to keep old `.dump` and `.sha256` files |
-| `DATABASE_NAME` | `harborstats` | `backup-db.sh`, `restore-db.sh` | Database name used for `pg_dump`, `dropdb`, `createdb`, and `pg_restore` |
-| `POSTGRES_USER` | `postgres` | `backup-db.sh`, `restore-db.sh` | Database user passed to Postgres CLI tools inside the container |
+| `BACKUP_DIR` | `/var/backups/harborstats` | `backup-db.sh` | Host directory where backups and checksum files are written |
+| `RETENTION_DAYS` | `30` | `backup-db.sh` | Number of days to keep old `harborstats-*.db` and `.db.sha256` files |
 
 Notes:
 
-- `DATABASE_URL` for the deployed app is built in the compose file as `postgres://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/harborstats`
-- `migrate` and `baseline` also get their `DATABASE_URL` from the compose file
-- `POSTGRES_PASSWORD` is only applied when the `pgdata` volume is first initialized. To change it for an existing deployment, run `docker exec -it harborstats-db psql -U postgres -d harborstats -c "ALTER USER postgres WITH PASSWORD 'new-password';"`, update `devops/.env`, then restart the stack
+- `DATABASE_PATH=/data/harborstats.db` is set in both the image and the compose file; there is nothing to configure
 - `restore-db.sh` restarts `web`, so `ADMIN_PASSWORD` and `ADMIN_SESSION_SECRET` need to be present in `devops/.env` or exported in the shell before you restore
 - Keep a bumped `ADMIN_SESSION_VERSION` in `devops/.env` rather than only in your shell, otherwise the next deploy or restore restarts `web` with the default `1` and re-validates the sessions you meant to invalidate
 - If you want the scripts to read a different env file, set `ENV_FILE=/path/to/file.env`
 
-Example:
+### Empty-database guard
+
+In production the app refuses to start if the database file is missing or contains no tables, and the container exits with code 1 and logs:
+
+```text
+Error: Refusing to start: database at /data/harborstats.db is missing or empty. Set DATABASE_ALLOW_CREATE=1 for a fresh install.
+```
+
+This stops a wrong volume or path from quietly serving an empty site. With `restart: always` the container keeps retrying and logging the same line until the volume is fixed. On a normal start the log shows `[startup] Opened the existing database at /data/harborstats.db`; on a first start with `DATABASE_ALLOW_CREATE=1` it shows `[startup] Created a new database at /data/harborstats.db`.
+
+### Fresh install
 
 ```bash
-cp devops/.env.example devops/.env
-./devops/deploy.sh
+cp devops/.env.example devops/.env    # then edit it
+DATABASE_ALLOW_CREATE=1 docker compose --env-file devops/.env -f devops/docker-compose.yml up --build -d web
+docker compose --env-file devops/.env -f devops/docker-compose.yml logs web | grep startup   # "Created a new database"
+docker compose --env-file devops/.env -f devops/docker-compose.yml up -d web   # recreate without the flag
 ```
+
+Never set `DATABASE_ALLOW_CREATE` in `devops/.env` on a deployment that already has data, and never set it when restoring or moving data.
 
 ## Standard Deployment Flow
 
@@ -95,37 +98,15 @@ The intended deployment entrypoint is:
 The deploy sequence is:
 
 1. Pull the latest changes into the repo with `git -C "$REPO_DIR" pull`
-2. Start the database service
-3. Run the `migrate` job
-4. Build and start the `web` service
+2. Build and start the `web` service (`docker compose up --build -d web`); pending migrations run when the container starts
 
-The deploy script does not run the `baseline` job by default. Treat baseline as a manual, one-time operation for an existing database that already contains the initial schema but does not yet have the first Drizzle migration marker.
-
-### Manual Baseline
-
-Only run baseline after verifying the database already has the initial HarborStats tables. For example, inspect the database directly or use pgAdmin, then run:
-
-```bash
-docker compose --env-file devops/.env -f devops/docker-compose.yml run --build --rm baseline
-```
-
-After baseline has marked the first migration as complete, use the normal deploy flow and migration job for subsequent schema updates.
-
-### Optional pgAdmin
-
-pgAdmin is behind an opt-in compose profile and binds to localhost only. Add `PGADMIN_DEFAULT_EMAIL` and `PGADMIN_DEFAULT_PASSWORD` to `devops/.env` or export them in the shell, then start it with:
-
-```bash
-docker compose --env-file devops/.env --profile pgadmin -f devops/docker-compose.yml up -d pgadmin
-```
+`deploy.sh` does not pass `--remove-orphans`, so containers from an older version of the stack are never removed by a deploy.
 
 ## Manual Docker Compose commands
 
 If you need to operate the stack manually instead of using the script:
 
 ```bash
-docker compose --env-file devops/.env -f devops/docker-compose.yml up -d db
-docker compose --env-file devops/.env -f devops/docker-compose.yml run --build --rm migrate
 docker compose --env-file devops/.env -f devops/docker-compose.yml up --build -d web
 ```
 
@@ -134,21 +115,37 @@ Useful follow-up commands:
 ```bash
 docker compose -f devops/docker-compose.yml ps
 docker compose -f devops/docker-compose.yml logs -f web
-docker compose -f devops/docker-compose.yml logs -f db
 ```
+
+## Inspecting the database
+
+There is no database admin UI. To look at the data, inspect a **backup copy** with the `sqlite3` CLI rather than the live file:
+
+```bash
+./devops/backup-db.sh
+sqlite3 -readonly /var/backups/harborstats/harborstats-20260422T040000Z.db
+```
+
+The `sqlite3` CLI is also in the app image for quick read-only checks, for example row counts:
+
+```bash
+docker exec harborstats-web sqlite3 -readonly /data/harborstats.db "select count(*) from games;"
+```
+
+`sqlite3` connections run with foreign keys off. If you ever must write by hand, run `PRAGMA foreign_keys = ON;` first, and take a backup before you do.
 
 ## Database backups
 
-This backup flow is for the production deployment described in this directory. It is not part of the local development setup in `web/docker-compose.yml`.
+This backup flow is for the production deployment described in this directory. Local development uses a SQLite file under `web/data/` and has no backup script.
 
 ### Backup behavior
 
-- Backups are logical PostgreSQL dumps created with `pg_dump --format=custom`
-- Dumps are written on the Docker host, not inside the container
+- Backups are full copies of the SQLite database taken with `VACUUM INTO` inside the running `web` container. It reads a consistent snapshot in one transaction while the app keeps writing; a plain file copy of a live WAL database could be torn
+- Each backup is checked with `PRAGMA integrity_check` before it leaves the container, and the copy on the host must have the same sha256 as the checked file; otherwise the script fails and leaves no `.db` behind
+- Backups are written on the Docker host as `harborstats-<UTC timestamp>.db`, each with a sibling `.db.sha256`
 - Default backup directory: `/var/backups/harborstats`
-- Default retention: `30` days
-- The backup script also writes a sibling `.sha256` file when a checksum utility is available on the host
-- Old `.dump` and `.dump.sha256` files older than `RETENTION_DAYS` are pruned automatically
+- Default retention: `30` days. Only `harborstats-*.db` and `harborstats-*.db.sha256` files older than `RETENTION_DAYS` are pruned. Older Postgres dumps (`*.dump`, `*.dump.sha256`) in the same folder are never pruned; remove them by hand when they are no longer needed
+- The `web` service must be running; the script fails if it is not
 
 Because backups stay on the same host, this protects against accidental data loss inside the running stack but does **not** protect against total host loss or disk failure.
 
@@ -171,11 +168,12 @@ BACKUP_DIR=/srv/harborstats/backups RETENTION_DAYS=14 ./devops/backup-db.sh
 
 The script will:
 
-1. Start `db` if needed
-2. Wait for the database to become healthy
-3. Write a timestamped dump such as `/var/backups/harborstats/harborstats-20260422T040000Z.dump`
-4. Write a checksum file beside it when available
-5. Delete expired backup files older than the retention window
+1. Check that `web` is running
+2. Write a snapshot with `VACUUM INTO` to a temporary file in `/data` inside the container
+3. Run `PRAGMA integrity_check` on it and stop unless the result is `ok`
+4. Copy it to the host as, for example, `/var/backups/harborstats/harborstats-20260422T040000Z.db`, and check its sha256 against the container copy
+5. Write the `.db.sha256` file beside it
+6. Remove the temporary file from the container and delete SQLite backups older than the retention window
 
 To see the backups currently on disk:
 
@@ -202,39 +200,42 @@ Restores are in-place production recovery operations. Expect application downtim
 
 Before you restore:
 
-1. Make sure you have picked the correct `.dump` file from the host backup directory
+1. Make sure you have picked the correct `harborstats-*.db` file from the host backup directory
 2. Confirm the repo checkout contains the app version you want to run after recovery
-3. Consider taking a fresh backup first if you might need to roll back the restore attempt itself
+3. Take a fresh backup first if you might need to roll back the restore attempt itself
 
 To restore:
 
 ```bash
-./devops/restore-db.sh /var/backups/harborstats/harborstats-20260422T040000Z.dump
+./devops/restore-db.sh /var/backups/harborstats/harborstats-20260422T040000Z.db
 ```
 
 The restore script will:
 
-1. Ask for confirmation by requiring you to type `harborstats`
-2. Stop the `web` service so the app cannot write during recovery
-3. Start `db` and wait for it to become healthy
-4. Terminate active connections to the `harborstats` database
-5. Drop and recreate the `harborstats` database
-6. Restore the selected dump with `pg_restore`
-7. Run the existing `migrate` job so the restored schema matches the deployed app code
-8. Start `web` again
+1. Refuse a file that is not a SQLite database (for example an old `.dump`)
+2. Verify the file against its sibling `.sha256`, when one exists, and stop on a mismatch
+3. Ask for confirmation by requiring you to type `harborstats`
+4. Stop the `web` service so the app cannot write during recovery
+5. In a one-off root container on the same volume, copy the backup to `/data/harborstats.db` owned by uid `1001` (the app user), and delete the old `harborstats.db-wal` and `harborstats.db-shm`
+6. Start `web` again; pending migrations, if any, run at startup
+
+The restore never sets `DATABASE_ALLOW_CREATE`.
 
 If you want to inspect the available backups before restoring:
 
 ```bash
-ls -lh /var/backups/harborstats/*.dump
+ls -lh /var/backups/harborstats/*.db
 ```
 
 ## Image build details
 
-The deploy stack depends on `web/Dockerfile`:
+The deploy stack depends on the `runner` target of `web/Dockerfile`. The image:
 
-- `runner`: production app image used by the `web` service
-- `migrator`: lightweight image containing migrations and migration scripts for the `migrate` and `baseline` jobs
+- contains the Next.js standalone server and the native `better-sqlite3` binding (a prebuilt `linuxmusl` binary, so no build tools are needed)
+- contains `db/migrations`, applied at startup
+- creates `/data` owned by the app user (uid `1001`), so a new named volume starts out writable
+- sets `DATABASE_PATH=/data/harborstats.db`
+- includes the `sqlite3` CLI, used by `backup-db.sh` and for inspection
 
 Because the compose file builds from `../web`, deploys should be run from a checkout that already contains the desired application code.
 
@@ -242,9 +243,7 @@ Because the compose file builds from `../web`, deploys should be run from a chec
 
 - This is a single-host Docker Compose deployment, not a full multi-environment platform
 - The compose file currently exposes the app directly on port `23413`; any reverse proxy, TLS termination, or domain routing is external to this repo
-- `pgadmin` is disabled by default, requires explicit credentials, and only publishes on localhost
-- Database data persists in the Docker `pgdata` named volume
-- Local development uses `web/docker-compose.yml`, not the deployment compose file in this directory
+- Database data persists in the `harborstats_data` named volume. The compose file does not declare or touch the old `pgdata` volume from the Postgres-based stack
 
 ### Restrict origin access to the CDN/proxy (security)
 
