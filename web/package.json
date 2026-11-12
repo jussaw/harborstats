@@ -24,7 +24,6 @@
     "test:ci": "pnpm build && pnpm test:fast && pnpm test:integration && pnpm test:e2e",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "db:up": "docker compose up -d",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx --env-file=.env scripts/migrate.ts",
     "db:studio": "drizzle-kit studio"

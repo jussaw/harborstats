@@ -14,7 +14,7 @@ warnings from Next.js.
   primitives in `components/ui/`
 - `lib/`: DB + domain logic (`games`, `players`, `admin-auth`, `game-auth`, date helpers)
 - `db/`: Drizzle schema and SQL migrations
-- `scripts/`: one-off scripts (`migrate.ts`, `baseline.ts`, `generate-pwa-icons.ts`)
+- `scripts/`: one-off scripts (`migrate.ts`, `generate-pwa-icons.ts`)
 - `proxy.ts`: admin route protection (`/admin/:path*`)
 
 ## Core App Patterns
@@ -62,7 +62,7 @@ Rules to preserve:
 - A player can appear at most once per game. Enforced by the unique index
   `game_players_game_id_player_id_unique` on (`game_id`, `player_id`) (`db/schema.ts`).
 - A game has at most one winner. Enforced by the partial unique index
-  `game_players_one_winner_per_game` on `game_id` where `is_winner = true` (`db/schema.ts`).
+  `game_players_one_winner_per_game` on `game_id` where `is_winner = 1` (`db/schema.ts`).
 
 ## Audit Requirements
 
@@ -96,15 +96,24 @@ pnpm format:check
 pnpm build
 ```
 
-Database workflow (local dev DB runs via `web/docker-compose.yml`):
+Database workflow (SQLite file at `DATABASE_PATH`, default `./data/harborstats.db`, gitignored):
 
 ```bash
-pnpm db:up
 pnpm db:generate
 pnpm db:migrate
-pnpm db:baseline
 pnpm db:studio
 ```
+
+Database rules:
+
+- Open connections only through `openDatabase()` (`lib/sqlite.ts`); it sets `foreign_keys = ON`,
+  `journal_mode = WAL` and `busy_timeout = 5000`. A connection without `foreign_keys` would let a
+  game delete leave orphan scores.
+- Timestamps use `timestampText()` (`db/columns.ts`): UTC text, fixed width
+  `YYYY-MM-DDTHH:MM:SS.ffffffZ`. Inclusive upper bounds on timestamps compare against
+  `toDbTimestampCeil()`, because migrated rows carry microseconds.
+- Order player names with `playerNameOrder` (`lib/players.ts`, `COLLATE NOCASE`), never bare
+  `players.name`.
 
 Schema change protocol:
 
@@ -184,8 +193,8 @@ folders.
 Test commands — note the scopes:
 
 - `pnpm test` runs **unit + components only** (alias for `pnpm test:fast`).
-- `pnpm test:integration` and `pnpm test:e2e` auto-run the test-DB prepare step and need the
-  local DB running (`pnpm db:up`).
+- `pnpm test:integration` and `pnpm test:e2e` auto-run the test-DB prepare step, which recreates a
+  temporary SQLite file (never `DATABASE_PATH`; override with `TEST_DATABASE_PATH`).
 - `pnpm test:e2e:install` installs Chromium for Playwright (first-time setup).
 - `pnpm test:all` runs fast + integration + e2e.
 

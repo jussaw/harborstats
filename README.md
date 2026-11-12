@@ -32,7 +32,7 @@ This root README is the primary entrypoint for the repo. It covers how the proje
 - React 19
 - TypeScript
 - Tailwind CSS v4
-- PostgreSQL 18
+- SQLite (better-sqlite3)
 - Drizzle ORM + Drizzle Kit
 - Vitest + Testing Library
 - Playwright
@@ -45,7 +45,6 @@ All app commands run from `web/`.
 
 - [Node.js](https://nodejs.org) 22.13 – 26.x (see `web/package.json` `engines.node` for the exact contract)
 - [pnpm](https://pnpm.io)
-- [Docker](https://www.docker.com) for the local Postgres database
 
 ### Local setup
 
@@ -53,8 +52,7 @@ All app commands run from `web/`.
 cd web
 cp .env.example .env
 pnpm install
-pnpm db:up
-pnpm db:migrate
+pnpm db:migrate   # creates web/data/harborstats.db
 pnpm dev
 ```
 
@@ -69,7 +67,7 @@ Configure local environment variables in `web/.env`.
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `DATABASE_URL` | `postgres://postgres:postgres@localhost:5432/harborstats` | Postgres connection string used by the app and scripts |
+| `DATABASE_PATH` | `./data/harborstats.db` | Path to the SQLite database file used by the app and scripts (a file path, not a URL) |
 | `ADMIN_PASSWORD` | required | Shared password for the `/admin` area |
 | `ADMIN_SESSION_SECRET` | required | Secret used to sign admin session cookies |
 | `ADMIN_SESSION_VERSION` | `1` | Optional; bumping or changing it invalidates all existing admin sessions without rotating `ADMIN_SESSION_SECRET` |
@@ -94,10 +92,8 @@ Run these from `web/`.
 | `pnpm test:e2e` | Prepare the test DB and run end-to-end tests |
 | `pnpm test:all` | Run fast, integration, and e2e suites |
 | `pnpm test:ci` | Build the app, then run the full CI-oriented test pipeline |
-| `pnpm db:up` | Start the local Postgres container from `web/docker-compose.yml` |
 | `pnpm db:generate` | Generate a new Drizzle migration from `db/schema.ts` changes |
-| `pnpm db:migrate` | Apply pending migrations |
-| `pnpm db:baseline` | Mark the initial migration as already applied for an existing database |
+| `pnpm db:migrate` | Apply pending migrations to the SQLite file at `DATABASE_PATH` |
 | `pnpm db:studio` | Open Drizzle Studio |
 
 ## Development workflow
