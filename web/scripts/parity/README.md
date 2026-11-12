@@ -47,7 +47,7 @@ pnpm exec playwright test -c scripts/parity/playwright.parity.config.ts
 | `ADMIN_PASSWORD` | yes | Same value both apps run with; the write section logs in with it. |
 | `ADMIN_SESSION_SECRET` | yes | Same value both apps run with; the read section signs its own `hs_admin` cookie with it. |
 | `ADMIN_SESSION_VERSION` | no | Only if the apps set it. |
-| `PARITY_WRITES=1` | no | Also run the write section. It changes both databases: throwaway copies only. |
+| `PARITY_WRITES=1` | no | Also run the write section. It changes both databases: throwaway copies only. The crawl refuses to start it unless both URLs are on this machine (`localhost`, `127.x.x.x`, `[::1]`). |
 | `GAME_PASSWORD` | no | With writes: set on both apps through `/admin/settings`, then used to unlock and create a game from the home modal. Unset: the create step is skipped and edit/delete use the latest existing game. |
 
 Exit 0 only with zero unaccepted differences. Results land in `web/test-results/parity/`
@@ -96,15 +96,20 @@ Nothing else is normalized.
 5. Write section only: `<time>` elements and export timestamps at or after the run's start show
    `<during run>`. Rows the run creates are stamped by each app's own clock, seconds apart.
    The created game's `played_at` is fixed before the run starts, so it is compared.
-6. Screenshots are evidence, not the gate. Pairs that are not byte-identical are listed in the
+6. `/stats` only: in every table with a Player column, rows that match in every cell except Player
+   and rank (`#`) have their player cells put in name order before reading (accepted difference 1;
+   `rules.ts`, unit-tested). Rows that differ in any other value are never reordered.
+7. Screenshots are evidence, not the gate. Pairs that are not byte-identical are listed in the
    report for review by eye. Seen so far: rendering noise of at most 6/255 on a few pixels with
    identical DOM and SVG markup.
 
 ## Accepted differences (owner, 2026-11-12)
 
-1. **Total Wins ties.** Rows tied on every Total Wins column but the name are compared in name
-   order. The old app left them in Postgres' hash-aggregate order (not reproducible); the new app
-   orders them by name, case-insensitively, then id (`fix(stats): break total wins ties by name`).
+1. **Leaderboard ties on `/stats`.** Players tied on every shown value (Total Wins today; Win Rate
+   and Podium Rate as soon as the data has such a tie) are compared in name order (rule 6). The old
+   app left them in Postgres' hash-aggregate order (not reproducible); the new app orders them by
+   name, case-insensitively, then id (`fix(stats): break total wins ties by name`,
+   `fix(stats): break win rate and podium rate ties by name`).
 2. **Duplicate player name on production data.** The production Postgres names the unique
    constraint `players_name_key`; the old code only recognised `players_name_unique`, so the old
    app shows a server error page. The new app shows "A player with that name already exists."

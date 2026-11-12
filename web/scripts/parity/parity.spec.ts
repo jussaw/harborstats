@@ -21,6 +21,7 @@ import {
   type Page,
 } from '@playwright/test'
 import { COOKIE_NAME, signSession } from '../../lib/admin-auth'
+import { isLoopbackUrl, normalizeTiedPlayerRows } from './rules'
 
 function requireEnv(name: string): string {
   const value = process.env[name]
@@ -36,6 +37,15 @@ const ADMIN_PASSWORD = requireEnv('ADMIN_PASSWORD')
 requireEnv('ADMIN_SESSION_SECRET')
 const { GAME_PASSWORD } = process.env
 const WRITES = process.env.PARITY_WRITES === '1'
+
+if (WRITES) {
+  const remote = [OLD_URL, NEW_URL].filter((url) => !isLoopbackUrl(url))
+  if (remote.length > 0) {
+    throw new Error(
+      `PARITY_WRITES=1 changes both databases; refusing non-local URL(s): ${remote.join(', ')}`,
+    )
+  }
+}
 
 const OUT_DIR = join(__dirname, '../../test-results/parity')
 const SCREENS_DIR = join(OUT_DIR, 'screens')
@@ -142,6 +152,10 @@ async function readPage(page: Page, maskFrom: string | null): Promise<Omit<Snaps
   await page.waitForFunction(() =>
     Array.from(document.querySelectorAll('time')).every((t) => t.textContent !== '...'),
   )
+  // Passed as-is (not wrapped): page.evaluate sends only this function's source.
+  if (new URL(page.url()).pathname === '/stats') {
+    await page.evaluate(normalizeTiedPlayerRows as () => void)
+  }
   return page.evaluate((maskFromIso) => {
     const root = document.body
     if (maskFromIso) {
@@ -151,29 +165,6 @@ async function readPage(page: Page, maskFrom: string | null): Promise<Omit<Snaps
       })
     }
     const clean = (s: string) => s.replace(/\s+/g, ' ').trim()
-    // Accepted difference 1 (README): rows tied on every Total Wins column but
-    // the name are compared in name order. The old app left them in Postgres'
-    // hash order; the new app orders them by name.
-    const totalWins = root.querySelector<HTMLTableElement>('section#total-wins table')
-    const playerColumn = totalWins?.tHead
-      ? Array.from(totalWins.tHead.rows[0].cells).findIndex((c) => clean(c.textContent ?? '') === 'Player')
-      : -1
-    if (totalWins && playerColumn >= 0) {
-      const body = totalWins.tBodies[0]
-      const cellsOf = (row: HTMLTableRowElement) => Array.from(row.cells, (c) => clean(c.innerText))
-      const tieKey = (row: HTMLTableRowElement) =>
-        cellsOf(row).filter((_, i) => i !== playerColumn).join('|')
-      const nameOf = (row: HTMLTableRowElement) => cellsOf(row)[playerColumn].toLowerCase()
-      const groups: HTMLTableRowElement[][] = []
-      Array.from(body.rows).forEach((row) => {
-        const last = groups.at(-1)
-        if (last && tieKey(last[0]) === tieKey(row)) last.push(row)
-        else groups.push([row])
-      })
-      groups
-        .flatMap((group) => [...group].sort((x, y) => nameOf(x).localeCompare(nameOf(y), 'en')))
-        .forEach((row) => body.appendChild(row))
-    }
     const lines = root.innerText.split('\n').map(clean).filter(Boolean)
     const structure = Array.from(
       root.querySelectorAll<HTMLElement>(
