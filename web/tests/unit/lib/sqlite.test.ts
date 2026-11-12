@@ -46,7 +46,9 @@ describe('openDatabase', () => {
 
   it('yields the fixed-width format from the DB-side default expression', () => {
     opened = openDatabase(join(dir, 'test.db'));
-    const row = opened.prepare("select (strftime('%Y-%m-%dT%H:%M:%f', 'now') || '000Z') as t").get() as {
+    const row = opened
+      .prepare("select (strftime('%Y-%m-%dT%H:%M:%f', 'now') || '000Z') as t")
+      .get() as {
       t: string;
     };
     expect(row.t).toMatch(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{6}Z$/);

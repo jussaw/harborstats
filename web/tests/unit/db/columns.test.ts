@@ -24,27 +24,31 @@ describe('toDbTimestamp', () => {
 
   it('sorts at or before an old microsecond row in the same millisecond', () => {
     // Review Focus 1: boundary compares correctly as text
-    expect(toDbTimestamp(new Date('2026-11-12T04:34:59.485Z')) <= '2026-11-12T04:34:59.485225Z').toBe(
-      true,
-    );
+    expect(
+      toDbTimestamp(new Date('2026-11-12T04:34:59.485Z')) <= '2026-11-12T04:34:59.485225Z',
+    ).toBe(true);
   });
 });
 
 describe('toDbTimestampCeil', () => {
   it('points at the last microsecond of the millisecond', () => {
-    expect(toDbTimestampCeil(new Date('2026-11-12T04:34:59.485Z'))).toBe('2026-11-12T04:34:59.485999Z');
+    expect(toDbTimestampCeil(new Date('2026-11-12T04:34:59.485Z'))).toBe(
+      '2026-11-12T04:34:59.485999Z',
+    );
   });
 
   it('sorts at or after an old microsecond row in the same millisecond', () => {
-    expect(toDbTimestampCeil(new Date('2026-11-12T04:34:59.485Z')) >= '2026-11-12T04:34:59.485225Z').toBe(
-      true,
-    );
+    expect(
+      toDbTimestampCeil(new Date('2026-11-12T04:34:59.485Z')) >= '2026-11-12T04:34:59.485225Z',
+    ).toBe(true);
   });
 });
 
 describe('fromDbTimestamp', () => {
   it('reads microsecond text into a millisecond Date', () => {
-    expect(fromDbTimestamp('2026-11-12T04:34:59.485225Z').toISOString()).toBe('2026-11-12T04:34:59.485Z');
+    expect(fromDbTimestamp('2026-11-12T04:34:59.485225Z').toISOString()).toBe(
+      '2026-11-12T04:34:59.485Z',
+    );
   });
 
   it('round-trips what toDbTimestamp writes', () => {

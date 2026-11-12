@@ -13,22 +13,22 @@ describe('sqlite schema (baseline migration)', () => {
   let s: Database.Database;
 
   function addPlayer(name: string, tier = 'standard'): number {
-    return Number(s.prepare('INSERT INTO players (name, tier) VALUES (?, ?)').run(name, tier).lastInsertRowid);
+    return Number(
+      s.prepare('INSERT INTO players (name, tier) VALUES (?, ?)').run(name, tier).lastInsertRowid,
+    );
   }
 
   function addGame(): number {
     return Number(
-      s.prepare("INSERT INTO games (played_at) VALUES ('2026-01-01T12:00:00.000000Z')").run().lastInsertRowid,
+      s.prepare("INSERT INTO games (played_at) VALUES ('2026-01-01T12:00:00.000000Z')").run()
+        .lastInsertRowid,
     );
   }
 
   function addScore(gameId: number, playerId: number, score: number, isWinner: 0 | 1): void {
-    s.prepare('INSERT INTO game_players (game_id, player_id, score, is_winner) VALUES (?, ?, ?, ?)').run(
-      gameId,
-      playerId,
-      score,
-      isWinner,
-    );
+    s.prepare(
+      'INSERT INTO game_players (game_id, player_id, score, is_winner) VALUES (?, ?, ?, ?)',
+    ).run(gameId, playerId, score, isWinner);
   }
 
   beforeEach(() => {
@@ -85,7 +85,9 @@ describe('sqlite schema (baseline migration)', () => {
   it('rejects an unknown audit actor type', () => {
     expect(() =>
       s
-        .prepare("INSERT INTO audit_logs (action, actor_type, summary) VALUES ('player.create', 'root', 'x')")
+        .prepare(
+          "INSERT INTO audit_logs (action, actor_type, summary) VALUES ('player.create', 'root', 'x')",
+        )
         .run(),
     ).toThrow(/CHECK constraint failed/);
   });
@@ -116,7 +118,9 @@ describe('sqlite schema (baseline migration)', () => {
   it('defaults created_at to the fixed-width timestamp format', () => {
     const ann = addPlayer('Ann');
     const gameId = addGame();
-    s.prepare("INSERT INTO audit_logs (action, actor_type, summary) VALUES ('player.create', 'admin', 'x')").run();
+    s.prepare(
+      "INSERT INTO audit_logs (action, actor_type, summary) VALUES ('player.create', 'admin', 'x')",
+    ).run();
     s.prepare('INSERT INTO app_settings (id) VALUES (1)').run();
 
     const timestamps = [
@@ -130,7 +134,9 @@ describe('sqlite schema (baseline migration)', () => {
 
   it('keeps the named indexes', () => {
     const names = (
-      s.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name NOT LIKE 'sqlite_%'").all() as {
+      s
+        .prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name NOT LIKE 'sqlite_%'")
+        .all() as {
         name: string;
       }[]
     ).map((r) => r.name);
