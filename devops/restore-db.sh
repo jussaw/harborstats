@@ -2,7 +2,6 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 ENV_FILE="${ENV_FILE:-$SCRIPT_DIR/.env}"
 
 load_env_defaults() {
@@ -38,19 +37,21 @@ load_env_defaults() {
 }
 
 load_env_defaults "$ENV_FILE" \
-  COMPOSE_FILE \
-  ADMIN_PASSWORD \
-  ADMIN_SESSION_SECRET
+  CONTAINER_NAME
 
-COMPOSE_FILE="${COMPOSE_FILE:-$SCRIPT_DIR/docker-compose.yml}"
+# The deployed app container, whichever compose project created it. The restore
+# works on its own mounts and image, so it never needs that project's compose
+# file or env.
+CONTAINER_NAME="${CONTAINER_NAME:-harborstats-web}"
 CONFIRMATION_WORD="harborstats"
 STARTUP_TIMEOUT_SECONDS="${STARTUP_TIMEOUT_SECONDS:-120}"
 
-# Runs as root in a one-off web container with the data volume at /data and the
-# backup mounted read-only. The copy must match the backup byte for byte, and it
-# and /data are owned by the app user (uid 1001): a volume created or seeded
-# outside compose can have a root-owned /data, where SQLite cannot create its
-# -wal/-shm files. The file moves into place in one step; the old -wal/-shm must
+# Runs as root in a one-off container from the app's own image, with the app
+# container's mounts (--volumes-from, so /data is its bind mount or volume) and
+# the backup mounted read-only. The copy must match the backup byte for byte, and
+# it and /data are owned by the app user (uid 1001): a bind-mount directory or a
+# volume created outside the image can have a root-owned /data, where SQLite
+# cannot create its -wal/-shm files. The file moves into place in one step; the old -wal/-shm must
 # go, or SQLite would replay the previous database's log onto the restored file.
 REPLACE_DATABASE_SCRIPT='
 backup_sum="$(sha256sum /restore/harborstats.db | cut -d " " -f 1)"
@@ -75,14 +76,6 @@ log() {
 die() {
   printf 'Error: %s\n' "$*" >&2
   exit 1
-}
-
-docker_compose() {
-  if [[ -f "$ENV_FILE" ]]; then
-    docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "$@"
-  else
-    docker compose -f "$COMPOSE_FILE" "$@"
-  fi
 }
 
 ensure_command() {
@@ -125,34 +118,19 @@ verify_checksum() {
   log "Checksum verified"
 }
 
-# Migrations run inside the container after `up -d` has returned, so a failed
-# migration or a refused database shows only in the container: wait for the
-# app's startup line instead of trusting `up`.
+# Migrations run inside the container after `docker start` has returned, so a
+# failed migration or a refused database shows only in the container: wait for
+# the app's startup line instead of trusting `start`.
 wait_for_web_startup() {
   local since="$1"
   local deadline=$((SECONDS + STARTUP_TIMEOUT_SECONDS))
-  local container_id=""
-  local inspected=""
   local state=""
-  local started_at=""
   local logs=""
 
   while :; do
-    container_id="$(docker_compose ps -a -q web | tr -d '[:space:]')"
-    inspected=""
-    if [[ -n "$container_id" ]]; then
-      inspected="$(docker inspect --format '{{.State.Status}} {{.State.StartedAt}}' "$container_id" 2>/dev/null || true)"
-    fi
-    state="${inspected%% *}"
-    started_at="${inspected#* }"
+    state="$(docker inspect --format '{{.State.Status}}' "$CONTAINER_NAME" 2>/dev/null || true)"
 
-    # `up` left an unchanged container alone: it is the earlier, healthy process.
-    if [[ "$state" == "running" && -n "$started_at" && "${started_at:0:19}" < "${since:0:19}" ]]; then
-      log "web was already running and was not restarted"
-      return 0
-    fi
-
-    logs="$(docker_compose logs --since "$since" --no-log-prefix web 2>&1 || true)"
+    logs="$(docker logs --since "$since" "$CONTAINER_NAME" 2>&1 || true)"
     if [[ "$logs" == *"[startup] Opened the existing database"* || "$logs" == *"[startup] Created a new database"* ]]; then
       log "web started: $(printf '%s\n' "$logs" | grep -F '[startup]' | tail -n 1)"
       return 0
@@ -195,25 +173,32 @@ main() {
   verify_checksum "$backup_path"
   confirm_restore "$backup_path"
 
-  log "Stopping web service"
-  docker_compose stop web >/dev/null
+  # The exact image the container runs, so the one-off container has the same
+  # user ids and paths. Failing here stops the restore before anything changes.
+  local image=""
+  image="$(docker inspect --format '{{.Image}}' "$CONTAINER_NAME" 2>/dev/null)" ||
+    die "No $CONTAINER_NAME container; deploy the app first, then restore (see devops/README.md)"
 
-  log "Replacing the database file in the data volume"
+  log "Stopping $CONTAINER_NAME"
+  docker stop "$CONTAINER_NAME" >/dev/null
+
+  log "Replacing the database file in $CONTAINER_NAME's /data"
   local replace_output=""
   if ! replace_output="$(
-    docker_compose run --rm -T --no-deps --user root \
+    docker run --rm --network none --user root \
+      --volumes-from "$CONTAINER_NAME" \
       -v "$backup_path:/restore/harborstats.db:ro" \
-      web sh -euc "$REPLACE_DATABASE_SCRIPT" 2>&1
+      "$image" sh -euc "$REPLACE_DATABASE_SCRIPT" 2>&1
   )"; then
     printf '%s\n' "$replace_output" >&2
-    die "Replacing the database file failed; web is stopped (start it with: docker compose -f $COMPOSE_FILE up -d web)"
+    die "Replacing the database file failed; $CONTAINER_NAME is stopped (start it with: docker start $CONTAINER_NAME)"
   fi
-  log "Database file in the volume: $(printf '%s\n' "$replace_output" | grep '^sha256=' | tail -n 1)"
+  log "Database file in /data: $(printf '%s\n' "$replace_output" | grep '^sha256=' | tail -n 1)"
 
-  log "Starting web service"
+  log "Starting $CONTAINER_NAME"
   local since=""
   since="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
-  docker_compose up -d web >/dev/null
+  docker start "$CONTAINER_NAME" >/dev/null
 
   log "Waiting for web to start"
   wait_for_web_startup "$since"

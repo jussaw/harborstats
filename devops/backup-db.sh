@@ -2,7 +2,6 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 ENV_FILE="${ENV_FILE:-$SCRIPT_DIR/.env}"
 
 load_env_defaults() {
@@ -38,17 +37,16 @@ load_env_defaults() {
 }
 
 load_env_defaults "$ENV_FILE" \
-  COMPOSE_FILE \
+  CONTAINER_NAME \
   BACKUP_DIR \
-  RETENTION_DAYS \
-  ADMIN_PASSWORD \
-  ADMIN_SESSION_SECRET
+  RETENTION_DAYS
 
-COMPOSE_FILE="${COMPOSE_FILE:-$SCRIPT_DIR/docker-compose.yml}"
+# The running app container, whichever compose project deploys it.
+CONTAINER_NAME="${CONTAINER_NAME:-harborstats-web}"
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/harborstats}"
 RETENTION_DAYS="${RETENTION_DAYS:-30}"
 
-# Inside the web container (see web/Dockerfile and devops/docker-compose.yml).
+# Inside the web container (see web/Dockerfile).
 CONTAINER_DATABASE_PATH="/data/harborstats.db"
 
 log() {
@@ -60,14 +58,6 @@ die() {
   exit 1
 }
 
-docker_compose() {
-  if [[ -f "$ENV_FILE" ]]; then
-    docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "$@"
-  else
-    docker compose -f "$COMPOSE_FILE" "$@"
-  fi
-}
-
 CONTAINER_TEMP_PATH=""
 LOCAL_TEMP_PATH=""
 
@@ -76,7 +66,7 @@ cleanup_temp_files() {
     rm -f "$LOCAL_TEMP_PATH"
   fi
   if [[ -n "$CONTAINER_TEMP_PATH" ]]; then
-    docker_compose exec -T web rm -f "$CONTAINER_TEMP_PATH" "$CONTAINER_TEMP_PATH-wal" "$CONTAINER_TEMP_PATH-shm" \
+    docker exec "$CONTAINER_NAME" rm -f "$CONTAINER_TEMP_PATH" "$CONTAINER_TEMP_PATH-wal" "$CONTAINER_TEMP_PATH-shm" \
       >/dev/null 2>&1 || true
   fi
 }
@@ -131,8 +121,8 @@ main() {
   local final_backup_path="$BACKUP_DIR/harborstats-${timestamp}.db"
   local checksum_path="${final_backup_path}.sha256"
 
-  if [[ -z "$(docker_compose ps -q --status running web | tr -d '[:space:]')" ]]; then
-    die "The web service is not running; start it before taking a backup"
+  if [[ "$(docker inspect --format '{{.State.Running}}' "$CONTAINER_NAME" 2>/dev/null || true)" != "true" ]]; then
+    die "The $CONTAINER_NAME container is not running; start it before taking a backup"
   fi
 
   # VACUUM INTO writes a consistent snapshot from one read transaction while the
@@ -141,22 +131,22 @@ main() {
   # steady writes it may never finish.)
   CONTAINER_TEMP_PATH="/data/.harborstats-backup-${timestamp}.db"
   log "Taking an online backup of $CONTAINER_DATABASE_PATH"
-  docker_compose exec -T web \
+  docker exec "$CONTAINER_NAME" \
     sqlite3 -bail -cmd ".timeout 5000" "$CONTAINER_DATABASE_PATH" "VACUUM INTO '$CONTAINER_TEMP_PATH'" >/dev/null
 
   log "Checking backup integrity"
   local integrity=""
-  integrity="$(docker_compose exec -T web sqlite3 -bail "$CONTAINER_TEMP_PATH" "PRAGMA integrity_check;" 2>&1 | tr -d '\r')" ||
+  integrity="$(docker exec "$CONTAINER_NAME" sqlite3 -bail "$CONTAINER_TEMP_PATH" "PRAGMA integrity_check;" 2>&1 | tr -d '\r')" ||
     die "Integrity check failed on the backup: $integrity"
   [[ "$integrity" == "ok" ]] || die "Integrity check failed on the backup: $integrity"
 
   # The checked file's hash, so the host copy is proven to be those bytes.
   local container_checksum=""
-  container_checksum="$(docker_compose exec -T web sha256sum "$CONTAINER_TEMP_PATH" | awk '{ print $1 }')"
+  container_checksum="$(docker exec "$CONTAINER_NAME" sha256sum "$CONTAINER_TEMP_PATH" | awk '{ print $1 }')"
 
   LOCAL_TEMP_PATH="${final_backup_path}.tmp"
   log "Writing backup to $final_backup_path"
-  docker_compose cp "web:$CONTAINER_TEMP_PATH" "$LOCAL_TEMP_PATH" >/dev/null
+  docker cp "$CONTAINER_NAME:$CONTAINER_TEMP_PATH" "$LOCAL_TEMP_PATH" >/dev/null
 
   local local_checksum=""
   local_checksum="$(sha256_of "$LOCAL_TEMP_PATH")"
