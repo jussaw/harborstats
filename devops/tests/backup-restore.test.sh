@@ -3,6 +3,7 @@ set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 COMPOSE_FILE="$REPO_DIR/devops/docker-compose.yml"
+DOCKERFILE="$REPO_DIR/web/Dockerfile"
 
 fail() {
   echo "FAIL: $*" >&2
@@ -48,8 +49,16 @@ setup_test_dir() {
   export DOCKER_LOG="$TEST_DIR/docker.log"
   export DOCKER_ENV_LOG="$TEST_DIR/docker-env.log"
   export GIT_LOG="$TEST_DIR/git.log"
-  export PG_DUMP_SOURCE="$TEST_DIR/pg_dump_source.dump"
-  export PG_RESTORE_CAPTURE="$TEST_DIR/pg_restore_capture.dump"
+  # What `docker compose cp web:<backup> <dest>` hands back from the container.
+  export SQLITE_BACKUP_SOURCE="$TEST_DIR/sqlite_backup_source.db"
+  export WEB_RUNNING=1
+  export INTEGRITY_RESULT=ok
+  export CONTAINER_SHA256=deadbeef
+  # What the stubbed web container reports after `up -d web`.
+  export WEB_STATE=running
+  export WEB_STARTED_AT=2999-01-01T00:00:00.000000000Z
+  export WEB_LOGS="[startup] Opened the existing database at /data/harborstats.db"
+  export STARTUP_TIMEOUT_SECONDS=0
   mkdir -p "$STUB_BIN" "$BACKUP_DIR"
   : >"$DOCKER_LOG"
   : >"$DOCKER_ENV_LOG"
@@ -62,6 +71,11 @@ cleanup_test_dir() {
   fi
 }
 
+write_sqlite_fixture() {
+  # A real SQLite file starts with this 16-byte header.
+  printf 'SQLite format 3\000%s\n' "$2" >"$1"
+}
+
 write_docker_stub() {
   cat >"$STUB_BIN/docker" <<'EOF'
 #!/usr/bin/env bash
@@ -70,59 +84,69 @@ set -euo pipefail
 printf '%s\n' "$*" >> "$DOCKER_LOG"
 printf 'ADMIN_PASSWORD=%s\n' "${ADMIN_PASSWORD:-}" >> "$DOCKER_ENV_LOG"
 printf 'ADMIN_SESSION_SECRET=%s\n' "${ADMIN_SESSION_SECRET:-}" >> "$DOCKER_ENV_LOG"
-printf 'PGADMIN_DEFAULT_EMAIL=%s\n' "${PGADMIN_DEFAULT_EMAIL:-}" >> "$DOCKER_ENV_LOG"
 
 args="$*"
+prefix="$EXPECTED_COMPOSE_PREFIX"
 
-if [[ "$args" == "$EXPECTED_COMPOSE_PREFIX up -d db" ]]; then
+if [[ "$args" == "$prefix stop web" ]]; then
   exit 0
 fi
 
-if [[ "$args" == "$EXPECTED_COMPOSE_PREFIX ps -q db" ]]; then
-  printf 'db-container\n'
+if [[ "$args" == "$prefix up -d web" ]]; then
   exit 0
 fi
 
-if [[ "$args" == inspect\ --format*' db-container' ]]; then
-  printf 'healthy\n'
+if [[ "$args" == "$prefix up --build -d web" ]]; then
   exit 0
 fi
 
-if [[ "$args" == "$EXPECTED_COMPOSE_PREFIX stop web" ]]; then
+if [[ "$args" == "$prefix ps -q --status running web" ]]; then
+  if [[ "$WEB_RUNNING" == "1" ]]; then
+    printf 'web-container\n'
+  fi
   exit 0
 fi
 
-if [[ "$args" == "$EXPECTED_COMPOSE_PREFIX up -d web" ]]; then
+if [[ "$args" == "$prefix exec -T web sqlite3 "*"VACUUM INTO "* ]]; then
   exit 0
 fi
 
-if [[ "$args" == "$EXPECTED_COMPOSE_PREFIX up --build -d web" ]]; then
+if [[ "$args" == "$prefix exec -T web sqlite3 "*"PRAGMA integrity_check"* ]]; then
+  printf '%s\n' "$INTEGRITY_RESULT"
   exit 0
 fi
 
-if [[ "$args" == "$EXPECTED_COMPOSE_PREFIX run --build --rm migrate" ]]; then
+if [[ "$args" == "$prefix exec -T web sha256sum "* ]]; then
+  printf '%s  %s\n' "$CONTAINER_SHA256" "${*: -1}"
   exit 0
 fi
 
-if [[ "$args" == *" exec -T db pg_dump "* ]]; then
-  cat "$PG_DUMP_SOURCE"
+if [[ "$args" == "$prefix exec -T web rm -f "* ]]; then
   exit 0
 fi
 
-if [[ "$args" == *" exec -T db pg_restore "* ]]; then
-  cat >"$PG_RESTORE_CAPTURE"
+if [[ "$args" == "$prefix cp web:"* ]]; then
+  cp "$SQLITE_BACKUP_SOURCE" "${*: -1}"
   exit 0
 fi
 
-if [[ "$args" == *" exec -T db psql "* ]]; then
+if [[ "$args" == "$prefix run --rm -T --no-deps --user root -v "* ]]; then
+  printf 'sha256=feedface\n'
   exit 0
 fi
 
-if [[ "$args" == *" exec -T db dropdb "* ]]; then
+if [[ "$args" == "$prefix ps -a -q web" ]]; then
+  printf 'web-container\n'
   exit 0
 fi
 
-if [[ "$args" == *" exec -T db createdb "* ]]; then
+if [[ "$args" == "inspect --format {{.State.Status}} {{.State.StartedAt}} web-container" ]]; then
+  printf '%s %s\n' "$WEB_STATE" "$WEB_STARTED_AT"
+  exit 0
+fi
+
+if [[ "$args" == "$prefix logs --since "*" --no-log-prefix web" ]]; then
+  printf '%s\n' "$WEB_LOGS"
   exit 0
 fi
 
@@ -159,19 +183,35 @@ EOF
   chmod +x "$STUB_BIN/sha256sum"
 }
 
+# The compose subcommands the stubbed scripts ran, in order, e.g. "stop run up".
+compose_subcommands() {
+  local line
+  local subcommands=()
+  while IFS= read -r line; do
+    if [[ "$line" == "$EXPECTED_COMPOSE_PREFIX "* ]]; then
+      line="${line#"$EXPECTED_COMPOSE_PREFIX "}"
+      subcommands+=("${line%% *}")
+    fi
+  done <"$DOCKER_LOG"
+  printf '%s\n' "${subcommands[*]}"
+}
+
 run_backup_test() {
   setup_test_dir
   trap cleanup_test_dir RETURN
   write_docker_stub
   write_checksum_stub
+  write_sqlite_fixture "$SQLITE_BACKUP_SOURCE" "backup fixture"
 
-  printf 'logical backup fixture\n' >"$PG_DUMP_SOURCE"
-
+  local old_db="$BACKUP_DIR/harborstats-20000101T000000Z.db"
+  local old_db_checksum="$old_db.sha256"
   local old_dump="$BACKUP_DIR/harborstats-20000101T000000Z.dump"
-  local old_checksum="$old_dump.sha256"
-  printf 'old data\n' >"$old_dump"
-  printf 'old checksum\n' >"$old_checksum"
-  touch -t 200001010000 "$old_dump" "$old_checksum"
+  local old_dump_checksum="$old_dump.sha256"
+  printf 'old db\n' >"$old_db"
+  printf 'old db checksum\n' >"$old_db_checksum"
+  printf 'old postgres dump\n' >"$old_dump"
+  printf 'old dump checksum\n' >"$old_dump_checksum"
+  touch -t 200001010000 "$old_db" "$old_db_checksum" "$old_dump" "$old_dump_checksum"
 
   local output
   if ! output="$(PATH="$STUB_BIN:$PATH" BACKUP_DIR="$BACKUP_DIR" RETENTION_DAYS=30 "$REPO_DIR/devops/backup-db.sh" 2>&1)"; then
@@ -179,32 +219,104 @@ run_backup_test() {
     fail "backup-db.sh exited non-zero"
   fi
 
-  local dump_path
-  dump_path="$(find "$BACKUP_DIR" -maxdepth 1 -type f -name 'harborstats-*.dump' | sort)"
-  [[ -n "$dump_path" ]] || fail "Expected one retained dump file"
-  [[ "$(printf '%s\n' "$dump_path" | wc -l | tr -d '[:space:]')" == "1" ]] || fail "Expected one retained dump file"
+  local db_path
+  db_path="$(find "$BACKUP_DIR" -maxdepth 1 -type f -name 'harborstats-*.db' | sort)"
+  [[ -n "$db_path" ]] || fail "Expected one new .db backup"
+  [[ "$(printf '%s\n' "$db_path" | wc -l | tr -d '[:space:]')" == "1" ]] || fail "Expected one .db backup, got: $db_path"
+  [[ "$(basename "$db_path")" =~ ^harborstats-[0-9]{8}T[0-9]{6}Z\.db$ ]] || fail "Unexpected backup name: $db_path"
 
-  local checksum_path="$dump_path.sha256"
-  assert_file_exists "$dump_path"
-  assert_file_exists "$checksum_path"
-  assert_file_not_exists "$old_dump"
-  assert_file_not_exists "$old_checksum"
-  assert_contains "$EXPECTED_COMPOSE_PREFIX up -d db" "$DOCKER_LOG"
-  assert_contains "$EXPECTED_COMPOSE_PREFIX ps -q db" "$DOCKER_LOG"
-  assert_contains "$EXPECTED_COMPOSE_PREFIX exec -T db pg_dump -U postgres -d harborstats --format=custom --compress=9 --no-owner --no-privileges" "$DOCKER_LOG"
-  assert_equals "$(cat "$PG_DUMP_SOURCE")" "$(cat "$dump_path")" "Backup dump content mismatch"
-  assert_contains "deadbeef  $dump_path" "$checksum_path"
+  assert_file_exists "$db_path.sha256"
+  cmp -s "$SQLITE_BACKUP_SOURCE" "$db_path" || fail "Backup content differs from the container copy"
+  assert_contains "deadbeef  $db_path" "$db_path.sha256"
+
+  assert_file_not_exists "$old_db"
+  assert_file_not_exists "$old_db_checksum"
+  # Pre-SQLite Postgres dumps are never pruned by the SQLite backup.
+  assert_file_exists "$old_dump"
+  assert_file_exists "$old_dump_checksum"
+  [[ -z "$(find "$BACKUP_DIR" -name '*.tmp')" ]] || fail "Temporary files left in $BACKUP_DIR"
+
+  assert_contains "$EXPECTED_COMPOSE_PREFIX ps -q --status running web" "$DOCKER_LOG"
+  assert_contains "$EXPECTED_COMPOSE_PREFIX exec -T web sqlite3 -bail -cmd .timeout 5000 /data/harborstats.db VACUUM INTO '/data/.harborstats-backup-" "$DOCKER_LOG"
+  assert_contains "$EXPECTED_COMPOSE_PREFIX exec -T web sqlite3 -bail /data/.harborstats-backup-" "$DOCKER_LOG"
+  assert_contains "PRAGMA integrity_check" "$DOCKER_LOG"
+  assert_contains "$EXPECTED_COMPOSE_PREFIX cp web:/data/.harborstats-backup-" "$DOCKER_LOG"
+  assert_contains "$EXPECTED_COMPOSE_PREFIX exec -T web rm -f /data/.harborstats-backup-" "$DOCKER_LOG"
+  assert_not_contains " db " "$DOCKER_LOG"
+  assert_not_contains "pg_dump" "$DOCKER_LOG"
+}
+
+run_backup_integrity_failure_test() {
+  setup_test_dir
+  trap cleanup_test_dir RETURN
+  write_docker_stub
+  write_checksum_stub
+  write_sqlite_fixture "$SQLITE_BACKUP_SOURCE" "torn backup"
+  export INTEGRITY_RESULT=$'*** in database main ***\nPage 5: btreeInitPage() returns error code 11'
+
+  set +e
+  local output
+  output="$(PATH="$STUB_BIN:$PATH" BACKUP_DIR="$BACKUP_DIR" "$REPO_DIR/devops/backup-db.sh" 2>&1)"
+  local status=$?
+  set -e
+
+  [[ $status -ne 0 ]] || fail "backup-db.sh should fail when the integrity check is not ok"
+  [[ "$output" == *"Integrity check failed"* ]] || fail "Expected integrity failure message, got: $output"
+  [[ -z "$(find "$BACKUP_DIR" -name 'harborstats-*.db*')" ]] || fail "A failed backup must leave no .db in $BACKUP_DIR"
+  [[ -z "$(find "$BACKUP_DIR" -name '*.tmp')" ]] || fail "Temporary files left in $BACKUP_DIR"
+  assert_not_contains " cp web:" "$DOCKER_LOG"
+  assert_contains "$EXPECTED_COMPOSE_PREFIX exec -T web rm -f /data/.harborstats-backup-" "$DOCKER_LOG"
+}
+
+run_backup_copy_mismatch_test() {
+  setup_test_dir
+  trap cleanup_test_dir RETURN
+  write_docker_stub
+  write_checksum_stub
+  write_sqlite_fixture "$SQLITE_BACKUP_SOURCE" "fixture"
+  export CONTAINER_SHA256=cafebabe
+
+  set +e
+  local output
+  output="$(PATH="$STUB_BIN:$PATH" BACKUP_DIR="$BACKUP_DIR" "$REPO_DIR/devops/backup-db.sh" 2>&1)"
+  local status=$?
+  set -e
+
+  [[ $status -ne 0 ]] || fail "backup-db.sh should fail when the host copy differs from the checked file"
+  [[ "$output" == *"does not match"* ]] || fail "Expected copy mismatch message, got: $output"
+  [[ -z "$(find "$BACKUP_DIR" -name 'harborstats-*.db*')" ]] || fail "A failed backup must leave no .db in $BACKUP_DIR"
+  [[ -z "$(find "$BACKUP_DIR" -name '*.tmp')" ]] || fail "Temporary files left in $BACKUP_DIR"
+}
+
+run_backup_requires_running_web_test() {
+  setup_test_dir
+  trap cleanup_test_dir RETURN
+  write_docker_stub
+  write_checksum_stub
+  export WEB_RUNNING=0
+
+  set +e
+  local output
+  output="$(PATH="$STUB_BIN:$PATH" BACKUP_DIR="$BACKUP_DIR" "$REPO_DIR/devops/backup-db.sh" 2>&1)"
+  local status=$?
+  set -e
+
+  [[ $status -ne 0 ]] || fail "backup-db.sh should fail when web is not running"
+  [[ "$output" == *"web service is not running"* ]] || fail "Expected not-running message, got: $output"
+  assert_not_contains "sqlite3" "$DOCKER_LOG"
+  [[ -z "$(find "$BACKUP_DIR" -name 'harborstats-*.db*')" ]] || fail "A failed backup must leave no .db in $BACKUP_DIR"
 }
 
 run_restore_rejects_bad_confirmation_test() {
   setup_test_dir
   trap cleanup_test_dir RETURN
   write_docker_stub
-  printf 'restore fixture\n' >"$TEST_DIR/sample.dump"
+  write_checksum_stub
+  write_sqlite_fixture "$TEST_DIR/sample.db" "restore fixture"
 
   set +e
   local output
-  output="$(printf 'nope\n' | PATH="$STUB_BIN:$PATH" "$REPO_DIR/devops/restore-db.sh" "$TEST_DIR/sample.dump" 2>&1)"
+  output="$(printf 'nope\n' | PATH="$STUB_BIN:$PATH" "$REPO_DIR/devops/restore-db.sh" "$TEST_DIR/sample.db" 2>&1)"
   local status=$?
   set -e
 
@@ -213,27 +325,79 @@ run_restore_rejects_bad_confirmation_test() {
   [[ "$output" == *"Confirmation did not match"* ]] || fail "Expected confirmation failure message"
 }
 
+run_restore_rejects_checksum_mismatch_test() {
+  setup_test_dir
+  trap cleanup_test_dir RETURN
+  write_docker_stub
+  write_checksum_stub
+  write_sqlite_fixture "$TEST_DIR/sample.db" "restore fixture"
+  printf 'cafebabe  %s\n' "$TEST_DIR/sample.db" >"$TEST_DIR/sample.db.sha256"
+
+  set +e
+  local output
+  output="$(printf 'harborstats\n' | PATH="$STUB_BIN:$PATH" "$REPO_DIR/devops/restore-db.sh" "$TEST_DIR/sample.db" 2>&1)"
+  local status=$?
+  set -e
+
+  [[ $status -ne 0 ]] || fail "restore-db.sh should fail when the checksum does not match"
+  [[ ! -s "$DOCKER_LOG" ]] || fail "restore-db.sh should not call docker when the checksum does not match"
+  [[ "$output" == *"Checksum mismatch"* ]] || fail "Expected checksum mismatch message, got: $output"
+}
+
+run_restore_rejects_non_sqlite_file_test() {
+  setup_test_dir
+  trap cleanup_test_dir RETURN
+  write_docker_stub
+  write_checksum_stub
+  printf 'PGDMP postgres custom-format dump\n' >"$TEST_DIR/harborstats-20261112T055548Z.dump"
+
+  set +e
+  local output
+  output="$(printf 'harborstats\n' | PATH="$STUB_BIN:$PATH" "$REPO_DIR/devops/restore-db.sh" "$TEST_DIR/harborstats-20261112T055548Z.dump" 2>&1)"
+  local status=$?
+  set -e
+
+  [[ $status -ne 0 ]] || fail "restore-db.sh should refuse a file that is not a SQLite database"
+  [[ ! -s "$DOCKER_LOG" ]] || fail "restore-db.sh should not call docker for a non-SQLite file"
+  [[ "$output" == *"not a SQLite database"* ]] || fail "Expected non-SQLite message, got: $output"
+}
+
 run_restore_test() {
   setup_test_dir
   trap cleanup_test_dir RETURN
   write_docker_stub
-  printf 'restore fixture\n' >"$TEST_DIR/sample.dump"
+  write_checksum_stub
+  local backup_name="harborstats-20261112T080000Z.db"
+  write_sqlite_fixture "$TEST_DIR/$backup_name" "restore fixture"
+  printf 'deadbeef  %s\n' "$TEST_DIR/$backup_name" >"$TEST_DIR/$backup_name.sha256"
 
+  # A relative path must reach the bind mount as an absolute one.
   local output
-  if ! output="$(printf 'harborstats\n' | PATH="$STUB_BIN:$PATH" "$REPO_DIR/devops/restore-db.sh" "$TEST_DIR/sample.dump" 2>&1)"; then
+  if ! output="$(cd "$TEST_DIR" && printf 'harborstats\n' | PATH="$STUB_BIN:$PATH" "$REPO_DIR/devops/restore-db.sh" "./$backup_name" 2>&1)"; then
     echo "$output" >&2
     fail "restore-db.sh exited non-zero"
   fi
 
+  local abs_backup_path
+  abs_backup_path="$(cd "$TEST_DIR" && pwd -P)/$backup_name"
+  assert_equals "stop run up ps logs" "$(compose_subcommands)" "restore-db.sh should stop web, replace the file, start web and wait for it"
   assert_contains "$EXPECTED_COMPOSE_PREFIX stop web" "$DOCKER_LOG"
-  assert_contains "$EXPECTED_COMPOSE_PREFIX up -d db" "$DOCKER_LOG"
-  assert_contains "$EXPECTED_COMPOSE_PREFIX exec -T db psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c SELECT pg_terminate_backend(pid)" "$DOCKER_LOG"
-  assert_contains "$EXPECTED_COMPOSE_PREFIX exec -T db dropdb -U postgres --if-exists harborstats" "$DOCKER_LOG"
-  assert_contains "$EXPECTED_COMPOSE_PREFIX exec -T db createdb -U postgres harborstats" "$DOCKER_LOG"
-  assert_contains "$EXPECTED_COMPOSE_PREFIX exec -T db pg_restore -U postgres -d harborstats --clean --if-exists --no-owner --no-privileges" "$DOCKER_LOG"
-  assert_contains "$EXPECTED_COMPOSE_PREFIX run --build --rm migrate" "$DOCKER_LOG"
+  assert_contains "$EXPECTED_COMPOSE_PREFIX run --rm -T --no-deps --user root -v $abs_backup_path:/restore/harborstats.db:ro web sh -euc" "$DOCKER_LOG"
+  assert_contains "cp /restore/harborstats.db /data/.harborstats-restore.db" "$DOCKER_LOG"
+  assert_contains "chown 1001:1001 /data/.harborstats-restore.db" "$DOCKER_LOG"
+  # A volume created or seeded outside compose can have a root-owned /data, and
+  # SQLite must create its -wal/-shm files there.
+  assert_contains "chown 1001:1001 /data" "$DOCKER_LOG"
+  assert_contains 'sha256sum /restore/harborstats.db' "$DOCKER_LOG"
+  assert_contains 'sha256sum /data/.harborstats-restore.db' "$DOCKER_LOG"
+  [[ "$output" == *"sha256=feedface"* ]] || fail "Expected the in-volume checksum in the output, got: $output"
+  [[ "$output" == *"[startup] Opened the existing database"* ]] || fail "Expected the startup line in the output, got: $output"
+  assert_contains "rm -f /data/harborstats.db-wal /data/harborstats.db-shm" "$DOCKER_LOG"
+  assert_contains "mv /data/.harborstats-restore.db /data/harborstats.db" "$DOCKER_LOG"
   assert_contains "$EXPECTED_COMPOSE_PREFIX up -d web" "$DOCKER_LOG"
-  assert_equals "$(cat "$TEST_DIR/sample.dump")" "$(cat "$PG_RESTORE_CAPTURE")" "Restore input mismatch"
+  assert_not_contains "DATABASE_ALLOW_CREATE" "$DOCKER_LOG"
+  assert_not_contains "migrate" "$DOCKER_LOG"
+  [[ "$output" == *"Checksum verified"* ]] || fail "Expected the checksum to be verified, got: $output"
 }
 
 run_env_file_test() {
@@ -244,19 +408,16 @@ run_env_file_test() {
 
   export ENV_FILE="$TEST_DIR/devops.env"
   export EXPECTED_COMPOSE_PREFIX="compose --env-file $ENV_FILE -f $COMPOSE_FILE"
-  unset BACKUP_DIR DATABASE_NAME POSTGRES_USER
+  unset BACKUP_DIR
 
   local env_backup_dir="$TEST_DIR/from-env"
   cat >"$ENV_FILE" <<EOF
 BACKUP_DIR=$env_backup_dir
-DATABASE_NAME=backup_archive
-POSTGRES_USER=archive_user
 ADMIN_PASSWORD=env-admin-password
 ADMIN_SESSION_SECRET=env-admin-session-secret
 EOF
 
-  printf 'env file backup fixture\n' >"$PG_DUMP_SOURCE"
-  mkdir -p "$env_backup_dir"
+  write_sqlite_fixture "$SQLITE_BACKUP_SOURCE" "env file backup fixture"
 
   local backup_output
   if ! backup_output="$(PATH="$STUB_BIN:$PATH" ENV_FILE="$ENV_FILE" "$REPO_DIR/devops/backup-db.sh" 2>&1)"; then
@@ -264,23 +425,22 @@ EOF
     fail "backup-db.sh should load values from ENV_FILE"
   fi
 
-  local dump_path
-  dump_path="$(find "$env_backup_dir" -maxdepth 1 -type f -name 'backup_archive-*.dump' | sort)"
-  [[ -n "$dump_path" ]] || fail "Expected env-file-configured backup dump"
-  assert_contains "$EXPECTED_COMPOSE_PREFIX exec -T db pg_dump -U archive_user -d backup_archive --format=custom --compress=9 --no-owner --no-privileges" "$DOCKER_LOG"
+  local db_path
+  db_path="$(find "$env_backup_dir" -maxdepth 1 -type f -name 'harborstats-*.db' | sort)"
+  [[ -n "$db_path" ]] || fail "Expected the backup in the ENV_FILE BACKUP_DIR"
+  assert_contains "$EXPECTED_COMPOSE_PREFIX exec -T web sqlite3 -bail -cmd .timeout 5000 /data/harborstats.db VACUUM INTO " "$DOCKER_LOG"
+  assert_contains "ADMIN_SESSION_SECRET=env-admin-session-secret" "$DOCKER_ENV_LOG"
 
   : >"$DOCKER_LOG"
-  printf 'restore fixture from env\n' >"$TEST_DIR/env-sample.dump"
+  write_sqlite_fixture "$TEST_DIR/env-sample.db" "restore fixture from env"
 
   local restore_output
-  if ! restore_output="$(printf 'backup_archive\n' | PATH="$STUB_BIN:$PATH" ENV_FILE="$ENV_FILE" "$REPO_DIR/devops/restore-db.sh" "$TEST_DIR/env-sample.dump" 2>&1)"; then
+  if ! restore_output="$(printf 'harborstats\n' | PATH="$STUB_BIN:$PATH" ENV_FILE="$ENV_FILE" "$REPO_DIR/devops/restore-db.sh" "$TEST_DIR/env-sample.db" 2>&1)"; then
     echo "$restore_output" >&2
     fail "restore-db.sh should load values from ENV_FILE"
   fi
 
-  assert_contains "$EXPECTED_COMPOSE_PREFIX exec -T db dropdb -U archive_user --if-exists backup_archive" "$DOCKER_LOG"
-  assert_contains "$EXPECTED_COMPOSE_PREFIX exec -T db createdb -U archive_user backup_archive" "$DOCKER_LOG"
-  assert_contains "$EXPECTED_COMPOSE_PREFIX exec -T db pg_restore -U archive_user -d backup_archive --clean --if-exists --no-owner --no-privileges" "$DOCKER_LOG"
+  assert_equals "stop run up ps logs" "$(compose_subcommands)" "restore-db.sh should use the ENV_FILE compose prefix"
 }
 
 run_deploy_env_file_test() {
@@ -291,13 +451,11 @@ run_deploy_env_file_test() {
 
   export ENV_FILE="$TEST_DIR/deploy.env"
   export EXPECTED_COMPOSE_PREFIX="compose --env-file $ENV_FILE -f $COMPOSE_FILE"
-  unset ADMIN_SESSION_SECRET PGADMIN_DEFAULT_EMAIL
+  unset ADMIN_SESSION_SECRET
 
   cat >"$ENV_FILE" <<EOF
 ADMIN_PASSWORD=env-admin-password
 ADMIN_SESSION_SECRET=env-admin-session-secret
-PGADMIN_DEFAULT_EMAIL=admin@example.test
-PGADMIN_DEFAULT_PASSWORD=env-pgadmin-password
 EOF
 
   local output
@@ -307,43 +465,152 @@ EOF
   fi
 
   assert_contains "-C $REPO_DIR pull" "$GIT_LOG"
-  assert_contains "$EXPECTED_COMPOSE_PREFIX up -d db" "$DOCKER_LOG"
-  assert_contains "$EXPECTED_COMPOSE_PREFIX run --build --rm migrate" "$DOCKER_LOG"
   assert_contains "$EXPECTED_COMPOSE_PREFIX up --build -d web" "$DOCKER_LOG"
+  assert_equals "up ps logs" "$(compose_subcommands)" "deploy.sh should start web once and wait for it"
+  assert_not_contains " db" "$DOCKER_LOG"
+  assert_not_contains "migrate" "$DOCKER_LOG"
   assert_not_contains "baseline" "$DOCKER_LOG"
-  assert_not_contains " pgadmin" "$DOCKER_LOG"
+  assert_not_contains "pgadmin" "$DOCKER_LOG"
+  assert_not_contains "--remove-orphans" "$DOCKER_LOG"
   assert_contains "ADMIN_PASSWORD=shell-admin-password" "$DOCKER_ENV_LOG"
   assert_contains "ADMIN_SESSION_SECRET=env-admin-session-secret" "$DOCKER_ENV_LOG"
-  assert_contains "PGADMIN_DEFAULT_EMAIL=admin@example.test" "$DOCKER_ENV_LOG"
 }
 
-run_pgadmin_profile_test() {
-  assert_contains 'profiles: ["pgadmin"]' "$COMPOSE_FILE"
-  assert_contains '"127.0.0.1:5050:80"' "$COMPOSE_FILE"
-  assert_contains 'PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-}' "$COMPOSE_FILE"
-  assert_contains 'PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-}' "$COMPOSE_FILE"
-  assert_not_contains 'admin@example.com' "$COMPOSE_FILE"
-  assert_not_contains 'PGADMIN_DEFAULT_PASSWORD: admin' "$COMPOSE_FILE"
+run_restore_reports_failed_startup_test() {
+  setup_test_dir
+  trap cleanup_test_dir RETURN
+  write_docker_stub
+  write_checksum_stub
+  write_sqlite_fixture "$TEST_DIR/sample.db" "restore fixture"
+  export WEB_STATE=restarting
+  export WEB_LOGS="SqliteError: attempt to write a readonly database"
 
-  if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
-    local default_services
-    default_services="$(
-      ADMIN_PASSWORD=test-admin \
-        ADMIN_SESSION_SECRET=test-session-secret \
-        docker compose -f "$COMPOSE_FILE" config --services
-    )"
-    [[ "$default_services" != *"pgadmin"* ]] || fail "pgAdmin should not be included in default compose services"
+  set +e
+  local output
+  output="$(printf 'harborstats\n' | PATH="$STUB_BIN:$PATH" "$REPO_DIR/devops/restore-db.sh" "$TEST_DIR/sample.db" 2>&1)"
+  local status=$?
+  set -e
 
-    local pgadmin_services
-    pgadmin_services="$(
-      ADMIN_PASSWORD=test-admin \
-        ADMIN_SESSION_SECRET=test-session-secret \
-        PGADMIN_DEFAULT_EMAIL=admin@example.test \
-        PGADMIN_DEFAULT_PASSWORD=test-pgadmin-password \
-        docker compose --profile pgadmin -f "$COMPOSE_FILE" config --services
-    )"
-    [[ "$pgadmin_services" == *"pgadmin"* ]] || fail "pgAdmin should be included with the pgadmin compose profile"
+  [[ $status -ne 0 ]] || fail "restore-db.sh should fail when web does not start"
+  [[ "$output" == *"web did not start"* ]] || fail "Expected a failed-start message, got: $output"
+  [[ "$output" == *"attempt to write a readonly database"* ]] || fail "Expected the web log lines, got: $output"
+  [[ "$output" != *"Restore complete"* ]] || fail "restore-db.sh must not report success when web does not start"
+}
+
+run_deploy_reports_failed_startup_test() {
+  setup_test_dir
+  trap cleanup_test_dir RETURN
+  write_docker_stub
+  write_git_stub
+  export WEB_STATE=restarting
+  export WEB_LOGS="Error: Refusing to start: database at /data/harborstats.db is missing or empty."
+
+  set +e
+  local output
+  output="$(PATH="$STUB_BIN:$PATH" "$REPO_DIR/devops/deploy.sh" 2>&1)"
+  local status=$?
+  set -e
+
+  [[ $status -ne 0 ]] || fail "deploy.sh should fail when web does not start"
+  [[ "$output" == *"web did not start (state: restarting)"* ]] || fail "Expected a failed-start message, got: $output"
+  [[ "$output" == *"Refusing to start"* ]] || fail "Expected the web log lines, got: $output"
+  [[ "$output" != *"==> Done."* ]] || fail "deploy.sh must not report success when web does not start"
+}
+
+run_deploy_times_out_without_startup_line_test() {
+  setup_test_dir
+  trap cleanup_test_dir RETURN
+  write_docker_stub
+  write_git_stub
+  # Running, restarted by this deploy, but the app never logged that it started.
+  export WEB_LOGS="Starting..."
+
+  set +e
+  local output
+  output="$(PATH="$STUB_BIN:$PATH" "$REPO_DIR/devops/deploy.sh" 2>&1)"
+  local status=$?
+  set -e
+
+  [[ $status -ne 0 ]] || fail "deploy.sh should fail when the startup line never appears"
+  [[ "$output" == *"web did not start (state: running)"* ]] || fail "Expected a timeout message, got: $output"
+}
+
+run_deploy_accepts_unchanged_running_web_test() {
+  setup_test_dir
+  trap cleanup_test_dir RETURN
+  write_docker_stub
+  write_git_stub
+  # Nothing changed, so `up` left the earlier container running: no new log lines.
+  export WEB_STARTED_AT=2000-01-01T00:00:00.000000000Z
+  export WEB_LOGS=""
+
+  local output
+  if ! output="$(PATH="$STUB_BIN:$PATH" "$REPO_DIR/devops/deploy.sh" 2>&1)"; then
+    echo "$output" >&2
+    fail "deploy.sh should succeed when web was already running and was not restarted"
   fi
+  [[ "$output" == *"not restarted"* ]] || fail "Expected a not-restarted message, got: $output"
+  [[ "$output" == *"==> Done."* ]] || fail "Expected deploy.sh to finish"
+}
+
+run_compose_single_web_service_test() {
+  # One container on SQLite: no Postgres, migrator or pgAdmin services, and the
+  # database lives in a named volume whose name does not depend on the project.
+  assert_contains 'container_name: harborstats-web' "$COMPOSE_FILE"
+  assert_contains '"23413:3000"' "$COMPOSE_FILE"
+  assert_contains 'DATABASE_PATH: /data/harborstats.db' "$COMPOSE_FILE"
+  assert_contains 'DATABASE_ALLOW_CREATE: ${DATABASE_ALLOW_CREATE:-}' "$COMPOSE_FILE"
+  assert_contains 'harborstats_data:/data' "$COMPOSE_FILE"
+  assert_contains 'name: harborstats_data' "$COMPOSE_FILE"
+  assert_not_contains 'postgres' "$COMPOSE_FILE"
+  assert_not_contains 'DATABASE_URL' "$COMPOSE_FILE"
+  assert_not_contains 'pgdata' "$COMPOSE_FILE"
+  assert_not_contains 'pgadmin' "$COMPOSE_FILE"
+  assert_not_contains 'migrator' "$COMPOSE_FILE"
+  assert_not_contains 'AS migrator' "$DOCKERFILE"
+  assert_contains 'ENV DATABASE_PATH=/data/harborstats.db' "$DOCKERFILE"
+  assert_contains 'db/migrations ./db/migrations' "$DOCKERFILE"
+  # The preinstall hook runs this script, so the deps stage must copy it first.
+  assert_contains 'COPY scripts/check-node-version.ts ./scripts/' "$DOCKERFILE"
+  # backup-db.sh runs the sqlite3 CLI inside the web container.
+  assert_contains 'apk add --no-cache sqlite' "$DOCKERFILE"
+
+  if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>&1; then
+    echo "SKIP: docker compose unavailable; skipping rendered compose service checks" >&2
+    return 0
+  fi
+
+  setup_test_dir
+  trap cleanup_test_dir RETURN
+  local empty_env="$TEST_DIR/empty.env"
+  : >"$empty_env"
+
+  local services
+  services="$(
+    ADMIN_PASSWORD=test-admin \
+      ADMIN_SESSION_SECRET=test-session-secret \
+      docker compose --env-file "$empty_env" -f "$COMPOSE_FILE" config --services
+  )"
+  assert_equals "web" "$services" "Compose should define exactly one service"
+
+  local volumes
+  volumes="$(
+    ADMIN_PASSWORD=test-admin \
+      ADMIN_SESSION_SECRET=test-session-secret \
+      docker compose --env-file "$empty_env" -f "$COMPOSE_FILE" config --volumes
+  )"
+  assert_equals "harborstats_data" "$volumes" "Compose should define exactly one volume"
+
+  local rendered
+  rendered="$(
+    env -u DATABASE_ALLOW_CREATE \
+      ADMIN_PASSWORD=test-admin \
+      ADMIN_SESSION_SECRET=test-session-secret \
+      docker compose --env-file "$empty_env" -f "$COMPOSE_FILE" config
+  )"
+  assert_equals 'DATABASE_ALLOW_CREATE: ""' \
+    "$(printf '%s\n' "$rendered" | sed -n -E 's/^[[:space:]]*(DATABASE_ALLOW_CREATE:.*)$/\1/p')" \
+    "DATABASE_ALLOW_CREATE should render empty unless set"
 }
 
 render_admin_session_version() {
@@ -412,11 +679,20 @@ run_migration_scripts_exit_nonzero_test() {
 
 main() {
   run_backup_test
+  run_backup_integrity_failure_test
+  run_backup_copy_mismatch_test
+  run_backup_requires_running_web_test
   run_restore_rejects_bad_confirmation_test
+  run_restore_rejects_checksum_mismatch_test
+  run_restore_rejects_non_sqlite_file_test
   run_restore_test
+  run_restore_reports_failed_startup_test
   run_env_file_test
   run_deploy_env_file_test
-  run_pgadmin_profile_test
+  run_deploy_reports_failed_startup_test
+  run_deploy_times_out_without_startup_line_test
+  run_deploy_accepts_unchanged_running_web_test
+  run_compose_single_web_service_test
   run_admin_session_version_test
   run_migration_scripts_exit_nonzero_test
   echo "backup-restore tests passed"

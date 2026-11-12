@@ -123,6 +123,7 @@ lib/
   db.ts                     Drizzle client
   sqlite.ts                 opens the SQLite file with the required pragmas
   migrate.ts                runs the Drizzle migrations against a connection
+  startup.ts                migrates at server start; refuses an empty production database
   export.ts                 CSV serialization for /admin/export
   game-auth.ts              game creation auth cookie helpers
   games.ts                  game queries and mutations
@@ -139,6 +140,7 @@ tests/
   integration/              integration tests
   e2e/                      Playwright smoke coverage
 proxy.ts                    request proxy entrypoint
+instrumentation.ts          runs lib/startup.ts once at server start (migrations)
 ```
 
 ## Database schema

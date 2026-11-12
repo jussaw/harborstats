@@ -137,7 +137,14 @@ foreign key violation. Always migrate through it.
 
 ## Deployment Notes
 
-- `web/Dockerfile` has `runner` and `migrator` stages, consumed by `devops/docker-compose.yml`.
+- `web/Dockerfile`'s `runner` stage is the one image `devops/docker-compose.yml` runs. It carries
+  `db/migrations`, owns `/data` (the `harborstats_data` volume) and sets
+  `DATABASE_PATH=/data/harborstats.db`.
+- Migrations run at server startup: `instrumentation.ts` `register()` calls
+  `prepareDatabaseAtStartup()` (`lib/startup.ts`) in the Node.js runtime and exits the process if it
+  throws, because Next would otherwise keep serving 500s. In production it refuses a missing or
+  table-less database unless `DATABASE_ALLOW_CREATE=1` (fresh installs only). Do not open the
+  database from `instrumentation.ts` any other way.
 - See `devops/README.md` for the deploy, backup, and restore workflows.
 
 ## Code Style and Quality Expectations

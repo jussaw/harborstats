@@ -39,14 +39,34 @@ load_env_defaults() {
 
 load_env_defaults "$ENV_FILE" \
   COMPOSE_FILE \
-  DATABASE_NAME \
-  POSTGRES_USER \
   ADMIN_PASSWORD \
   ADMIN_SESSION_SECRET
 
 COMPOSE_FILE="${COMPOSE_FILE:-$SCRIPT_DIR/docker-compose.yml}"
-DATABASE_NAME="${DATABASE_NAME:-harborstats}"
-POSTGRES_USER="${POSTGRES_USER:-postgres}"
+CONFIRMATION_WORD="harborstats"
+STARTUP_TIMEOUT_SECONDS="${STARTUP_TIMEOUT_SECONDS:-120}"
+
+# Runs as root in a one-off web container with the data volume at /data and the
+# backup mounted read-only. The copy must match the backup byte for byte, and it
+# and /data are owned by the app user (uid 1001): a volume created or seeded
+# outside compose can have a root-owned /data, where SQLite cannot create its
+# -wal/-shm files. The file moves into place in one step; the old -wal/-shm must
+# go, or SQLite would replay the previous database's log onto the restored file.
+REPLACE_DATABASE_SCRIPT='
+backup_sum="$(sha256sum /restore/harborstats.db | cut -d " " -f 1)"
+cp /restore/harborstats.db /data/.harborstats-restore.db
+copy_sum="$(sha256sum /data/.harborstats-restore.db | cut -d " " -f 1)"
+if [ "$copy_sum" != "$backup_sum" ]; then
+  rm -f /data/.harborstats-restore.db
+  echo "The copy in the volume does not match the backup" >&2
+  exit 1
+fi
+chown 1001:1001 /data
+chown 1001:1001 /data/.harborstats-restore.db
+rm -f /data/harborstats.db-wal /data/harborstats.db-shm
+mv /data/.harborstats-restore.db /data/harborstats.db
+echo "sha256=$copy_sum"
+'
 
 log() {
   printf '==> %s\n' "$*"
@@ -69,85 +89,134 @@ ensure_command() {
   command -v "$1" >/dev/null 2>&1 || die "Required command not found: $1"
 }
 
-wait_for_db_health() {
+sha256_of() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | awk '{ print $1 }'
+  elif command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$1" | awk '{ print $1 }'
+  else
+    die "Required command not found: sha256sum or shasum"
+  fi
+}
+
+verify_sqlite_file() {
+  local backup_path="$1"
+  local header=""
+  header="$(head -c 15 "$backup_path")"
+  [[ "$header" == "SQLite format 3" ]] || die "$backup_path is not a SQLite database file; aborting restore"
+}
+
+verify_checksum() {
+  local backup_path="$1"
+  local checksum_path="${backup_path}.sha256"
+
+  if [[ ! -f "$checksum_path" ]]; then
+    log "No $(basename "$checksum_path") next to the backup; skipping checksum verification"
+    return 0
+  fi
+
+  local expected=""
+  local actual=""
+  expected="$(awk 'NR == 1 { print $1 }' "$checksum_path")"
+  actual="$(sha256_of "$backup_path")"
+  if [[ -z "$expected" || "$expected" != "$actual" ]]; then
+    die "Checksum mismatch for $backup_path (expected ${expected:-none}, got $actual); aborting restore"
+  fi
+  log "Checksum verified"
+}
+
+# Migrations run inside the container after `up -d` has returned, so a failed
+# migration or a refused database shows only in the container: wait for the
+# app's startup line instead of trusting `up`.
+wait_for_web_startup() {
+  local since="$1"
+  local deadline=$((SECONDS + STARTUP_TIMEOUT_SECONDS))
   local container_id=""
-  local health_status=""
-  local attempt
+  local inspected=""
+  local state=""
+  local started_at=""
+  local logs=""
 
-  for attempt in {1..30}; do
-    container_id="$(docker_compose ps -q db | tr -d '[:space:]')"
+  while :; do
+    container_id="$(docker_compose ps -a -q web | tr -d '[:space:]')"
+    inspected=""
     if [[ -n "$container_id" ]]; then
-      health_status="$(
-        docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}unknown{{end}}' "$container_id" \
-          | tr -d '[:space:]'
-      )"
+      inspected="$(docker inspect --format '{{.State.Status}} {{.State.StartedAt}}' "$container_id" 2>/dev/null || true)"
+    fi
+    state="${inspected%% *}"
+    started_at="${inspected#* }"
 
-      if [[ "$health_status" == "healthy" || "$health_status" == "running" ]]; then
-        return 0
-      fi
+    # `up` left an unchanged container alone: it is the earlier, healthy process.
+    if [[ "$state" == "running" && -n "$started_at" && "${started_at:0:19}" < "${since:0:19}" ]]; then
+      log "web was already running and was not restarted"
+      return 0
+    fi
+
+    logs="$(docker_compose logs --since "$since" --no-log-prefix web 2>&1 || true)"
+    if [[ "$logs" == *"[startup] Opened the existing database"* || "$logs" == *"[startup] Created a new database"* ]]; then
+      log "web started: $(printf '%s\n' "$logs" | grep -F '[startup]' | tail -n 1)"
+      return 0
+    fi
+
+    if [[ "$state" == "exited" || "$state" == "restarting" || "$state" == "dead" ]] || ((SECONDS >= deadline)); then
+      printf '%s\n' "$logs" | tail -n 20 >&2
+      die "web did not start (state: ${state:-missing}); see the log lines above"
     fi
 
     sleep 2
   done
-
-  die "Database service did not become healthy (last status: ${health_status:-missing})"
 }
 
 confirm_restore() {
   local backup_path="$1"
-  printf "About to restore '%s' into database '%s'.\n" "$backup_path" "$DATABASE_NAME"
+  printf "About to restore '%s' as the HarborStats database.\n" "$backup_path"
   printf "This will stop the app and replace current production data.\n"
-  printf "Type '%s' to continue: " "$DATABASE_NAME"
+  printf "Type '%s' to continue: " "$CONFIRMATION_WORD"
 
   local confirmation=""
   read -r confirmation
 
-  if [[ "$confirmation" != "$DATABASE_NAME" ]]; then
-    die "Confirmation did not match '$DATABASE_NAME'; aborting restore"
+  if [[ "$confirmation" != "$CONFIRMATION_WORD" ]]; then
+    die "Confirmation did not match '$CONFIRMATION_WORD'; aborting restore"
   fi
 }
 
 main() {
   ensure_command docker
 
-  [[ $# -eq 1 ]] || die "Usage: ./devops/restore-db.sh /path/to/backup.dump"
+  [[ $# -eq 1 ]] || die "Usage: ./devops/restore-db.sh /path/to/harborstats-<timestamp>.db"
 
   local backup_path="$1"
   [[ -f "$backup_path" ]] || die "Backup file does not exist: $backup_path"
+  # Bind mounts need an absolute path.
+  backup_path="$(cd "$(dirname "$backup_path")" && pwd -P)/$(basename "$backup_path")"
 
+  verify_sqlite_file "$backup_path"
+  verify_checksum "$backup_path"
   confirm_restore "$backup_path"
 
   log "Stopping web service"
   docker_compose stop web >/dev/null
 
-  log "Starting database service"
-  docker_compose up -d db >/dev/null
-
-  log "Waiting for database health"
-  wait_for_db_health
-
-  log "Terminating active database connections"
-  docker_compose exec -T db \
-    psql -U "$POSTGRES_USER" -d postgres -v ON_ERROR_STOP=1 \
-    -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '$DATABASE_NAME' AND pid <> pg_backend_pid();" \
-    >/dev/null
-
-  log "Dropping existing database"
-  docker_compose exec -T db dropdb -U "$POSTGRES_USER" --if-exists "$DATABASE_NAME" >/dev/null
-
-  log "Creating empty database"
-  docker_compose exec -T db createdb -U "$POSTGRES_USER" "$DATABASE_NAME" >/dev/null
-
-  log "Restoring backup from $backup_path"
-  docker_compose exec -T db \
-    pg_restore -U "$POSTGRES_USER" -d "$DATABASE_NAME" --clean --if-exists --no-owner --no-privileges \
-    <"$backup_path"
-
-  log "Running migrations"
-  docker_compose run --build --rm migrate >/dev/null
+  log "Replacing the database file in the data volume"
+  local replace_output=""
+  if ! replace_output="$(
+    docker_compose run --rm -T --no-deps --user root \
+      -v "$backup_path:/restore/harborstats.db:ro" \
+      web sh -euc "$REPLACE_DATABASE_SCRIPT" 2>&1
+  )"; then
+    printf '%s\n' "$replace_output" >&2
+    die "Replacing the database file failed; web is stopped (start it with: docker compose -f $COMPOSE_FILE up -d web)"
+  fi
+  log "Database file in the volume: $(printf '%s\n' "$replace_output" | grep '^sha256=' | tail -n 1)"
 
   log "Starting web service"
+  local since=""
+  since="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
   docker_compose up -d web >/dev/null
+
+  log "Waiting for web to start"
+  wait_for_web_startup "$since"
 
   log "Restore complete"
 }
