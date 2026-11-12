@@ -22,6 +22,7 @@ import { StatsPlayerFilter } from '@/components/StatsPlayerFilter';
 import { StatsSearch, type StatsSectionView } from '@/components/StatsSearch';
 import { WinningScoreByGameSizeChart } from '@/components/WinningScoreByGameSizeChart';
 import { Tooltip } from '@/components/ui/Tooltip';
+import { comparePlayerNames } from '@/lib/compare-players';
 import { formatAverage, formatPercent, formatSignedNumber } from '@/lib/format';
 import { PlayerTier } from '@/lib/player-tier';
 import { PROVISIONAL_GAMES } from '@/lib/rating';
@@ -382,11 +383,13 @@ export default async function StatsPage({ searchParams }: Props) {
 
   const winRateQualified = winRates
     .filter((player) => player.games >= settings.winRateMinGames)
-    .sort((a, b) => b.winRate - a.winRate || b.wins - a.wins);
+    .sort((a, b) => b.winRate - a.winRate || b.wins - a.wins || comparePlayerNames(a, b));
   const ratedPlayers = ratingReplay.players.filter((player) => player.gamesPlayed > 0);
   const podiumRateQualified = podiumRates
     .filter((player) => player.games >= settings.podiumRateMinGames)
-    .sort((a, b) => b.podiumRate - a.podiumRate || b.podiums - a.podiums);
+    .sort(
+      (a, b) => b.podiumRate - a.podiumRate || b.podiums - a.podiums || comparePlayerNames(a, b),
+    );
 
   const minGamesForScoreLeaderboards = 3;
   const scoreStatsQualified = scoreStats.filter(
