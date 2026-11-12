@@ -618,6 +618,13 @@ export interface PlayerScoreStats {
   medianScore: number;
 }
 
+interface PlayerScoreGroup {
+  playerId: number;
+  name: string;
+  tier: string;
+  scores: number[];
+}
+
 export async function getPlayerScoreStats(filter: StatsFilter = null): Promise<PlayerScoreStats[]> {
   // SQLite has no PERCENTILE_CONT, so fetch the raw scores and compute the
   // median with the same linear interpolation in JS.
@@ -633,8 +640,7 @@ export async function getPlayerScoreStats(filter: StatsFilter = null): Promise<P
     .where(gameIdCondition(filter, gamePlayers.gameId))
     .orderBy(players.id);
 
-  type PlayerScores = { playerId: number; name: string; tier: string; scores: number[] };
-  const byPlayer = new Map<number, PlayerScores>();
+  const byPlayer = new Map<number, PlayerScoreGroup>();
   rows.forEach((row) => {
     const entry = byPlayer.get(row.playerId);
     if (entry) {
