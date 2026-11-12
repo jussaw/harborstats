@@ -1,4 +1,3 @@
-import { sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { gamePlayers, games, players } from '@/db/schema'
 import { PlayerTier } from '@/lib/player-tier'
@@ -9,11 +8,16 @@ let playerCounter = 1
 
 export async function resetDatabase(): Promise<void> {
   playerCounter = 1
-  await db.execute(
-    sql.raw(
-      'TRUNCATE TABLE audit_logs, app_settings, game_players, games, players RESTART IDENTITY CASCADE',
-    ),
-  )
+  // Equivalent of TRUNCATE … RESTART IDENTITY: delete in FK order, then reset
+  // the AUTOINCREMENT counters.
+  db.$client.exec(`
+    DELETE FROM audit_logs;
+    DELETE FROM app_settings;
+    DELETE FROM game_players;
+    DELETE FROM games;
+    DELETE FROM players;
+    DELETE FROM sqlite_sequence;
+  `)
 }
 
 export async function createTestPlayer(input?: {

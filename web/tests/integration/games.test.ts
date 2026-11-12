@@ -4,7 +4,6 @@ import { describe, expect, it } from 'vitest';
 import { gamePlayers, games } from '@/db/schema';
 import { db } from '@/lib/db';
 import {
-  GameValidationError,
   createGame,
   deleteGame,
   GameValidationError,
