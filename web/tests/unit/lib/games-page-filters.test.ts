@@ -25,6 +25,17 @@ describe('games page filter helpers', () => {
     });
   });
 
+  it('ignores date query params whose year is outside 0000-9999', () => {
+    // These can't be stored or compared as fixed-width timestamp text.
+    const state = parseGamesPageState({
+      from: '-000001-01-01T00:00:00.000Z',
+      to: '+020000-01-01T00:00:00.000Z',
+    });
+
+    expect(state.filters.from).toBeNull();
+    expect(state.filters.to).toBeNull();
+  });
+
   it('parses hyphen-delimited player values alongside legacy repeated params', () => {
     expect(parseGamesPageState({ player: '2-5' }).filters.playerIds).toEqual([2, 5]);
     expect(parseGamesPageState({ player: ['2-abc-0', '5'] }).filters.playerIds).toEqual([2, 5]);

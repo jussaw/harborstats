@@ -1,5 +1,6 @@
 import { and, count, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
-import { isStorableTimestamp, toDbTimestampCeil } from '@/db/columns';
+import { toDbTimestampCeil } from '@/db/columns';
+import { isStorableTimestamp } from '@/lib/dates';
 import { games, gamePlayers, players } from '@/db/schema';
 import type { GamesPageFilters } from '@/lib/games-page-shared';
 import { playerNameOrder } from '@/lib/players';

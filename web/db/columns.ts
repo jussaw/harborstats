@@ -1,25 +1,18 @@
 import { sql } from 'drizzle-orm';
 import { customType } from 'drizzle-orm/sqlite-core';
+// Relative import: drizzle-kit loads this file and does not resolve the `@/` alias.
+import { isStorableTimestamp } from '../lib/dates';
 
 // Timestamps are stored as TEXT, UTC, fixed width `YYYY-MM-DDTHH:MM:SS.ffffffZ`
 // (27 chars). Fixed width keeps text comparison and ordering correct, and the
 // six fractional digits keep the microseconds carried over from Postgres. JS
 // Dates only hold milliseconds, so values the app writes end in `000Z`.
 
-// `toISOString()` is 24 chars only for years 0000–9999; outside that it uses an
-// expanded `±YYYYYY` year that would not fit the fixed width or read back.
-const ISO_LENGTH = 24;
-
-export function isStorableTimestamp(date: Date): boolean {
-  return Number.isFinite(date.getTime()) && date.toISOString().length === ISO_LENGTH;
-}
-
 export function toDbTimestamp(date: Date): string {
-  const iso = date.toISOString();
-  if (iso.length !== ISO_LENGTH) {
-    throw new RangeError(`Timestamp ${iso} is outside the storable years 0000–9999`);
+  if (!isStorableTimestamp(date)) {
+    throw new RangeError(`Timestamp ${String(date)} is outside the storable years 0000–9999`);
   }
-  return `${iso.slice(0, 23)}000Z`;
+  return `${date.toISOString().slice(0, 23)}000Z`;
 }
 
 // Last microsecond of the date's millisecond. Use it for inclusive upper

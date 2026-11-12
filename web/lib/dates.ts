@@ -36,3 +36,12 @@ export function dateInputToEndOfDay(value: string): Date {
   const [year, month, day] = parseDateInput(value)
   return new Date(year, month - 1, day, 23, 59, 59, 999)
 }
+
+// `toISOString()` is 24 chars only for years 0000–9999; outside that it uses an
+// expanded `±YYYYYY` year. The database stores timestamps as fixed-width text,
+// so only this range can be stored and compared.
+const STORABLE_ISO_LENGTH = 24
+
+export function isStorableTimestamp(date: Date): boolean {
+  return Number.isFinite(date.getTime()) && date.toISOString().length === STORABLE_ISO_LENGTH
+}
