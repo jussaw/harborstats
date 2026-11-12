@@ -1,6 +1,6 @@
-import { eq, sql, count, DrizzleQueryError } from 'drizzle-orm';
+import Database from 'better-sqlite3';
+import { eq, sql, count } from 'drizzle-orm';
 import type { InferSelectModel } from 'drizzle-orm';
-import postgres from 'postgres';
 import { players, gamePlayers } from '@/db/schema';
 import { parsePlayerTier, type PlayerTier } from '@/lib/player-tier';
 import { DuplicatePlayerNameError } from './player-errors';
@@ -9,6 +9,13 @@ import { db } from './db';
 export { DuplicatePlayerNameError };
 
 type DbPlayer = InferSelectModel<typeof players>;
+
+/**
+ * Orders by player name case-insensitively, as Postgres' `en_US` collation did.
+ * Applied per query rather than on the column so that name uniqueness stays
+ * case-sensitive.
+ */
+export const playerNameOrder = sql`${players.name} COLLATE NOCASE`;
 
 export type Player = Omit<DbPlayer, 'tier'> & { tier: PlayerTier };
 
@@ -20,7 +27,7 @@ export async function getPlayers(): Promise<Player[]> {
   const result = await db
     .select()
     .from(players)
-    .orderBy(sql`CASE ${players.tier} WHEN 'premium' THEN 0 ELSE 1 END`, players.name);
+    .orderBy(sql`CASE ${players.tier} WHEN 'premium' THEN 0 ELSE 1 END`, playerNameOrder);
   return result.map(normalizePlayer);
 }
 
@@ -43,24 +50,27 @@ export async function listPlayersWithUsage(): Promise<PlayerWithUsage[]> {
     .from(players)
     .leftJoin(gamePlayers, eq(gamePlayers.playerId, players.id))
     .groupBy(players.id)
-    .orderBy(sql`CASE ${players.tier} WHEN 'premium' THEN 0 ELSE 1 END`, players.name);
+    .orderBy(sql`CASE ${players.tier} WHEN 'premium' THEN 0 ELSE 1 END`, playerNameOrder);
   return result.map((player) => ({ ...player, tier: parsePlayerTier(player.tier) }));
 }
 
-const PLAYERS_NAME_UNIQUE_CONSTRAINT = 'players_name_unique';
-const PG_UNIQUE_VIOLATION = '23505';
+const SQLITE_UNIQUE_VIOLATION = 'SQLITE_CONSTRAINT_UNIQUE';
+// SQLite names the violated columns, not the index: "UNIQUE constraint failed: players.name".
+const PLAYERS_NAME_COLUMN = 'players.name';
 
 /**
- * Drizzle wraps a failed query in a `DrizzleQueryError` whose `cause` is the raw
- * postgres.js error. Report a duplicate ONLY for a unique violation (23505) on
- * the players-name constraint; every other error is left untranslated.
+ * Drizzle's better-sqlite3 query builders throw the raw `SqliteError`; its
+ * wrapping paths (`DrizzleError`, `DrizzleQueryError`) carry it as `cause`.
+ * Report a duplicate ONLY for a unique violation on `players.name`; every other
+ * error is left untranslated.
  */
 function isDuplicatePlayerName(error: unknown): boolean {
-  const cause = error instanceof DrizzleQueryError ? error.cause : undefined;
+  const sqliteError =
+    error instanceof Error && !(error instanceof Database.SqliteError) ? error.cause : error;
   return (
-    cause instanceof postgres.PostgresError &&
-    cause.code === PG_UNIQUE_VIOLATION &&
-    cause.constraint_name === PLAYERS_NAME_UNIQUE_CONSTRAINT
+    sqliteError instanceof Database.SqliteError &&
+    sqliteError.code === SQLITE_UNIQUE_VIOLATION &&
+    sqliteError.message.includes(PLAYERS_NAME_COLUMN)
   );
 }
 

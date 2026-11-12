@@ -1,6 +1,7 @@
 import { and, count, desc, eq, sql } from 'drizzle-orm';
 import { gamePlayers, games, players } from '@/db/schema';
 import { parsePlayerTier, PlayerTier, type PlayerTier as PlayerTierType } from '@/lib/player-tier';
+import { playerNameOrder } from '@/lib/players';
 import { db } from './db';
 import {
   gameIdCondition,
@@ -179,7 +180,7 @@ export async function fetchPlayerAndParticipantRows(
       })
       .from(players)
       .where(playerIdCondition(filter, players.id))
-      .orderBy(sql`CASE ${players.tier} WHEN 'premium' THEN 0 ELSE 1 END`, players.name),
+      .orderBy(sql`CASE ${players.tier} WHEN 'premium' THEN 0 ELSE 1 END`, playerNameOrder),
     db
       .select({
         gameId: gamePlayers.gameId,
@@ -596,7 +597,7 @@ export async function getPlayerScoreRows(filter: StatsFilter = null): Promise<Pl
     .where(gameIdCondition(filter, gamePlayers.gameId))
     .orderBy(
       sql`CASE ${players.tier} WHEN 'premium' THEN 0 ELSE 1 END`,
-      players.name,
+      playerNameOrder,
       gamePlayers.score,
     );
 
@@ -618,26 +619,44 @@ export interface PlayerScoreStats {
 }
 
 export async function getPlayerScoreStats(filter: StatsFilter = null): Promise<PlayerScoreStats[]> {
+  // SQLite has no PERCENTILE_CONT, so fetch the raw scores and compute the
+  // median with the same linear interpolation in JS.
   const rows = await db
     .select({
       playerId: players.id,
       name: players.name,
       tier: players.tier,
-      games: count(gamePlayers.id),
-      avgScore: sql<number>`AVG(${gamePlayers.score})`,
-      medianScore: sql<number>`PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY ${gamePlayers.score})`,
+      score: gamePlayers.score,
     })
     .from(players)
     .innerJoin(gamePlayers, eq(gamePlayers.playerId, players.id))
     .where(gameIdCondition(filter, gamePlayers.gameId))
-    .groupBy(players.id);
+    .orderBy(players.id);
 
-  return rows
-    .map((row) => ({
-      ...row,
-      tier: parsePlayerTier(row.tier),
-      avgScore: round1(row.avgScore),
-      medianScore: round1(row.medianScore),
+  type PlayerScores = { playerId: number; name: string; tier: string; scores: number[] };
+  const byPlayer = new Map<number, PlayerScores>();
+  rows.forEach((row) => {
+    const entry = byPlayer.get(row.playerId);
+    if (entry) {
+      entry.scores.push(row.score);
+    } else {
+      byPlayer.set(row.playerId, {
+        playerId: row.playerId,
+        name: row.name,
+        tier: row.tier,
+        scores: [row.score],
+      });
+    }
+  });
+
+  return [...byPlayer.values()]
+    .map(({ playerId, name, tier, scores }) => ({
+      playerId,
+      name,
+      tier: parsePlayerTier(tier),
+      games: scores.length,
+      avgScore: round1(scores.reduce((sum, score) => sum + score, 0) / scores.length),
+      medianScore: round1(getInterpolatedPercentile(scores, 0.5)),
     }))
     .sort((a, b) => b.avgScore - a.avgScore);
 }
@@ -991,7 +1010,7 @@ export interface PlayerPodiumRate {
 }
 
 export async function getPlayerPodiumRates(filter: StatsFilter = null): Promise<PlayerPodiumRate[]> {
-  const result = await db.execute(sql`
+  const result = await db.all(sql`
     WITH ranked AS (
       SELECT
         gp.player_id,
@@ -1003,8 +1022,8 @@ export async function getPlayerPodiumRates(filter: StatsFilter = null): Promise<
       p.id          AS "playerId",
       p.name,
       p.tier,
-      COUNT(r.player_id)::integer           AS games,
-      SUM(CASE WHEN r.finish_rank <= 2 THEN 1 ELSE 0 END)::integer AS podiums
+      CAST(COUNT(r.player_id) AS INTEGER)  AS games,
+      CAST(SUM(CASE WHEN r.finish_rank <= 2 THEN 1 ELSE 0 END) AS INTEGER) AS podiums
     FROM players p
     LEFT JOIN ranked r ON r.player_id = p.id
     WHERE true${playerIdSqlCondition(filter)}
@@ -1046,7 +1065,7 @@ export interface PlayerFinishBreakdown {
 export async function getPlayerFinishBreakdowns(
   filter: StatsFilter = null,
 ): Promise<PlayerFinishBreakdown[]> {
-  const result = await db.execute(sql`
+  const result = await db.all(sql`
     WITH ranked AS (
       SELECT
         gp.player_id,
@@ -1061,11 +1080,11 @@ export async function getPlayerFinishBreakdowns(
       p.id AS "playerId",
       p.name,
       p.tier,
-      COUNT(r.game_id)::integer                                    AS games,
-      SUM(CASE WHEN r.finish_rank = 1 THEN 1 ELSE 0 END)::integer  AS firsts,
-      SUM(CASE WHEN r.finish_rank = 2 THEN 1 ELSE 0 END)::integer  AS seconds,
-      SUM(CASE WHEN r.finish_rank = 3 THEN 1 ELSE 0 END)::integer  AS thirds,
-      SUM(CASE WHEN r.score = r.lowest_score THEN 1 ELSE 0 END)::integer AS lasts
+      CAST(COUNT(r.game_id) AS INTEGER)                                    AS games,
+      CAST(SUM(CASE WHEN r.finish_rank = 1 THEN 1 ELSE 0 END) AS INTEGER)  AS firsts,
+      CAST(SUM(CASE WHEN r.finish_rank = 2 THEN 1 ELSE 0 END) AS INTEGER)  AS seconds,
+      CAST(SUM(CASE WHEN r.finish_rank = 3 THEN 1 ELSE 0 END) AS INTEGER)  AS thirds,
+      CAST(SUM(CASE WHEN r.score = r.lowest_score THEN 1 ELSE 0 END) AS INTEGER) AS lasts
     FROM players p
     LEFT JOIN ranked r ON r.player_id = p.id
     WHERE true${playerIdSqlCondition(filter)}
@@ -1139,7 +1158,7 @@ export async function getPlayerMarginStats(
       })
       .from(players)
       .where(playerIdCondition(filter, players.id))
-      .orderBy(sql`CASE ${players.tier} WHEN 'premium' THEN 0 ELSE 1 END`, players.name),
+      .orderBy(sql`CASE ${players.tier} WHEN 'premium' THEN 0 ELSE 1 END`, playerNameOrder),
     db
       .select({
         gameId: gamePlayers.gameId,
@@ -1373,7 +1392,7 @@ export async function getSingleGameRecords(filter: StatsFilter = null): Promise<
     .innerJoin(games, eq(games.id, gamePlayers.gameId))
     .innerJoin(players, eq(players.id, gamePlayers.playerId))
     .where(gameIdCondition(filter, games.id))
-    .orderBy(desc(games.playedAt), desc(games.id), desc(gamePlayers.score), players.name);
+    .orderBy(desc(games.playedAt), desc(games.id), desc(gamePlayers.score), playerNameOrder);
 
   let highestScore: InternalScoreRecord | null = null;
   let lowestWinningScore: InternalScoreRecord | null = null;
@@ -1572,7 +1591,7 @@ export async function getOrderedGameOutcomeData(
       })
       .from(players)
       .where(playerIdCondition(filter, players.id))
-      .orderBy(players.name),
+      .orderBy(playerNameOrder),
     db
       .select({
         gameId: games.id,
@@ -1586,7 +1605,7 @@ export async function getOrderedGameOutcomeData(
       .innerJoin(games, eq(games.id, gamePlayers.gameId))
       .innerJoin(players, eq(players.id, gamePlayers.playerId))
       .where(gameIdCondition(filter, games.id))
-      .orderBy(desc(games.playedAt), desc(games.id), players.name),
+      .orderBy(desc(games.playedAt), desc(games.id), playerNameOrder),
   ]);
 
   return {
@@ -2171,7 +2190,7 @@ export async function getPlayerAttendanceSeries(
     .innerJoin(games, eq(games.id, gamePlayers.gameId))
     .innerJoin(players, eq(players.id, gamePlayers.playerId))
     .where(gameIdCondition(filter, games.id))
-    .orderBy(games.playedAt, games.id, players.name);
+    .orderBy(games.playedAt, games.id, playerNameOrder);
 
   const attendanceRows = rows.map((row) => ({
     playedAt: row.playedAt,
@@ -2213,7 +2232,7 @@ export async function getPlayerAttendanceEvents(
     .innerJoin(games, eq(games.id, gamePlayers.gameId))
     .innerJoin(players, eq(players.id, gamePlayers.playerId))
     .where(gameIdCondition(filter, games.id))
-    .orderBy(games.playedAt, games.id, players.name);
+    .orderBy(games.playedAt, games.id, playerNameOrder);
 
   return rows.map((row) => ({
     playedAt: row.playedAt.toISOString(),
@@ -2355,7 +2374,7 @@ export async function getPlayerParticipationRates(
       )
       .where(playerIdCondition(filter, players.id))
       .groupBy(players.id)
-      .orderBy(players.name),
+      .orderBy(playerNameOrder),
     db
       .select({
         totalGames: count(),

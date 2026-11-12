@@ -76,6 +76,51 @@ describe('getClientIp', () => {
   });
 });
 
+// IPs are stored as text, so they must come out in the form Postgres `inet`
+// printed for the rows carried over (RFC 5952: compressed, lowercase).
+describe('getClientIp IPv6 canonical form', () => {
+  function ipFrom(value: string): string | null {
+    return getClientIp(new Headers({ 'cf-connecting-ip': value }));
+  }
+
+  it('compresses an uppercase, fully expanded address', () => {
+    expect(ipFrom('2001:0DB8:0000:0000:0000:0000:0000:0001')).toBe('2001:db8::1');
+  });
+
+  it('lowercases an IPv4-mapped address and keeps the dotted IPv4 tail', () => {
+    expect(ipFrom('::FFFF:1.2.3.4')).toBe('::ffff:1.2.3.4');
+  });
+
+  it('prints a hex IPv4-mapped address with a dotted IPv4 tail', () => {
+    expect(ipFrom('0:0:0:0:0:ffff:0102:0304')).toBe('::ffff:1.2.3.4');
+  });
+
+  it('compresses only the first longest run of zero groups', () => {
+    expect(ipFrom('2001:db8:0:0:1:0:0:1')).toBe('2001:db8::1:0:0:1');
+  });
+
+  it('does not compress a single zero group', () => {
+    expect(ipFrom('2001:db8:0:1:1:1:1:1')).toBe('2001:db8:0:1:1:1:1:1');
+  });
+
+  it('compresses a trailing run of zero groups', () => {
+    expect(ipFrom('1:0:0:0:0:0:0:0')).toBe('1::');
+  });
+
+  it('prints the unspecified and loopback addresses compressed', () => {
+    expect(ipFrom('0:0:0:0:0:0:0:0')).toBe('::');
+    expect(ipFrom('0:0:0:0:0:0:0:1')).toBe('::1');
+  });
+
+  it('returns IPv4 unchanged', () => {
+    expect(ipFrom('203.0.113.7')).toBe('203.0.113.7');
+  });
+
+  it('returns null for an address with a zone id', () => {
+    expect(ipFrom('fe80::1%eth0')).toBeNull();
+  });
+});
+
 describe('normalizeForRateLimit', () => {
   it('returns an IPv4 address unchanged', () => {
     expect(normalizeForRateLimit('198.51.100.1')).toBe('198.51.100.1');

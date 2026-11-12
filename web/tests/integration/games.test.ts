@@ -1,4 +1,4 @@
-import { asc, eq } from 'drizzle-orm';
+import { asc, eq, sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
 import { gamePlayers, games } from '@/db/schema';
@@ -839,6 +839,23 @@ describe('games lib', () => {
       totalGames: 2,
       games: [{ id: middleGame.id }, { id: olderGame.id }],
     });
+  });
+
+  it('includes a microsecond-precision game that sits exactly on the from/to bounds', async () => {
+    // Rows carried over from Postgres keep microseconds; JS Dates (and so the
+    // filter bounds) only have milliseconds.
+    const ada = await createTestPlayer({ name: 'Ada' });
+    const game = await createTestGame({
+      players: [{ playerId: ada.id, score: 7, isWinner: true }],
+    });
+    await db.run(
+      sql`UPDATE games SET played_at = '2026-11-12T04:34:59.485225Z' WHERE id = ${game.id}`,
+    );
+    const bound = new Date('2026-11-12T04:34:59.485Z');
+
+    await expect(
+      listGamesPage(1, 20, { playerIds: [], from: bound, to: bound }),
+    ).resolves.toMatchObject({ totalGames: 1, games: [{ id: game.id }] });
   });
 
   it('keeps filtered totals and page clamping correct when filters narrow the result set', async () => {

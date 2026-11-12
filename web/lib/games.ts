@@ -1,6 +1,8 @@
-import { and, asc, count, desc, eq, gte, inArray, lte } from 'drizzle-orm';
+import { and, count, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
+import { toDbTimestampCeil } from '@/db/columns';
 import { games, gamePlayers, players } from '@/db/schema';
 import type { GamesPageFilters } from '@/lib/games-page-shared';
+import { playerNameOrder } from '@/lib/players';
 import { db } from './db';
 
 export interface GamePlayer {
@@ -98,23 +100,27 @@ export async function createGame(input: {
   assertValidPlayedAt(input.playedAt);
   const normalizedPlayers = validateAndNormalizeGamePlayers(input.players);
 
-  return db.transaction(async (tx) => {
-    const [{ id }] = await tx
+  // better-sqlite3 transactions are synchronous: the callback must not await.
+  return db.transaction((tx) => {
+    const [{ id }] = tx
       .insert(games)
       .values({
         playedAt: input.playedAt,
         notes: input.notes,
         submittedFromIp: input.submittedFromIp,
       })
-      .returning({ id: games.id });
-    await tx.insert(gamePlayers).values(
-      normalizedPlayers.map((p) => ({
-        gameId: id,
-        playerId: p.playerId,
-        score: p.score,
-        isWinner: p.isWinner,
-      })),
-    );
+      .returning({ id: games.id })
+      .all();
+    tx.insert(gamePlayers)
+      .values(
+        normalizedPlayers.map((p) => ({
+          gameId: id,
+          playerId: p.playerId,
+          score: p.score,
+          isWinner: p.isWinner,
+        })),
+      )
+      .run();
     return id;
   });
 }
@@ -136,22 +142,26 @@ export async function updateGame(
   assertValidPlayedAt(input.playedAt);
   const normalizedPlayers = validateAndNormalizeGamePlayers(input.players);
 
-  return db.transaction(async (tx) => {
-    const updated = await tx
+  // better-sqlite3 transactions are synchronous: the callback must not await.
+  return db.transaction((tx) => {
+    const updated = tx
       .update(games)
       .set({ playedAt: input.playedAt, notes: input.notes })
       .where(eq(games.id, id))
-      .returning({ id: games.id });
+      .returning({ id: games.id })
+      .all();
     if (updated.length === 0) return false;
-    await tx.delete(gamePlayers).where(eq(gamePlayers.gameId, id));
-    await tx.insert(gamePlayers).values(
-      normalizedPlayers.map((p) => ({
-        gameId: id,
-        playerId: p.playerId,
-        score: p.score,
-        isWinner: p.isWinner,
-      })),
-    );
+    tx.delete(gamePlayers).where(eq(gamePlayers.gameId, id)).run();
+    tx.insert(gamePlayers)
+      .values(
+        normalizedPlayers.map((p) => ({
+          gameId: id,
+          playerId: p.playerId,
+          score: p.score,
+          isWinner: p.isWinner,
+        })),
+      )
+      .run();
     return true;
   });
 }
@@ -304,7 +314,10 @@ function getGamesPageWhere(filters: GamesPageFilters) {
   }
 
   if (filters.to) {
-    conditions.push(lte(games.playedAt, filters.to));
+    // Inclusive bound through the end of the millisecond: rows carried over
+    // from Postgres keep microseconds (`…485225Z`) that a plain `…485000Z`
+    // bound would exclude. Bound as raw text so the column encoder is skipped.
+    conditions.push(lte(games.playedAt, sql`${toDbTimestampCeil(filters.to)}`));
   }
 
   if (conditions.length === 0) {
@@ -341,7 +354,7 @@ export async function listRecentGames(limit = DEFAULT_RECENT_GAMES_LIMIT): Promi
     .innerJoin(gamePlayers, eq(gamePlayers.gameId, games.id))
     .innerJoin(players, eq(players.id, gamePlayers.playerId))
     .where(inArray(games.id, gameIds))
-    .orderBy(desc(games.playedAt), desc(games.id), asc(players.name));
+    .orderBy(desc(games.playedAt), desc(games.id), playerNameOrder);
   return groupGameRows(rows);
 }
 
@@ -367,7 +380,7 @@ export async function listGamesForPlayer(playerId: number): Promise<RecentGame[]
           .where(eq(gamePlayers.playerId, playerId)),
       ),
     )
-    .orderBy(desc(games.playedAt), desc(games.id), asc(players.name));
+    .orderBy(desc(games.playedAt), desc(games.id), playerNameOrder);
 
   return groupGameRows(rows);
 }
@@ -419,7 +432,7 @@ export async function listGamesPage(
     .innerJoin(gamePlayers, eq(gamePlayers.gameId, games.id))
     .innerJoin(players, eq(players.id, gamePlayers.playerId))
     .where(inArray(games.id, gameIds))
-    .orderBy(desc(games.playedAt), desc(games.id), asc(players.name));
+    .orderBy(desc(games.playedAt), desc(games.id), playerNameOrder);
 
   const groupedGames = new Map(groupGameRows(rows).map((game) => [game.id, game]));
 
@@ -447,7 +460,7 @@ export async function listAllGames(): Promise<RecentGame[]> {
     .from(games)
     .innerJoin(gamePlayers, eq(gamePlayers.gameId, games.id))
     .innerJoin(players, eq(players.id, gamePlayers.playerId))
-    .orderBy(desc(games.playedAt), desc(games.id), asc(players.name));
+    .orderBy(desc(games.playedAt), desc(games.id), playerNameOrder);
   return groupGameRows(rows);
 }
 
@@ -472,7 +485,7 @@ export async function getGameForEdit(id: number): Promise<GameForEdit | null> {
     .innerJoin(gamePlayers, eq(gamePlayers.gameId, games.id))
     .innerJoin(players, eq(players.id, gamePlayers.playerId))
     .where(eq(games.id, id))
-    .orderBy(asc(players.name));
+    .orderBy(playerNameOrder);
   if (rows.length === 0) return null;
   return {
     id: rows[0].id,
