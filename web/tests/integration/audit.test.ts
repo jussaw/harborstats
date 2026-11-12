@@ -9,6 +9,7 @@ import { saveSettings } from '@/app/admin/settings/actions';
 import { COOKIE_NAME as ADMIN_COOKIE_NAME, signSession } from '@/lib/admin-auth';
 import { db } from '@/lib/db';
 import { auditLogs, players } from '@/db/schema';
+import { listAuditLogs } from '@/lib/audit';
 import { PlayerTier } from '@/lib/player-tier';
 import { createTestGame, createTestPlayer } from '../helpers/db';
 
@@ -333,5 +334,23 @@ describe('audit recording for failed auth attempts', () => {
       entityType: 'session',
     });
     expect(entry.metadata).toMatchObject({ reason: 'not_configured' });
+  });
+});
+
+describe('audit listing', () => {
+  test('lists entries written in the same millisecond newest-first by id', async () => {
+    // New rows carry millisecond precision, so back-to-back entries can share
+    // created_at; the id breaks the tie in insertion order.
+    const sameMs = '2026-11-12T04:34:59.485000Z';
+    db.$client.exec(`
+      INSERT INTO audit_logs (id, action, actor_type, summary, created_at) VALUES
+        (1, 'player.create', 'admin', 'first', '${sameMs}'),
+        (2, 'player.update', 'admin', 'second', '${sameMs}'),
+        (3, 'player.delete', 'admin', 'third', '${sameMs}');
+    `);
+
+    const entries = await listAuditLogs();
+
+    expect(entries.map((entry) => entry.id)).toEqual([3, 2, 1]);
   });
 });

@@ -57,7 +57,14 @@ export async function recordAudit(input: RecordAuditInput): Promise<void> {
   }
 }
 
-/** Returns audit entries newest-first, capped at `limit`. */
+/**
+ * Returns audit entries newest-first, capped at `limit`. New rows carry only
+ * millisecond precision, so the id breaks same-millisecond ties.
+ */
 export async function listAuditLogs(limit = 200): Promise<AuditLogEntry[]> {
-  return db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt)).limit(limit)
+  return db
+    .select()
+    .from(auditLogs)
+    .orderBy(desc(auditLogs.createdAt), desc(auditLogs.id))
+    .limit(limit)
 }
