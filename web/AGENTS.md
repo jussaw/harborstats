@@ -123,6 +123,11 @@ Schema change protocol:
    committing them
 4. Run `pnpm db:migrate`
 
+`runMigrations()` (`lib/migrate.ts`) switches foreign keys off while migrating, because drizzle-kit
+rebuilds SQLite tables (`DROP TABLE` + rename) inside a transaction where `PRAGMA foreign_keys` is
+ignored, and a cascade would delete every score. It fails the run if the migration leaves any
+foreign key violation. Always migrate through it.
+
 ## Git / Worktree Workflow
 
 - Use repo-local `.worktrees/` (already gitignored) for worktrees created by any agentic AI tool
