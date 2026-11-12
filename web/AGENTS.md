@@ -114,6 +114,8 @@ Database rules:
   `toDbTimestampCeil()`, because migrated rows carry microseconds.
 - Order player names with `playerNameOrder` (`lib/players.ts`, `COLLATE NOCASE`), never bare
   `players.name`.
+- Tools that open their own connection — `pnpm db:studio`, the `sqlite3` CLI — run with foreign keys
+  off. Use them to inspect; if you must write in `sqlite3`, run `PRAGMA foreign_keys = ON;` first.
 
 Schema change protocol:
 

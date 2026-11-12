@@ -40,7 +40,7 @@ Then go to `/admin/settings` to set the game creation password — you will need
 | `pnpm format:check` | Check formatting without writing |
 | `pnpm db:generate` | Generate a new SQL migration from schema changes in `db/schema.ts` |
 | `pnpm db:migrate` | Apply pending migrations to the SQLite file at `DATABASE_PATH` |
-| `pnpm db:studio` | Open Drizzle Studio (visual DB browser) |
+| `pnpm db:studio` | Open Drizzle Studio (visual DB browser). Its connection has foreign keys **off**, so deleting a game there leaves its scores behind — make changes through the app |
 
 ## Test database safety
 

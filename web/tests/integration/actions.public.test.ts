@@ -199,8 +199,8 @@ describe('createGameAction', () => {
     const alice = await createTestPlayer({ name: 'Alice' });
     const bob = await createTestPlayer({ name: 'Bob' });
 
-    // A malformed cf-connecting-ip must not reach the inet column and abort the
-    // insert; it is rejected before persistence and does not fall through to the
+    // A malformed cf-connecting-ip must not be stored as the submitter IP; it
+    // is rejected before persistence and does not fall through to the
     // otherwise-valid x-forwarded-for / x-real-ip headers.
     headersMock.mockResolvedValue(
       new Headers({
