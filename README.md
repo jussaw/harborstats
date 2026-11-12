@@ -21,7 +21,7 @@ This root README is the primary entrypoint for the repo. It covers how the proje
 ```text
 .
 ├── .github/     GitHub Actions workflows
-├── devops/      Docker Compose deployment stack, backup/restore scripts, and ops docs
+├── devops/      Backup/restore scripts and ops docs
 ├── web/         Next.js app, database schema, scripts, tests, and app-level README
 └── README.md    Root project guide
 ```
@@ -107,6 +107,8 @@ Pull requests are checked by the PR Smoke pipeline in [.github/workflows/pr-smok
 - Integration tests
 - End-to-end (Playwright) tests
 
+The same checks run again on every push to `main` that changes those paths. When they pass, the pipeline publishes the production image, `ghcr.io/jussaw/harborstats`, tagged `latest` and `sha-<commit>`, for `linux/amd64` and `linux/arm64`.
+
 ## Development workflow
 
 ### Database and schema changes
@@ -138,19 +140,18 @@ pnpm test:e2e:install
 
 ## Deployment overview
 
-Production-style deployment assets live in `devops/`.
+Production runs the published image `ghcr.io/jussaw/harborstats` (the `runner` target of `web/Dockerfile`) as one container, `harborstats-web`, with the SQLite database file mounted at `/data/harborstats.db`.
 
-- `devops/docker-compose.yml` defines the deploy stack: one `web` container, with the SQLite database file in the `harborstats_data` volume at `/data/harborstats.db`
-- `devops/deploy.sh` pulls the latest code, then rebuilds and restarts the app; pending migrations run inside the container at startup
-- `web/Dockerfile` provides the `runner` image target used by the deploy stack
-- In production the app refuses to start on a missing or empty database. A fresh install sets `DATABASE_ALLOW_CREATE=1` for its first start only — see [devops/README.md](devops/README.md)
-- `devops/backup-db.sh` and `devops/restore-db.sh` back up and restore the SQLite file
+- The compose stack that runs the container is kept outside this repo; it holds the app's settings (`ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`)
+- **Every merge to `main` goes live**: CI publishes a new `latest`, production follows it, and pending migrations run at startup
+- In production the app refuses to start on a missing or empty database. A fresh install sets `DATABASE_ALLOW_CREATE=1` for its first start only (see [devops/README.md](devops/README.md))
+- `devops/backup-db.sh` and `devops/restore-db.sh` back up and restore the SQLite file in the running container
 
-For the full deployment guide, including the environment, the fresh-install step, backups, restores, and manual compose commands, see [devops/README.md](devops/README.md).
+For the full guide, including what the deploying stack must provide, rollbacks, backups and restores, see [devops/README.md](devops/README.md).
 
 ## Additional docs
 
 - [web/README.md](web/README.md): lower-level app README focused on the Next.js app itself
-- [devops/README.md](devops/README.md): deployment, backup, and restore guide
+- [devops/README.md](devops/README.md): release, backup, and restore guide
 - [CONTEXT.md](CONTEXT.md): the domain glossary and shared vocabulary for HarborStats
 - [PLAN.md](PLAN.md): the product roadmap; treat planning material as guidance for direction, not necessarily current behavior

@@ -5,7 +5,7 @@ This repository has multiple areas with different responsibilities. Start at the
 ## Repo Layout
 
 - `web/`: main Next.js application, database schema, scripts, and tests
-- `devops/`: deployment stack, compose files, and operational docs
+- `devops/`: backup and restore scripts and operational docs
 - `.github/`: CI workflows
 
 ## Instruction Scope
