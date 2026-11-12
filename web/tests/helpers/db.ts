@@ -1,12 +1,14 @@
 import { db } from '@/lib/db'
 import { gamePlayers, games, players } from '@/db/schema'
 import { PlayerTier } from '@/lib/player-tier'
+import { assertIsTestDatabase } from './test-env'
 
 export const DEFAULT_PLAYED_AT = new Date('2026-01-01T12:00:00.000Z')
 
 let playerCounter = 1
 
 export async function resetDatabase(): Promise<void> {
+  assertIsTestDatabase(db.$client.name)
   playerCounter = 1
   // Equivalent of TRUNCATE … RESTART IDENTITY: delete in FK order, then reset
   // the AUTOINCREMENT counters.

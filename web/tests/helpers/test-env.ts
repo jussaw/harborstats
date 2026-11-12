@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 
 const LOCALHOST = '127.0.0.1'
 
@@ -37,4 +37,16 @@ export function applyTestEnv(env = process.env): typeof TEST_ENV {
 
 export function getTestDatabasePath(): string {
   return TEST_ENV.DATABASE_PATH
+}
+
+/**
+ * Throws unless `path` is the test database file. Called before anything that
+ * wipes data, so a connection opened on a real database is never cleared.
+ */
+export function assertIsTestDatabase(path: string): void {
+  if (resolve(path) !== resolve(getTestDatabasePath())) {
+    throw new Error(
+      `Refusing to wipe ${path}: it is not the test database (${getTestDatabasePath()})`,
+    )
+  }
 }
