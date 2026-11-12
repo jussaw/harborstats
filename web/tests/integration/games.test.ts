@@ -298,6 +298,39 @@ describe('games lib', () => {
     expect(await db.select().from(games)).toHaveLength(0);
   });
 
+  it('rejects a played-at year outside 0000-9999 before creating a database row', async () => {
+    const ada = await createTestPlayer({ name: 'Ada' });
+
+    await expect(
+      createGame({
+        playedAt: new Date('+020266-11-13T01:00:00.000Z'),
+        notes: '',
+        submittedFromIp: null,
+        players: [{ playerId: ada.id, score: 10, isWinner: true }],
+      }),
+    ).rejects.toThrow(GameValidationError);
+
+    expect(await db.select().from(games)).toHaveLength(0);
+  });
+
+  it('rejects a played-at year outside 0000-9999 on update and keeps the stored date', async () => {
+    const ada = await createTestPlayer({ name: 'Ada' });
+    const game = await createTestGame({
+      players: [{ playerId: ada.id, score: 10, isWinner: true }],
+    });
+
+    await expect(
+      updateGame(game.id, {
+        playedAt: new Date('+020266-11-13T01:00:00.000Z'),
+        notes: '',
+        players: [{ playerId: ada.id, score: 10, isWinner: true }],
+      }),
+    ).rejects.toThrow(GameValidationError);
+
+    const [stored] = await db.select().from(games);
+    expect(stored.playedAt.toISOString()).toBe('2026-01-01T12:00:00.000Z');
+  });
+
   it('rejects multiple explicit winners before creating a database row', async () => {
     const ada = await createTestPlayer({ name: 'Ada' });
     const bea = await createTestPlayer({ name: 'Bea' });

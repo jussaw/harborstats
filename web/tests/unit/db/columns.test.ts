@@ -30,6 +30,21 @@ describe('toDbTimestamp', () => {
   });
 });
 
+describe('toDbTimestamp range', () => {
+  it('refuses a year above 9999, which would not fit the fixed width', () => {
+    expect(() => toDbTimestamp(new Date('+020266-11-13T01:00:00.000Z'))).toThrow(RangeError);
+  });
+
+  it('refuses a negative year', () => {
+    expect(() => toDbTimestamp(new Date('-000001-01-01T00:00:00.000Z'))).toThrow(RangeError);
+  });
+
+  it('accepts the first and last representable years', () => {
+    expect(toDbTimestamp(new Date('0000-01-01T00:00:00.000Z'))).toBe('0000-01-01T00:00:00.000000Z');
+    expect(toDbTimestamp(new Date('9999-12-31T23:59:59.999Z'))).toBe('9999-12-31T23:59:59.999000Z');
+  });
+});
+
 describe('toDbTimestampCeil', () => {
   it('points at the last microsecond of the millisecond', () => {
     expect(toDbTimestampCeil(new Date('2026-11-12T04:34:59.485Z'))).toBe(

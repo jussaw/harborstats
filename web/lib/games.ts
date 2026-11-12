@@ -1,5 +1,5 @@
 import { and, count, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
-import { toDbTimestampCeil } from '@/db/columns';
+import { isStorableTimestamp, toDbTimestampCeil } from '@/db/columns';
 import { games, gamePlayers, players } from '@/db/schema';
 import type { GamesPageFilters } from '@/lib/games-page-shared';
 import { playerNameOrder } from '@/lib/players';
@@ -38,7 +38,8 @@ const MIN_SCORE = 0;
 const MAX_SCORE = 30;
 
 function assertValidPlayedAt(playedAt: Date) {
-  if (!(playedAt instanceof Date) || !Number.isFinite(playedAt.getTime())) {
+  // Years outside 0000–9999 can't be stored in the fixed-width timestamp text.
+  if (!(playedAt instanceof Date) || !isStorableTimestamp(playedAt)) {
     throw new GameValidationError('Played date must be valid.');
   }
 }
