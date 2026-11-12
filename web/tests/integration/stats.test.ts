@@ -390,6 +390,18 @@ describe('stats integration', () => {
     });
   });
 
+  // Without a name tie-break the order of fully tied rows came from the
+  // database (Postgres hash order, SQLite id order).
+  test('getPlayerWinRates orders players tied on wins and win rate by name, case-insensitively', async () => {
+    const zed = await createTestPlayer({ name: 'Zed' });
+    const amy = await createTestPlayer({ name: 'amy' });
+    const bob = await createTestPlayer({ name: 'Bob' });
+
+    const winRates = await getPlayerWinRates();
+
+    expect(winRates.map((player) => player.playerId)).toEqual([amy.id, bob.id, zed.id]);
+  });
+
   test('getPlayerWinRates includes zero-game players and breaks win ties by win rate', async () => {
     const alice = await createTestPlayer({ name: 'Alice', tier: PlayerTier.Premium });
     const bob = await createTestPlayer({ name: 'Bob', tier: PlayerTier.Standard });
@@ -1072,6 +1084,16 @@ describe('stats integration', () => {
       avgLosingScore: 6,
       scoreGap: 1.8,
     });
+  });
+
+  test('getPlayerPodiumRates orders players tied on podium rate and podiums by name, case-insensitively', async () => {
+    const zed = await createTestPlayer({ name: 'Zed' });
+    const amy = await createTestPlayer({ name: 'amy' });
+    const bob = await createTestPlayer({ name: 'Bob' });
+
+    const podiumRates = await getPlayerPodiumRates();
+
+    expect(podiumRates.map((player) => player.playerId)).toEqual([amy.id, bob.id, zed.id]);
   });
 
   test('getPlayerPodiumRates counts tied finish ranks and breaks equal rates by podium count', async () => {

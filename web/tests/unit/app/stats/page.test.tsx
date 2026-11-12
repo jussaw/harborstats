@@ -1224,4 +1224,34 @@ describe('StatsPage', () => {
     expect(markup).not.toContain('section id="points-per-game"');
     expect(markup).toContain('Bea');
   });
+
+  // The page re-sorts both leaderboards; players tied on every shown value must
+  // come out in name order whatever order the data arrives in.
+  it('orders players tied on win rate or podium rate by name, case-insensitively', async () => {
+    const tied = [
+      { playerId: 1, name: 'Zed', tier: PlayerTier.Standard },
+      { playerId: 2, name: 'amy', tier: PlayerTier.Standard },
+      { playerId: 3, name: 'Bob', tier: PlayerTier.Standard },
+    ];
+    setStatsPageData({
+      winRates: tied.map((player) => ({ ...player, games: 5, wins: 2, winRate: 0.4 })),
+      podiumRates: tied.map((player) => ({ ...player, games: 5, podiums: 3, podiumRate: 0.6 })),
+    });
+    vi.mocked(getSettings).mockResolvedValue({
+      winRateMinGames: 0,
+      podiumRateMinGames: 0,
+      statCardMinGames: 0,
+    });
+
+    const markup = renderToStaticMarkup(await StatsPage({ searchParams: Promise.resolve({}) }));
+    const sectionMarkup = (id: string) => {
+      const start = markup.indexOf(`id="${id}"`);
+      return markup.slice(start, markup.indexOf('<section', start + 1));
+    };
+    const nameOrder = (html: string) =>
+      ['amy', 'Bob', 'Zed'].sort((x, y) => html.indexOf(`>${x}<`) - html.indexOf(`>${y}<`));
+
+    expect(nameOrder(sectionMarkup('win-rate'))).toEqual(['amy', 'Bob', 'Zed']);
+    expect(nameOrder(sectionMarkup('podium-rate'))).toEqual(['amy', 'Bob', 'Zed']);
+  });
 });

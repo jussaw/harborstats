@@ -1,5 +1,6 @@
 import { and, count, desc, eq, sql } from 'drizzle-orm';
 import { gamePlayers, games, players } from '@/db/schema';
+import { comparePlayerNames } from '@/lib/compare-players';
 import { parsePlayerTier, PlayerTier, type PlayerTier as PlayerTierType } from '@/lib/player-tier';
 import { playerNameOrder } from '@/lib/players';
 import { db } from './db';
@@ -548,7 +549,7 @@ export async function getPlayerWinRates(filter: StatsFilter = null): Promise<Pla
       tier: parsePlayerTier(row.tier),
       winRate: row.games > 0 ? row.wins / row.games : 0,
     }))
-    .sort((a, b) => b.wins - a.wins || b.winRate - a.winRate);
+    .sort((a, b) => b.wins - a.wins || b.winRate - a.winRate || comparePlayerNames(a, b));
 }
 
 interface PlayerScoreRow extends PlayerIdentity {
@@ -1050,7 +1051,9 @@ export async function getPlayerPodiumRates(filter: StatsFilter = null): Promise<
         podiumRate: gameCount > 0 ? podiums / gameCount : 0,
       };
     })
-    .sort((a, b) => b.podiumRate - a.podiumRate || b.podiums - a.podiums);
+    .sort(
+      (a, b) => b.podiumRate - a.podiumRate || b.podiums - a.podiums || comparePlayerNames(a, b),
+    );
 }
 
 export interface PlayerFinishBreakdown {
