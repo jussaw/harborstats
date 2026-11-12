@@ -34,8 +34,10 @@ before continuing.
 
 - **Cohort Filter** — the page-wide player selection that decides which players
   are included in the statistics. Changing it re-runs the Elo replay, so it can
-  change the ratings themselves (a player's rating depends only on games against
-  players in the cohort).
+  change the ratings themselves (a game enters the replay only when every one of
+  its participants is in the selected cohort; a single outside participant
+  excludes the whole game, so changing the cohort can drop games entirely rather
+  than only filtering what is displayed).
 
 - **Line Visibility** — a purely visual toggle (from the Rating History legend)
   that shows or hides a single player's line. It never changes any rating and
