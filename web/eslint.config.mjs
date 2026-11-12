@@ -65,11 +65,6 @@ const eslintConfig = defineConfig([
       'drizzle.config.ts',
       'scripts/generate-pwa-icons.ts',
       'tests/unit/scripts/check-node-version.test.ts',
-      // One-off Postgres → SQLite switchover tooling (removed in the cleanup
-      // PR along with the `postgres` devDependency it imports).
-      'scripts/pg-to-sqlite.ts',
-      'scripts/verify-migration.ts',
-      'scripts/parity/**/*.ts',
     ],
     rules: {
       'import-x/no-extraneous-dependencies': 'off',
