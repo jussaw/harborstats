@@ -44,6 +44,7 @@ load_env_defaults "$ENV_FILE" \
 
 COMPOSE_FILE="${COMPOSE_FILE:-$SCRIPT_DIR/docker-compose.yml}"
 CONFIRMATION_WORD="harborstats"
+STARTUP_TIMEOUT_SECONDS="${STARTUP_TIMEOUT_SECONDS:-120}"
 
 # Runs as root in a one-off web container with the data volume at /data and the
 # backup mounted read-only. The copy is owned by the app user (uid 1001) and
@@ -113,6 +114,48 @@ verify_checksum() {
   log "Checksum verified"
 }
 
+# Migrations run inside the container after `up -d` has returned, so a failed
+# migration or a refused database shows only in the container: wait for the
+# app's startup line instead of trusting `up`.
+wait_for_web_startup() {
+  local since="$1"
+  local deadline=$((SECONDS + STARTUP_TIMEOUT_SECONDS))
+  local container_id=""
+  local inspected=""
+  local state=""
+  local started_at=""
+  local logs=""
+
+  while :; do
+    container_id="$(docker_compose ps -a -q web | tr -d '[:space:]')"
+    inspected=""
+    if [[ -n "$container_id" ]]; then
+      inspected="$(docker inspect --format '{{.State.Status}} {{.State.StartedAt}}' "$container_id" 2>/dev/null || true)"
+    fi
+    state="${inspected%% *}"
+    started_at="${inspected#* }"
+
+    # `up` left an unchanged container alone: it is the earlier, healthy process.
+    if [[ "$state" == "running" && -n "$started_at" && "${started_at:0:19}" < "${since:0:19}" ]]; then
+      log "web was already running and was not restarted"
+      return 0
+    fi
+
+    logs="$(docker_compose logs --since "$since" --no-log-prefix web 2>&1 || true)"
+    if [[ "$logs" == *"[startup] Opened the existing database"* || "$logs" == *"[startup] Created a new database"* ]]; then
+      log "web started: $(printf '%s\n' "$logs" | grep -F '[startup]' | tail -n 1)"
+      return 0
+    fi
+
+    if [[ "$state" == "exited" || "$state" == "restarting" || "$state" == "dead" ]] || ((SECONDS >= deadline)); then
+      printf '%s\n' "$logs" | tail -n 20 >&2
+      die "web did not start (state: ${state:-missing}); see the log lines above"
+    fi
+
+    sleep 2
+  done
+}
+
 confirm_restore() {
   local backup_path="$1"
   printf "About to restore '%s' as the HarborStats database.\n" "$backup_path"
@@ -150,7 +193,12 @@ main() {
     web sh -euc "$REPLACE_DATABASE_SCRIPT" >/dev/null
 
   log "Starting web service"
+  local since=""
+  since="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
   docker_compose up -d web >/dev/null
+
+  log "Waiting for web to start"
+  wait_for_web_startup "$since"
 
   log "Restore complete"
 }

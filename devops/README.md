@@ -58,6 +58,7 @@ Optional backup and restore script values:
 | --- | --- | --- | --- |
 | `BACKUP_DIR` | `/var/backups/harborstats` | `backup-db.sh` | Host directory where backups and checksum files are written |
 | `RETENTION_DAYS` | `30` | `backup-db.sh` | Number of days to keep old `harborstats-*.db` and `.db.sha256` files |
+| `STARTUP_TIMEOUT_SECONDS` | `120` | `deploy.sh`, `restore-db.sh` | How long to wait for the app's startup line after starting `web` before failing |
 
 Notes:
 
@@ -99,6 +100,7 @@ The deploy sequence is:
 
 1. Pull the latest changes into the repo with `git -C "$REPO_DIR" pull`
 2. Build and start the `web` service (`docker compose up --build -d web`); pending migrations run when the container starts
+3. Wait for the app to log `[startup] Opened the existing database` (or `Created a new database`). If the container exits or restarts instead, or the line does not appear within `STARTUP_TIMEOUT_SECONDS`, print the last log lines and exit non-zero. If `up` left an unchanged container running, it counts as started
 
 `deploy.sh` does not pass `--remove-orphans`, so containers from an older version of the stack are never removed by a deploy.
 
@@ -217,7 +219,7 @@ The restore script will:
 3. Ask for confirmation by requiring you to type `harborstats`
 4. Stop the `web` service so the app cannot write during recovery
 5. In a one-off root container on the same volume, copy the backup to `/data/harborstats.db` owned by uid `1001` (the app user), and delete the old `harborstats.db-wal` and `harborstats.db-shm`
-6. Start `web` again; pending migrations, if any, run at startup
+6. Start `web` again and wait for its startup line, as `deploy.sh` does; pending migrations, if any, run at startup
 
 The restore never sets `DATABASE_ALLOW_CREATE`.
 

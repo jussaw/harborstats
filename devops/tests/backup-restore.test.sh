@@ -54,6 +54,11 @@ setup_test_dir() {
   export WEB_RUNNING=1
   export INTEGRITY_RESULT=ok
   export CONTAINER_SHA256=deadbeef
+  # What the stubbed web container reports after `up -d web`.
+  export WEB_STATE=running
+  export WEB_STARTED_AT=2999-01-01T00:00:00.000000000Z
+  export WEB_LOGS="[startup] Opened the existing database at /data/harborstats.db"
+  export STARTUP_TIMEOUT_SECONDS=0
   mkdir -p "$STUB_BIN" "$BACKUP_DIR"
   : >"$DOCKER_LOG"
   : >"$DOCKER_ENV_LOG"
@@ -126,6 +131,21 @@ if [[ "$args" == "$prefix cp web:"* ]]; then
 fi
 
 if [[ "$args" == "$prefix run --rm -T --no-deps --user root -v "* ]]; then
+  exit 0
+fi
+
+if [[ "$args" == "$prefix ps -a -q web" ]]; then
+  printf 'web-container\n'
+  exit 0
+fi
+
+if [[ "$args" == "inspect --format {{.State.Status}} {{.State.StartedAt}} web-container" ]]; then
+  printf '%s %s\n' "$WEB_STATE" "$WEB_STARTED_AT"
+  exit 0
+fi
+
+if [[ "$args" == "$prefix logs --since "*" --no-log-prefix web" ]]; then
+  printf '%s\n' "$WEB_LOGS"
   exit 0
 fi
 
@@ -359,11 +379,12 @@ run_restore_test() {
 
   local abs_backup_path
   abs_backup_path="$(cd "$TEST_DIR" && pwd -P)/$backup_name"
-  assert_equals "stop run up" "$(compose_subcommands)" "restore-db.sh should stop web, replace the file, then start web"
+  assert_equals "stop run up ps logs" "$(compose_subcommands)" "restore-db.sh should stop web, replace the file, start web and wait for it"
   assert_contains "$EXPECTED_COMPOSE_PREFIX stop web" "$DOCKER_LOG"
   assert_contains "$EXPECTED_COMPOSE_PREFIX run --rm -T --no-deps --user root -v $abs_backup_path:/restore/harborstats.db:ro web sh -euc" "$DOCKER_LOG"
   assert_contains "cp /restore/harborstats.db /data/.harborstats-restore.db" "$DOCKER_LOG"
   assert_contains "chown 1001:1001 /data/.harborstats-restore.db" "$DOCKER_LOG"
+  [[ "$output" == *"[startup] Opened the existing database"* ]] || fail "Expected the startup line in the output, got: $output"
   assert_contains "rm -f /data/harborstats.db-wal /data/harborstats.db-shm" "$DOCKER_LOG"
   assert_contains "mv /data/.harborstats-restore.db /data/harborstats.db" "$DOCKER_LOG"
   assert_contains "$EXPECTED_COMPOSE_PREFIX up -d web" "$DOCKER_LOG"
@@ -412,7 +433,7 @@ EOF
     fail "restore-db.sh should load values from ENV_FILE"
   fi
 
-  assert_equals "stop run up" "$(compose_subcommands)" "restore-db.sh should use the ENV_FILE compose prefix"
+  assert_equals "stop run up ps logs" "$(compose_subcommands)" "restore-db.sh should use the ENV_FILE compose prefix"
 }
 
 run_deploy_env_file_test() {
@@ -438,7 +459,7 @@ EOF
 
   assert_contains "-C $REPO_DIR pull" "$GIT_LOG"
   assert_contains "$EXPECTED_COMPOSE_PREFIX up --build -d web" "$DOCKER_LOG"
-  assert_equals "1" "$(wc -l <"$DOCKER_LOG" | tr -d '[:space:]')" "deploy.sh should make exactly one docker call"
+  assert_equals "up ps logs" "$(compose_subcommands)" "deploy.sh should start web once and wait for it"
   assert_not_contains " db" "$DOCKER_LOG"
   assert_not_contains "migrate" "$DOCKER_LOG"
   assert_not_contains "baseline" "$DOCKER_LOG"
@@ -446,6 +467,83 @@ EOF
   assert_not_contains "--remove-orphans" "$DOCKER_LOG"
   assert_contains "ADMIN_PASSWORD=shell-admin-password" "$DOCKER_ENV_LOG"
   assert_contains "ADMIN_SESSION_SECRET=env-admin-session-secret" "$DOCKER_ENV_LOG"
+}
+
+run_restore_reports_failed_startup_test() {
+  setup_test_dir
+  trap cleanup_test_dir RETURN
+  write_docker_stub
+  write_checksum_stub
+  write_sqlite_fixture "$TEST_DIR/sample.db" "restore fixture"
+  export WEB_STATE=restarting
+  export WEB_LOGS="SqliteError: attempt to write a readonly database"
+
+  set +e
+  local output
+  output="$(printf 'harborstats\n' | PATH="$STUB_BIN:$PATH" "$REPO_DIR/devops/restore-db.sh" "$TEST_DIR/sample.db" 2>&1)"
+  local status=$?
+  set -e
+
+  [[ $status -ne 0 ]] || fail "restore-db.sh should fail when web does not start"
+  [[ "$output" == *"web did not start"* ]] || fail "Expected a failed-start message, got: $output"
+  [[ "$output" == *"attempt to write a readonly database"* ]] || fail "Expected the web log lines, got: $output"
+  [[ "$output" != *"Restore complete"* ]] || fail "restore-db.sh must not report success when web does not start"
+}
+
+run_deploy_reports_failed_startup_test() {
+  setup_test_dir
+  trap cleanup_test_dir RETURN
+  write_docker_stub
+  write_git_stub
+  export WEB_STATE=restarting
+  export WEB_LOGS="Error: Refusing to start: database at /data/harborstats.db is missing or empty."
+
+  set +e
+  local output
+  output="$(PATH="$STUB_BIN:$PATH" "$REPO_DIR/devops/deploy.sh" 2>&1)"
+  local status=$?
+  set -e
+
+  [[ $status -ne 0 ]] || fail "deploy.sh should fail when web does not start"
+  [[ "$output" == *"web did not start (state: restarting)"* ]] || fail "Expected a failed-start message, got: $output"
+  [[ "$output" == *"Refusing to start"* ]] || fail "Expected the web log lines, got: $output"
+  [[ "$output" != *"==> Done."* ]] || fail "deploy.sh must not report success when web does not start"
+}
+
+run_deploy_times_out_without_startup_line_test() {
+  setup_test_dir
+  trap cleanup_test_dir RETURN
+  write_docker_stub
+  write_git_stub
+  # Running, restarted by this deploy, but the app never logged that it started.
+  export WEB_LOGS="Starting..."
+
+  set +e
+  local output
+  output="$(PATH="$STUB_BIN:$PATH" "$REPO_DIR/devops/deploy.sh" 2>&1)"
+  local status=$?
+  set -e
+
+  [[ $status -ne 0 ]] || fail "deploy.sh should fail when the startup line never appears"
+  [[ "$output" == *"web did not start (state: running)"* ]] || fail "Expected a timeout message, got: $output"
+}
+
+run_deploy_accepts_unchanged_running_web_test() {
+  setup_test_dir
+  trap cleanup_test_dir RETURN
+  write_docker_stub
+  write_git_stub
+  # Nothing changed, so `up` left the earlier container running: no new log lines.
+  export WEB_STARTED_AT=2000-01-01T00:00:00.000000000Z
+  export WEB_LOGS=""
+
+  local output
+  if ! output="$(PATH="$STUB_BIN:$PATH" "$REPO_DIR/devops/deploy.sh" 2>&1)"; then
+    echo "$output" >&2
+    fail "deploy.sh should succeed when web was already running and was not restarted"
+  fi
+  [[ "$output" == *"not restarted"* ]] || fail "Expected a not-restarted message, got: $output"
+  [[ "$output" == *"==> Done."* ]] || fail "Expected deploy.sh to finish"
 }
 
 run_compose_single_web_service_test() {
@@ -581,8 +679,12 @@ main() {
   run_restore_rejects_checksum_mismatch_test
   run_restore_rejects_non_sqlite_file_test
   run_restore_test
+  run_restore_reports_failed_startup_test
   run_env_file_test
   run_deploy_env_file_test
+  run_deploy_reports_failed_startup_test
+  run_deploy_times_out_without_startup_line_test
+  run_deploy_accepts_unchanged_running_web_test
   run_compose_single_web_service_test
   run_admin_session_version_test
   run_migration_scripts_exit_nonzero_test
