@@ -307,6 +307,20 @@ function checkSqliteSchema(sqlite: Database.Database, report: Report) {
   }
 }
 
+/**
+ * Only the .db file is deployed. A non-empty -wal beside it holds data the
+ * verifier's connection would read and pass but the deployed file lacks, so
+ * refuse it instead of verifying something other than what ships.
+ */
+export function assertNoPendingWal(path: string): void {
+  const wal = `${path}-wal`
+  if (existsSync(wal) && statSync(wal).size > 0) {
+    throw new Error(
+      `${wal} holds data that is not in ${path} yet; only the .db is deployed. Close every connection to it (which checkpoints the WAL) and verify again.`,
+    )
+  }
+}
+
 function sha256(path: string): string {
   return createHash('sha256').update(readFileSync(path)).digest('hex')
 }
@@ -321,6 +335,7 @@ async function main(): Promise<void> {
     throw new Error('Usage: tsx scripts/verify-migration.ts --pg <postgres-url> --sqlite <path.db>')
   }
 
+  assertNoPendingWal(sqlitePath)
   const before = sha256(sqlitePath)
   // A read-only connection to a WAL database creates -wal/-shm and cannot
   // remove them; remove the ones this run created (an empty -wal only).

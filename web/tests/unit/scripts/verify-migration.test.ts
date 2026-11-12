@@ -1,5 +1,9 @@
-import { describe, it, expect } from 'vitest'
-import { cellsMatch } from '@/scripts/verify-migration'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import Database from 'better-sqlite3'
+import { afterEach, beforeEach, describe, it, expect } from 'vitest'
+import { assertNoPendingWal, cellsMatch } from '@/scripts/verify-migration'
 
 describe('cellsMatch', () => {
   it('matches NULL only with NULL', () => {
@@ -59,5 +63,45 @@ describe('cellsMatch', () => {
 
   it('refuses a Postgres type it does not know how to compare', () => {
     expect(() => cellsMatch('numeric', '1.5', { value: 1.5, type: 'real' })).toThrow(/numeric/)
+  })
+})
+
+// Only the .db file is deployed. Data still in its -wal would be read by the
+// verifier's connection and pass, yet be missing from the deployed file.
+describe('assertNoPendingWal', () => {
+  let dir: string
+  let path: string
+  let writer: Database.Database | undefined
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'harborstats-verify-wal-test-'))
+    path = join(dir, 'converted.db')
+  })
+
+  afterEach(() => {
+    writer?.close()
+    writer = undefined
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  function writeWithoutCheckpoint() {
+    writer = new Database(path)
+    writer.pragma('journal_mode = WAL')
+    writer.pragma('wal_autocheckpoint = 0')
+    writer.exec("create table t (x integer); insert into t values (1)")
+  }
+
+  it('refuses a database whose -wal still holds data', () => {
+    writeWithoutCheckpoint()
+
+    expect(() => assertNoPendingWal(path)).toThrow(/-wal/)
+  })
+
+  it('accepts a database whose WAL was folded back in', () => {
+    writeWithoutCheckpoint()
+    writer?.close()
+    writer = undefined
+
+    expect(() => assertNoPendingWal(path)).not.toThrow()
   })
 })
