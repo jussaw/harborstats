@@ -135,12 +135,14 @@ main() {
     die "The web service is not running; start it before taking a backup"
   fi
 
-  # The SQLite online backup API copies a consistent snapshot while the app
-  # keeps writing; a plain copy of a live WAL database could be torn.
+  # VACUUM INTO writes a consistent snapshot from one read transaction while the
+  # app keeps writing; a plain copy of a live WAL database could be torn. (The
+  # sqlite3 .backup command restarts whenever another process writes, so under
+  # steady writes it may never finish.)
   CONTAINER_TEMP_PATH="/data/.harborstats-backup-${timestamp}.db"
   log "Taking an online backup of $CONTAINER_DATABASE_PATH"
   docker_compose exec -T web \
-    sqlite3 -bail -cmd ".timeout 5000" "$CONTAINER_DATABASE_PATH" ".backup $CONTAINER_TEMP_PATH" >/dev/null
+    sqlite3 -bail -cmd ".timeout 5000" "$CONTAINER_DATABASE_PATH" "VACUUM INTO '$CONTAINER_TEMP_PATH'" >/dev/null
 
   log "Checking backup integrity"
   local integrity=""

@@ -102,7 +102,7 @@ if [[ "$args" == "$prefix ps -q --status running web" ]]; then
   exit 0
 fi
 
-if [[ "$args" == "$prefix exec -T web sqlite3 "*".backup "* ]]; then
+if [[ "$args" == "$prefix exec -T web sqlite3 "*"VACUUM INTO "* ]]; then
   exit 0
 fi
 
@@ -216,7 +216,7 @@ run_backup_test() {
   [[ -z "$(find "$BACKUP_DIR" -name '*.tmp')" ]] || fail "Temporary files left in $BACKUP_DIR"
 
   assert_contains "$EXPECTED_COMPOSE_PREFIX ps -q --status running web" "$DOCKER_LOG"
-  assert_contains "$EXPECTED_COMPOSE_PREFIX exec -T web sqlite3 -bail -cmd .timeout 5000 /data/harborstats.db .backup /data/.harborstats-backup-" "$DOCKER_LOG"
+  assert_contains "$EXPECTED_COMPOSE_PREFIX exec -T web sqlite3 -bail -cmd .timeout 5000 /data/harborstats.db VACUUM INTO '/data/.harborstats-backup-" "$DOCKER_LOG"
   assert_contains "$EXPECTED_COMPOSE_PREFIX exec -T web sqlite3 -bail /data/.harborstats-backup-" "$DOCKER_LOG"
   assert_contains "PRAGMA integrity_check" "$DOCKER_LOG"
   assert_contains "$EXPECTED_COMPOSE_PREFIX cp web:/data/.harborstats-backup-" "$DOCKER_LOG"
@@ -400,7 +400,7 @@ EOF
   local db_path
   db_path="$(find "$env_backup_dir" -maxdepth 1 -type f -name 'harborstats-*.db' | sort)"
   [[ -n "$db_path" ]] || fail "Expected the backup in the ENV_FILE BACKUP_DIR"
-  assert_contains "$EXPECTED_COMPOSE_PREFIX exec -T web sqlite3 -bail -cmd .timeout 5000 /data/harborstats.db .backup " "$DOCKER_LOG"
+  assert_contains "$EXPECTED_COMPOSE_PREFIX exec -T web sqlite3 -bail -cmd .timeout 5000 /data/harborstats.db VACUUM INTO " "$DOCKER_LOG"
   assert_contains "ADMIN_SESSION_SECRET=env-admin-session-secret" "$DOCKER_ENV_LOG"
 
   : >"$DOCKER_LOG"
