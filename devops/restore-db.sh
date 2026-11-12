@@ -47,14 +47,25 @@ CONFIRMATION_WORD="harborstats"
 STARTUP_TIMEOUT_SECONDS="${STARTUP_TIMEOUT_SECONDS:-120}"
 
 # Runs as root in a one-off web container with the data volume at /data and the
-# backup mounted read-only. The copy is owned by the app user (uid 1001) and
-# moved into place in one step; the old -wal/-shm must go, or SQLite would
-# replay the previous database's log onto the restored file.
+# backup mounted read-only. The copy must match the backup byte for byte, and it
+# and /data are owned by the app user (uid 1001): a volume created or seeded
+# outside compose can have a root-owned /data, where SQLite cannot create its
+# -wal/-shm files. The file moves into place in one step; the old -wal/-shm must
+# go, or SQLite would replay the previous database's log onto the restored file.
 REPLACE_DATABASE_SCRIPT='
+backup_sum="$(sha256sum /restore/harborstats.db | cut -d " " -f 1)"
 cp /restore/harborstats.db /data/.harborstats-restore.db
+copy_sum="$(sha256sum /data/.harborstats-restore.db | cut -d " " -f 1)"
+if [ "$copy_sum" != "$backup_sum" ]; then
+  rm -f /data/.harborstats-restore.db
+  echo "The copy in the volume does not match the backup" >&2
+  exit 1
+fi
+chown 1001:1001 /data
 chown 1001:1001 /data/.harborstats-restore.db
 rm -f /data/harborstats.db-wal /data/harborstats.db-shm
 mv /data/.harborstats-restore.db /data/harborstats.db
+echo "sha256=$copy_sum"
 '
 
 log() {
@@ -188,9 +199,16 @@ main() {
   docker_compose stop web >/dev/null
 
   log "Replacing the database file in the data volume"
-  docker_compose run --rm -T --no-deps --user root \
-    -v "$backup_path:/restore/harborstats.db:ro" \
-    web sh -euc "$REPLACE_DATABASE_SCRIPT" >/dev/null
+  local replace_output=""
+  if ! replace_output="$(
+    docker_compose run --rm -T --no-deps --user root \
+      -v "$backup_path:/restore/harborstats.db:ro" \
+      web sh -euc "$REPLACE_DATABASE_SCRIPT" 2>&1
+  )"; then
+    printf '%s\n' "$replace_output" >&2
+    die "Replacing the database file failed; web is stopped (start it with: docker compose -f $COMPOSE_FILE up -d web)"
+  fi
+  log "Database file in the volume: $(printf '%s\n' "$replace_output" | grep '^sha256=' | tail -n 1)"
 
   log "Starting web service"
   local since=""

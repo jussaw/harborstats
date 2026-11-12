@@ -131,6 +131,7 @@ if [[ "$args" == "$prefix cp web:"* ]]; then
 fi
 
 if [[ "$args" == "$prefix run --rm -T --no-deps --user root -v "* ]]; then
+  printf 'sha256=feedface\n'
   exit 0
 fi
 
@@ -384,6 +385,12 @@ run_restore_test() {
   assert_contains "$EXPECTED_COMPOSE_PREFIX run --rm -T --no-deps --user root -v $abs_backup_path:/restore/harborstats.db:ro web sh -euc" "$DOCKER_LOG"
   assert_contains "cp /restore/harborstats.db /data/.harborstats-restore.db" "$DOCKER_LOG"
   assert_contains "chown 1001:1001 /data/.harborstats-restore.db" "$DOCKER_LOG"
+  # A volume created or seeded outside compose can have a root-owned /data, and
+  # SQLite must create its -wal/-shm files there.
+  assert_contains "chown 1001:1001 /data" "$DOCKER_LOG"
+  assert_contains 'sha256sum /restore/harborstats.db' "$DOCKER_LOG"
+  assert_contains 'sha256sum /data/.harborstats-restore.db' "$DOCKER_LOG"
+  [[ "$output" == *"sha256=feedface"* ]] || fail "Expected the in-volume checksum in the output, got: $output"
   [[ "$output" == *"[startup] Opened the existing database"* ]] || fail "Expected the startup line in the output, got: $output"
   assert_contains "rm -f /data/harborstats.db-wal /data/harborstats.db-shm" "$DOCKER_LOG"
   assert_contains "mv /data/.harborstats-restore.db /data/harborstats.db" "$DOCKER_LOG"

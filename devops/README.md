@@ -218,10 +218,20 @@ The restore script will:
 2. Verify the file against its sibling `.sha256`, when one exists, and stop on a mismatch
 3. Ask for confirmation by requiring you to type `harborstats`
 4. Stop the `web` service so the app cannot write during recovery
-5. In a one-off root container on the same volume, copy the backup to `/data/harborstats.db` owned by uid `1001` (the app user), and delete the old `harborstats.db-wal` and `harborstats.db-shm`
+5. In a one-off root container on the same volume, copy the backup in, check that the copy's sha256 equals the backup's, make `/data` and the file owned by uid `1001` (the app user), delete the old `harborstats.db-wal` and `harborstats.db-shm`, and move the copy to `/data/harborstats.db`. The script prints the sha256 of the file in the volume
 6. Start `web` again and wait for its startup line, as `deploy.sh` does; pending migrations, if any, run at startup
 
-The restore never sets `DATABASE_ALLOW_CREATE`.
+The restore never sets `DATABASE_ALLOW_CREATE`. The printed sha256 is the file as restored; once the app opens it, SQLite switches it to WAL mode, which changes the file's header and so its checksum.
+
+### Moving an existing database into a new volume
+
+To put an existing `.db` file (for example one converted from another database, or a backup from another host) into a deployment whose `harborstats_data` volume does not exist yet, use `restore-db.sh` as well:
+
+```bash
+./devops/restore-db.sh /path/to/harborstats.db
+```
+
+Compose creates the volume on first use, and the one-off container makes `/data` writable by the app. Do not create the volume with `docker volume create` or fill it from another image: `/data` can then end up owned by root, SQLite cannot create its `-wal`/`-shm` files, and the app exits with `SQLITE_READONLY_DIRECTORY`. (`restore-db.sh` also fixes that ownership on such a volume.)
 
 If you want to inspect the available backups before restoring:
 
