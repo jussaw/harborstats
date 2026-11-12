@@ -1,61 +1,12 @@
 {
   "version": "7",
-  "dialect": "postgresql",
+  "dialect": "sqlite",
   "entries": [
     {
       "idx": 0,
-      "version": "7",
-      "when": 1776572901076,
-      "tag": "0000_init",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1776619548162,
-      "tag": "0001_add_app_settings",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1776795597824,
-      "tag": "0002_add_podium_rate_min_games",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1778040435965,
-      "tag": "0003_peaceful_the_renegades",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1778389628788,
-      "tag": "0004_neat_exiles",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1781108859468,
-      "tag": "0005_graceful_killraven",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1781347974472,
-      "tag": "0006_worried_bloodscream",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1781509555005,
-      "tag": "0007_eager_drax",
+      "version": "6",
+      "when": 1794464477613,
+      "tag": "0000_sqlite_baseline",
       "breakpoints": true
     }
   ]

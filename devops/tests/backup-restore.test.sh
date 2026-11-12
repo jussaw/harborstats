@@ -399,21 +399,15 @@ run_admin_session_version_test() {
 }
 
 run_migration_scripts_exit_nonzero_test() {
-  local bad_database_url="postgres://postgres:postgres@127.0.0.1:1/harborstats?connect_timeout=1"
+  # /dev/null is a file, so the database directory can never be created.
+  local bad_database_path="/dev/null/harborstats.db"
 
   set +e
   local migrate_output
-  migrate_output="$(cd "$REPO_DIR/web" && DATABASE_URL="$bad_database_url" ./node_modules/.bin/tsx scripts/migrate.ts 2>&1)"
+  migrate_output="$(cd "$REPO_DIR/web" && DATABASE_PATH="$bad_database_path" ./node_modules/.bin/tsx scripts/migrate.ts 2>&1)"
   local migrate_status=$?
   set -e
   [[ $migrate_status -ne 0 ]] || fail "migrate.ts should exit non-zero when migration fails"$'\n'"$migrate_output"
-
-  set +e
-  local baseline_output
-  baseline_output="$(cd "$REPO_DIR/web" && DATABASE_URL="$bad_database_url" ./node_modules/.bin/tsx scripts/baseline.ts 2>&1)"
-  local baseline_status=$?
-  set -e
-  [[ $baseline_status -ne 0 ]] || fail "baseline.ts should exit non-zero when baseline fails"$'\n'"$baseline_output"
 }
 
 main() {
