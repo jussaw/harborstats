@@ -525,6 +525,15 @@ export interface PlayerWinRate {
   winRate: number; // 0.0–1.0
 }
 
+// Case-insensitive like `playerNameOrder` (COLLATE NOCASE), then id, so rows
+// tied on every stat never fall back to the database's row order.
+function comparePlayerNames(a: PlayerIdentity, b: PlayerIdentity) {
+  const left = a.name.toLowerCase();
+  const right = b.name.toLowerCase();
+  if (left !== right) return left < right ? -1 : 1;
+  return a.playerId - b.playerId;
+}
+
 export async function getPlayerWinRates(filter: StatsFilter = null): Promise<PlayerWinRate[]> {
   const rows = await db
     .select({
@@ -548,7 +557,7 @@ export async function getPlayerWinRates(filter: StatsFilter = null): Promise<Pla
       tier: parsePlayerTier(row.tier),
       winRate: row.games > 0 ? row.wins / row.games : 0,
     }))
-    .sort((a, b) => b.wins - a.wins || b.winRate - a.winRate);
+    .sort((a, b) => b.wins - a.wins || b.winRate - a.winRate || comparePlayerNames(a, b));
 }
 
 interface PlayerScoreRow extends PlayerIdentity {
