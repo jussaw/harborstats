@@ -1,22 +1,20 @@
-import postgres from 'postgres'
-import { drizzle } from 'drizzle-orm/postgres-js'
-import { migrate } from 'drizzle-orm/postgres-js/migrator'
+import { runMigrations } from '../lib/migrate'
+import { getDatabasePath, openDatabase } from '../lib/sqlite'
 
-const { DATABASE_URL } = process.env
-if (!DATABASE_URL) throw new Error('DATABASE_URL is not set')
-
-async function main(): Promise<void> {
-  const sql = postgres(DATABASE_URL!, { max: 1 })
+function main(): void {
+  const path = getDatabasePath()
+  const sqlite = openDatabase(path)
   try {
-    const db = drizzle(sql)
-    await migrate(db, { migrationsFolder: './db/migrations' })
+    runMigrations(sqlite)
   } finally {
-    await sql.end()
+    sqlite.close()
   }
-  console.log('Migration complete')
+  console.log(`Migration complete (${path})`)
 }
 
-main().catch((error: unknown) => {
+try {
+  main()
+} catch (error: unknown) {
   console.error(error)
   process.exitCode = 1
-})
+}

@@ -1,10 +1,10 @@
+import Database from 'better-sqlite3';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { setNewGamePasswordAction } from '@/app/admin/settings/actions';
 
 const SUBMITTED_PASSWORD = 'harbor-crew-secret-2026';
 const PASSWORD_HASH = 'scrypt$16384$8$1$c2FsdHl2YWx1ZQ$3f9a1c0deadbeefhashmaterial';
-const FAILING_QUERY = 'insert into "app_settings" ("new_game_password_hash") values ($1)';
-const DB_CREDENTIALS = 'postgres://harbor:sup3r-secret@db:5432/harborstats';
+const FAILING_QUERY = 'insert into "app_settings" ("id", "new_game_password_hash") values (?, ?)';
 // Fixed stand-ins for the session material a request-scoped error can carry.
 // Never source these from `process.env`: a failed `not.toContain` prints the
 // expected substring, so reading the live `ADMIN_SESSION_SECRET` would spill it
@@ -17,7 +17,6 @@ const SENSITIVE_MATERIAL: Record<string, string> = {
   'the submitted password': SUBMITTED_PASSWORD,
   'the stored password hash': PASSWORD_HASH,
   'the failing SQL statement': FAILING_QUERY,
-  'the database credentials': DB_CREDENTIALS,
   'the admin session secret': SESSION_SECRET,
   'the admin session cookie': SESSION_COOKIE,
 };
@@ -67,19 +66,20 @@ function buildFormData(password: string): FormData {
 }
 
 /**
- * Mirrors how the real stack reports a failed write: `DrizzleQueryError`
- * interpolates the bound params into its message, and postgres.js `Object.assign`s
- * the whole server payload onto the error. For this insert the bound param *is*
- * the password hash, so the error itself carries secret material.
+ * Mirrors how the real stack reports a failed write, assuming the worst case:
+ * Drizzle's `DrizzleQueryError` interpolates the bound params into its message
+ * and keeps the query and params as fields, with the raw better-sqlite3
+ * `SqliteError` as its `cause`. For this insert a bound param *is* the password
+ * hash, so the error itself carries secret material.
  */
 function buildPersistenceFailure(): Error {
-  const error = new Error(`Failed query: ${FAILING_QUERY}\nparams: ${PASSWORD_HASH}`);
+  const error = new Error(`Failed query: ${FAILING_QUERY}\nparams: 1,${PASSWORD_HASH}`, {
+    cause: new Database.SqliteError('attempt to write a readonly database', 'SQLITE_READONLY'),
+  });
   error.name = 'DrizzleQueryError';
   return Object.assign(error, {
     query: FAILING_QUERY,
-    params: [PASSWORD_HASH],
-    detail: `Failing row contains (1, ${PASSWORD_HASH}).`,
-    connection: DB_CREDENTIALS,
+    params: [1, PASSWORD_HASH],
     // Request-scoped session material that error wrappers routinely attach.
     // Without it the two session `not.toContain` assertions below would pass
     // vacuously. Nesting it also proves `flattenDiagnostic` recurses, so a

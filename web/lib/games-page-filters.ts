@@ -1,3 +1,4 @@
+import { isStorableTimestamp } from '@/lib/dates'
 import { GAMES_PAGE_SIZES, type GamesPageFilters, type GamesPageSize } from '@/lib/games-page-shared'
 
 type SearchParamValue = string | string[] | undefined
@@ -27,11 +28,13 @@ function getAllValues(value: SearchParamValue) {
   return value ? [value] : []
 }
 
+// Dates the database can't store (years outside 0000–9999) are ignored like
+// unparseable ones.
 function parseDateValue(value: SearchParamValue) {
   const raw = getFirstValue(value)
   if (!raw) return null
   const parsed = new Date(raw)
-  return Number.isNaN(parsed.valueOf()) ? null : parsed
+  return isStorableTimestamp(parsed) ? parsed : null
 }
 
 // Accepts both the hyphen-delimited form (`player=1-3`) and the legacy repeated form

@@ -1,44 +1,26 @@
-import postgres from 'postgres'
-import { drizzle } from 'drizzle-orm/postgres-js'
-import { migrate } from 'drizzle-orm/postgres-js/migrator'
-import { applyTestEnv, getAdminDatabaseUrl, getTestDatabaseName, getTestDatabaseUrl } from './test-env'
+import { rmSync } from 'node:fs'
+import { runMigrations } from '../../lib/migrate'
+import { openDatabase } from '../../lib/sqlite'
+import { applyTestEnv, getTestDatabasePath } from './test-env'
 
 applyTestEnv()
 
-function quoteIdentifier(value: string): string {
-  return `"${value.replaceAll('"', '""')}"`
-}
-
-export async function ensureTestDatabase(): Promise<void> {
-  const adminSql = postgres(getAdminDatabaseUrl(), { max: 1 })
-
-  try {
-    const result = await adminSql<{ exists: 1 }[]>`
-      SELECT 1 AS exists
-      FROM pg_database
-      WHERE datname = ${getTestDatabaseName()}
-    `
-
-    if (result.length === 0) {
-      await adminSql.unsafe(`CREATE DATABASE ${quoteIdentifier(getTestDatabaseName())}`)
-    }
-  } finally {
-    await adminSql.end()
-  }
-}
-
+/** Creates the test database file if needed and applies pending migrations. Non-destructive. */
 export async function migrateTestDatabase(): Promise<void> {
-  const sql = postgres(getTestDatabaseUrl(), { max: 1 })
-
+  const sqlite = openDatabase(getTestDatabasePath())
   try {
-    const db = drizzle(sql)
-    await migrate(db, { migrationsFolder: './db/migrations' })
+    runMigrations(sqlite)
   } finally {
-    await sql.end()
+    sqlite.close()
   }
 }
 
+/**
+ * Starts from an empty, freshly migrated test database file. Destructive: run it
+ * only before anything else has the file open.
+ */
 export async function prepareTestDatabase(): Promise<void> {
-  await ensureTestDatabase()
+  const path = getTestDatabasePath()
+  ;['', '-wal', '-shm'].forEach((suffix) => rmSync(`${path}${suffix}`, { force: true }))
   await migrateTestDatabase()
 }

@@ -7,6 +7,7 @@ import {
   datetimeLocalToIso,
   isoToDatetimeLocal,
   nowDatetimeLocal,
+  isStorableTimestamp,
 } from '@/lib/dates';
 
 describe('date helpers', () => {
@@ -42,5 +43,19 @@ describe('date helpers', () => {
     vi.setSystemTime(new Date('2026-04-20T15:16:30.000Z'));
 
     expect(nowDatetimeLocal()).toBe('2026-04-20T15:16');
+  });
+});
+
+describe('isStorableTimestamp', () => {
+  it('accepts dates in years 0000-9999', () => {
+    expect(isStorableTimestamp(new Date('0000-01-01T00:00:00.000Z'))).toBe(true);
+    expect(isStorableTimestamp(new Date('2026-11-12T04:34:59.485Z'))).toBe(true);
+    expect(isStorableTimestamp(new Date('9999-12-31T23:59:59.999Z'))).toBe(true);
+  });
+
+  it('rejects years outside 0000-9999 and invalid dates', () => {
+    expect(isStorableTimestamp(new Date('+010000-01-01T00:00:00.000Z'))).toBe(false);
+    expect(isStorableTimestamp(new Date('-000001-12-31T23:59:59.999Z'))).toBe(false);
+    expect(isStorableTimestamp(new Date('not-a-date'))).toBe(false);
   });
 });

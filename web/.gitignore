@@ -12,3 +12,6 @@ next-env.d.ts
 # environment — never commit real secrets
 .env
 .env.local
+
+# local sqlite database (DATABASE_PATH default)
+/data/

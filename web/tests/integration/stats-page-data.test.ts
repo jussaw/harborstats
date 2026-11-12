@@ -34,10 +34,10 @@ import {
 import { getStatsPageData, type StatsPageData } from '@/lib/stats-page-data';
 import { createTestGame, createTestPlayer } from '../helpers/db';
 
-// Every query drizzle-postgres issues funnels through `client.unsafe(query, params)`; counting
-// those calls gives a driver-level count of real source queries per orchestration.
+// Every query drizzle's better-sqlite3 driver issues funnels through `client.prepare(sql)`;
+// counting those calls gives a driver-level count of real source queries per orchestration.
 async function countQueries<T>(run: () => Promise<T>): Promise<{ result: T; queries: number }> {
-  const spy = vi.spyOn(db.$client, 'unsafe');
+  const spy = vi.spyOn(db.$client, 'prepare');
   spy.mockClear();
   const result = await run();
   const queries = spy.mock.calls.length;

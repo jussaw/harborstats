@@ -1,10 +1,9 @@
-import { asc, eq } from 'drizzle-orm';
+import { asc, eq, sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
 import { gamePlayers, games } from '@/db/schema';
 import { db } from '@/lib/db';
 import {
-  GameValidationError,
   createGame,
   deleteGame,
   GameValidationError,
@@ -297,6 +296,39 @@ describe('games lib', () => {
     ).rejects.toThrow('Played date must be valid.');
 
     expect(await db.select().from(games)).toHaveLength(0);
+  });
+
+  it('rejects a played-at year outside 0000-9999 before creating a database row', async () => {
+    const ada = await createTestPlayer({ name: 'Ada' });
+
+    await expect(
+      createGame({
+        playedAt: new Date('+020266-11-13T01:00:00.000Z'),
+        notes: '',
+        submittedFromIp: null,
+        players: [{ playerId: ada.id, score: 10, isWinner: true }],
+      }),
+    ).rejects.toThrow(GameValidationError);
+
+    expect(await db.select().from(games)).toHaveLength(0);
+  });
+
+  it('rejects a played-at year outside 0000-9999 on update and keeps the stored date', async () => {
+    const ada = await createTestPlayer({ name: 'Ada' });
+    const game = await createTestGame({
+      players: [{ playerId: ada.id, score: 10, isWinner: true }],
+    });
+
+    await expect(
+      updateGame(game.id, {
+        playedAt: new Date('+020266-11-13T01:00:00.000Z'),
+        notes: '',
+        players: [{ playerId: ada.id, score: 10, isWinner: true }],
+      }),
+    ).rejects.toThrow(GameValidationError);
+
+    const [stored] = await db.select().from(games);
+    expect(stored.playedAt.toISOString()).toBe('2026-01-01T12:00:00.000Z');
   });
 
   it('rejects multiple explicit winners before creating a database row', async () => {
@@ -839,6 +871,23 @@ describe('games lib', () => {
       totalGames: 2,
       games: [{ id: middleGame.id }, { id: olderGame.id }],
     });
+  });
+
+  it('includes a microsecond-precision game that sits exactly on the from/to bounds', async () => {
+    // Rows carried over from Postgres keep microseconds; JS Dates (and so the
+    // filter bounds) only have milliseconds.
+    const ada = await createTestPlayer({ name: 'Ada' });
+    const game = await createTestGame({
+      players: [{ playerId: ada.id, score: 7, isWinner: true }],
+    });
+    await db.run(
+      sql`UPDATE games SET played_at = '2026-11-12T04:34:59.485225Z' WHERE id = ${game.id}`,
+    );
+    const bound = new Date('2026-11-12T04:34:59.485Z');
+
+    await expect(
+      listGamesPage(1, 20, { playerIds: [], from: bound, to: bound }),
+    ).resolves.toMatchObject({ totalGames: 1, games: [{ id: game.id }] });
   });
 
   it('keeps filtered totals and page clamping correct when filters narrow the result set', async () => {

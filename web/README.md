@@ -6,15 +6,13 @@ A mobile-friendly Catan game recorder for tracking [colonist.io](https://colonis
 
 - [Node.js](https://nodejs.org) 22.13 – 26.x (tested on 22 and 26; Node 25+ requires the `--no-webstorage` workaround in `vitest.components.config.ts` until vitest 5)
 - [pnpm](https://pnpm.io)
-- [Docker](https://www.docker.com) (for the local Postgres database)
 
 ## Quick start
 
 ```bash
 cp .env.example .env
 pnpm install
-pnpm db:up       # start Postgres in Docker
-pnpm db:migrate  # create schema (Drizzle migrations)
+pnpm db:migrate  # create the SQLite database at ./data/harborstats.db (Drizzle migrations)
 pnpm dev         # http://localhost:3000
 ```
 
@@ -25,7 +23,7 @@ Then go to `/admin/settings` to set the game creation password — you will need
 
 | Variable | Default | Description |
 |---|---|---|
-| `DATABASE_URL` | `postgres://postgres:postgres@localhost:5432/harborstats` | Postgres connection string |
+| `DATABASE_PATH` | `./data/harborstats.db` | Path to the SQLite database file (a file path, not a URL); its folder is created if missing |
 | `ADMIN_PASSWORD` | *(required)* | Shared password for the `/admin` panel |
 | `ADMIN_SESSION_SECRET` | *(required)* | Secret key used to sign admin session cookies — rotate to invalidate all sessions |
 | `ADMIN_SESSION_VERSION` | `1` | Optional; bumping or changing it invalidates all existing admin sessions without rotating `ADMIN_SESSION_SECRET` |
@@ -40,32 +38,24 @@ Then go to `/admin/settings` to set the game creation password — you will need
 | `pnpm lint` | Run ESLint |
 | `pnpm format` | Format with Prettier |
 | `pnpm format:check` | Check formatting without writing |
-| `pnpm db:up` | Start the Postgres Docker container |
 | `pnpm db:generate` | Generate a new SQL migration from schema changes in `db/schema.ts` |
-| `pnpm db:migrate` | Apply pending migrations to `DATABASE_URL` |
-| `pnpm db:baseline` | **One-time** — marks the initial migration as applied on an existing DB that already has the schema (run before first `db:migrate` on a pre-existing database) |
-| `pnpm db:studio` | Open Drizzle Studio (visual DB browser) |
+| `pnpm db:migrate` | Apply pending migrations to the SQLite file at `DATABASE_PATH` |
+| `pnpm db:studio` | Open Drizzle Studio (visual DB browser). Its connection has foreign keys **off**, so deleting a game there leaves its scores behind — make changes through the app |
 
 ## Test database safety
 
 > [!WARNING]
-> Integration and e2e tests **truncate every table** in whatever database `DATABASE_URL` points at. Point them at your real data and it is gone.
+> Integration and e2e tests **delete and recreate** their database file and wipe every table before each test.
 
-The integration and e2e helpers (`tests/helpers/test-env.ts` and `tests/helpers/db.ts`) connect to
-the database named in `DATABASE_URL` and, before each run, execute
-`TRUNCATE TABLE audit_logs, app_settings, game_players, games, players RESTART IDENTITY CASCADE` —
-wiping all five tables. This is intentional for a disposable test database, but it is destructive to
-any database it touches.
+The test helpers (`tests/helpers/test-env.ts`, `tests/helpers/db-admin.ts`, `tests/helpers/db.ts`)
+never use `DATABASE_PATH`. They always point the app at a throwaway SQLite file in the OS temp
+folder (one per checkout), even if you have exported `DATABASE_PATH` for development, so a test run
+cannot touch your real data. `pnpm test:integration` and `pnpm test:e2e` delete that file (plus its
+`-wal`/`-shm` files) and rebuild it from the migrations, and each test then deletes every row and
+resets the ID counters.
 
-For safety, the default test connection uses a database named `harborstats_test` (note the `_test`
-suffix) — separate from the `harborstats` database that `docker-compose.yml` creates for local
-development. That default only applies when `DATABASE_URL` is **unset**: if you have exported
-`DATABASE_URL` (for example, pointing at the `harborstats` dev database), the helpers use your value
-instead and will truncate whatever it names — destroying your real game data.
-
-Before running `pnpm test:integration`, `pnpm test:e2e`, `pnpm test:all`, or `pnpm test:ci`, make
-sure `DATABASE_URL` is either unset or ends in `_test`. If it points at `harborstats` (or any real
-database), unset it or override it with a `_test` database first.
+To put the test database somewhere else, set `TEST_DATABASE_PATH`. Never point it at a database you
+want to keep.
 
 ## Testing
 
@@ -83,7 +73,7 @@ database), unset it or override it with a `_test` database first.
 Prerequisites:
 
 - `pnpm test` (fast unit + component tests) needs no database and no extra setup.
-- `pnpm test:integration` and `pnpm test:e2e` auto-run the test-DB prepare step, but require the local Postgres container to be running first (`pnpm db:up`). `pnpm test:all` and `pnpm test:ci` include these DB-backed suites.
+- `pnpm test:integration` and `pnpm test:e2e` auto-run the test-DB prepare step, which creates a temporary SQLite file; no database server is needed. `pnpm test:all` and `pnpm test:ci` include these DB-backed suites.
 - `pnpm test:e2e` also needs the Playwright Chromium browser, installed once via `pnpm test:e2e:install`.
 
 ## Adding a schema change
@@ -98,10 +88,10 @@ Prerequisites:
 - **Next.js 16** (App Router) + **React 19**
 - **TypeScript** (strict)
 - **Tailwind CSS v4**
-- **PostgreSQL 18** via Docker
+- **SQLite** — a single database file (`DATABASE_PATH`), WAL mode, foreign keys on
 - **Drizzle ORM** — type-safe query builder
 - **Drizzle Kit** — schema migrations
-- `postgres` npm package — underlying PostgreSQL driver
+- `better-sqlite3` — underlying SQLite driver
 - Next.js server actions for form handling
 
 ## Project structure
@@ -125,11 +115,14 @@ components/
   Sidebar*.tsx              navigation shell
 db/
   schema.ts                 Drizzle schema
+  columns.ts                fixed-width UTC timestamp column type
   migrations/               SQL migrations and metadata
 lib/
   admin-auth.ts             admin authentication helpers
   audit.ts                  audit log recording helpers
   db.ts                     Drizzle client
+  sqlite.ts                 opens the SQLite file with the required pragmas
+  migrate.ts                runs the Drizzle migrations against a connection
   export.ts                 CSV serialization for /admin/export
   game-auth.ts              game creation auth cookie helpers
   games.ts                  game queries and mutations
@@ -138,7 +131,6 @@ lib/
   settings.ts               app settings access
   stats.ts                  stats aggregation helpers
 scripts/
-  baseline.ts               mark initial migration as already applied
   migrate.ts                apply pending migrations
   generate-pwa-icons.ts     render PWA icon PNGs from app/icon.svg
 tests/
@@ -159,6 +151,8 @@ Five tables:
 - **`app_settings`** — single-row app configuration (stat thresholds, hashed game-creation password)
 - **`audit_logs`** — append-only history of state-changing actions and auth events
 
-Deleting a game cascades to its `game_players` rows.
+Deleting a game cascades to its `game_players` rows. IDs are never reused after a delete
+(`AUTOINCREMENT`). Timestamps are stored as UTC text in a fixed-width
+`YYYY-MM-DDTHH:MM:SS.ffffffZ` format so they sort correctly as text.
 
 Players are managed directly in the admin UI. Renaming a player updates all historical records automatically via JOIN.

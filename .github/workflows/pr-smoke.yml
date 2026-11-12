@@ -57,26 +57,15 @@ jobs:
         run: pnpm test:fast
 
   full-suite:
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest is now 26.04, where Playwright 1.59 can't install
+    # Chromium's system dependencies. Unpin once Playwright supports it.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
-    services:
-      postgres:
-        image: postgres:18
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: harborstats
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
 
+    # Tests run against a temporary SQLite file that the prepare step creates
+    # (see tests/helpers/test-env.ts); no database service is needed.
     env:
       CI: true
-      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/harborstats_test
       ADMIN_PASSWORD: harborstats-test-password
       ADMIN_SESSION_SECRET: harborstats-test-session-secret-please-change
       TEST_BASE_URL: http://127.0.0.1:3100
@@ -117,4 +106,4 @@ jobs:
         run: pnpm test:integration
 
       - name: End-to-end tests (Playwright, isolated test server)
-        run: pnpm exec playwright test
+        run: pnpm test:e2e

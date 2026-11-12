@@ -1,41 +1,34 @@
-import {
-  pgTable,
-  serial,
-  text,
-  timestamp,
-  integer,
-  boolean,
-  inet,
-  jsonb,
-  check,
-  index,
-  uniqueIndex,
-} from 'drizzle-orm/pg-core';
+import { check, index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
+// Relative import: drizzle-kit loads this file and does not resolve the `@/` alias.
+import { nowTimestampSql, timestampText } from './columns';
 
-export const players = pgTable(
+// IDs use AUTOINCREMENT so a deleted id is never handed out again (audit
+// entries reference ids as text).
+
+export const players = sqliteTable(
   'players',
   {
-    id: serial('id').primaryKey(),
+    id: integer('id').primaryKey({ autoIncrement: true }),
     name: text('name').notNull().unique(),
     tier: text('tier').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestampText('created_at').notNull().default(nowTimestampSql),
   },
   (t) => [check('players_tier_check', sql`${t.tier} IN ('premium', 'standard')`)],
 );
 
-export const games = pgTable('games', {
-  id: serial('id').primaryKey(),
-  playedAt: timestamp('played_at', { withTimezone: true }).notNull(),
+export const games = sqliteTable('games', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  playedAt: timestampText('played_at').notNull(),
   notes: text('notes').notNull().default(''),
-  submittedFromIp: inet('submitted_from_ip'),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  submittedFromIp: text('submitted_from_ip'),
+  createdAt: timestampText('created_at').notNull().default(nowTimestampSql),
 });
 
-export const gamePlayers = pgTable(
+export const gamePlayers = sqliteTable(
   'game_players',
   {
-    id: serial('id').primaryKey(),
+    id: integer('id').primaryKey({ autoIncrement: true }),
     gameId: integer('game_id')
       .notNull()
       .references(() => games.id, { onDelete: 'cascade' }),
@@ -43,7 +36,7 @@ export const gamePlayers = pgTable(
       .notNull()
       .references(() => players.id),
     score: integer('score').notNull(),
-    isWinner: boolean('is_winner').notNull().default(false),
+    isWinner: integer('is_winner', { mode: 'boolean' }).notNull().default(false),
   },
   (t) => [
     // Upper bound mirrors MAX_SCORE in lib/games.ts — change both together.
@@ -53,37 +46,38 @@ export const gamePlayers = pgTable(
     uniqueIndex('game_players_game_id_player_id_unique').on(t.gameId, t.playerId),
     uniqueIndex('game_players_one_winner_per_game')
       .on(t.gameId)
-      .where(sql`${t.isWinner} = true`),
+      .where(sql`${t.isWinner} = 1`),
   ],
 );
 
-export const appSettings = pgTable('app_settings', {
+export const appSettings = sqliteTable('app_settings', {
   id: integer('id').primaryKey().default(1),
   winRateMinGames: integer('win_rate_min_games').notNull().default(0),
   podiumRateMinGames: integer('podium_rate_min_games').notNull().default(0),
   statCardMinGames: integer('stat_card_min_games').notNull().default(5),
   newGamePasswordHash: text('new_game_password_hash'),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestampText('updated_at').notNull().default(nowTimestampSql),
 });
 
-export const auditLogs = pgTable(
+export const auditLogs = sqliteTable(
   'audit_logs',
   {
-    id: serial('id').primaryKey(),
+    id: integer('id').primaryKey({ autoIncrement: true }),
     // '<entity>.<verb>', e.g. 'player.create'. Intentionally unconstrained so
     // new action types can be added freely as features land (see Audit
     // Requirements in web/AGENTS.md).
     action: text('action').notNull(),
     actorType: text('actor_type').notNull(),
     // Nullable: null when the client IP can't be resolved (e.g. local dev).
-    actorIp: inet('actor_ip'),
+    // Stored as text in the form Postgres inet printed (compressed lowercase IPv6).
+    actorIp: text('actor_ip'),
     entityType: text('entity_type'),
     // Text so non-numeric or composite ids can be stored uniformly.
     entityId: text('entity_id'),
     summary: text('summary').notNull(),
-    // Structured detail (changed fields). Never store secrets here.
-    metadata: jsonb('metadata'),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    // Structured detail (changed fields), stored as JSON text. Never store secrets here.
+    metadata: text('metadata', { mode: 'json' }),
+    createdAt: timestampText('created_at').notNull().default(nowTimestampSql),
   },
   (t) => [
     check('audit_logs_actor_type_check', sql`${t.actorType} IN ('admin', 'game', 'anonymous')`),
