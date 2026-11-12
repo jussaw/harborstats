@@ -21,12 +21,23 @@ describe('instrumentation register', () => {
     expect(prepareDatabaseAtStartup).not.toHaveBeenCalled();
   });
 
-  it('lets a startup failure reject register so the server does not start', async () => {
+  // Next only logs a register() failure and keeps the server up answering 500s,
+  // so a refused or failed database must end the process itself.
+  it('logs the startup failure and exits with code 1', async () => {
     vi.stubEnv('NEXT_RUNTIME', 'nodejs');
+    const failure = new Error(
+      'Refusing to start: database at /data/harborstats.db is missing or empty.',
+    );
     prepareDatabaseAtStartup.mockImplementation(() => {
-      throw new Error('Refusing to start: database at /data/harborstats.db is missing or empty.');
+      throw failure;
     });
+    const exit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+    const logError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
     const { register } = await import('@/instrumentation');
-    await expect(register()).rejects.toThrow(/^Refusing to start/);
+    await register();
+
+    expect(logError).toHaveBeenCalledWith(failure);
+    expect(exit).toHaveBeenCalledWith(1);
   });
 });
