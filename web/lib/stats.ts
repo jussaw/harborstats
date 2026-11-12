@@ -1,5 +1,6 @@
 import { and, count, desc, eq, sql } from 'drizzle-orm';
 import { gamePlayers, games, players } from '@/db/schema';
+import { comparePlayerNames } from '@/lib/compare-players';
 import { parsePlayerTier, PlayerTier, type PlayerTier as PlayerTierType } from '@/lib/player-tier';
 import { playerNameOrder } from '@/lib/players';
 import { db } from './db';
@@ -523,15 +524,6 @@ export interface PlayerWinRate {
   games: number;
   wins: number;
   winRate: number; // 0.0–1.0
-}
-
-// Case-insensitive like `playerNameOrder` (COLLATE NOCASE), then id, so rows
-// tied on every stat never fall back to the database's row order.
-function comparePlayerNames(a: PlayerIdentity, b: PlayerIdentity) {
-  const left = a.name.toLowerCase();
-  const right = b.name.toLowerCase();
-  if (left !== right) return left < right ? -1 : 1;
-  return a.playerId - b.playerId;
 }
 
 export async function getPlayerWinRates(filter: StatsFilter = null): Promise<PlayerWinRate[]> {
@@ -1059,7 +1051,9 @@ export async function getPlayerPodiumRates(filter: StatsFilter = null): Promise<
         podiumRate: gameCount > 0 ? podiums / gameCount : 0,
       };
     })
-    .sort((a, b) => b.podiumRate - a.podiumRate || b.podiums - a.podiums);
+    .sort(
+      (a, b) => b.podiumRate - a.podiumRate || b.podiums - a.podiums || comparePlayerNames(a, b),
+    );
 }
 
 export interface PlayerFinishBreakdown {

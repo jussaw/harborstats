@@ -1086,6 +1086,16 @@ describe('stats integration', () => {
     });
   });
 
+  test('getPlayerPodiumRates orders players tied on podium rate and podiums by name, case-insensitively', async () => {
+    const zed = await createTestPlayer({ name: 'Zed' });
+    const amy = await createTestPlayer({ name: 'amy' });
+    const bob = await createTestPlayer({ name: 'Bob' });
+
+    const podiumRates = await getPlayerPodiumRates();
+
+    expect(podiumRates.map((player) => player.playerId)).toEqual([amy.id, bob.id, zed.id]);
+  });
+
   test('getPlayerPodiumRates counts tied finish ranks and breaks equal rates by podium count', async () => {
     const alice = await createTestPlayer({ name: 'Alice' });
     const bob = await createTestPlayer({ name: 'Bob' });
