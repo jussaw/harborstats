@@ -40,6 +40,9 @@ assert_not_contains() {
 }
 
 setup_test_dir() {
+  # The scripts let a shell value win over ENV_FILE, so a value inherited from
+  # the caller (CI sets both at job level) would mask what ENV_FILE provides.
+  unset ADMIN_PASSWORD ADMIN_SESSION_SECRET
   TEST_DIR="$(mktemp -d)"
   export TEST_DIR
   export STUB_BIN="$TEST_DIR/bin"
